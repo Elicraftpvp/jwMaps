@@ -1,0 +1,168 @@
+/* Estilos Globais com o Novo Tema Verde */
+:root {
+  /* Novas Cores do Tema */
+  --primary-color: #51BE41; /* Verde Principal (RGB: 81, 190, 65) */
+  --primary-hover-color: #87F66C; /* Verde Secundário/Hover (RGB: 135, 246, 108) */
+
+  /* Cores de Suporte (Mantidas para consistência de UI) */
+  --secondary-color: #6c757d;
+  --warning-color: #ffc107;
+  --danger-color: #dc3545;
+  --info-color: #0dcaf0;
+  --light-gray: #f8f9fa;
+  --dark-gray: #343a40;
+  
+  /* Cores da Interface */
+  --sidebar-bg: #212529; /* Preto */
+  --sidebar-link-color: #adb5bd;
+  --sidebar-link-hover: #ffffff; /* Branco */
+  --content-bg: #f0f2f5; 
+}
+
+body {
+  background-color: var(--content-bg);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Estrutura Principal com Sidebar (em index.html) */
+.wrapper {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 260px;
+  background-color: var(--sidebar-bg);
+  color: white;
+  position: fixed;
+  height: 100%;
+  transition: all 0.3s;
+  z-index: 1000;
+}
+
+.sidebar-header {
+  padding: 20px;
+  text-align: center;
+  border-bottom: 1px solid #495057;
+}
+
+.sidebar-header h3 {
+  color: white;
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+.sidebar .nav-link {
+  color: var(--sidebar-link-color);
+  padding: 15px 20px;
+  font-size: 1rem;
+  transition: all 0.2s;
+  border-left: 4px solid transparent;
+}
+
+.sidebar .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--sidebar-link-hover);
+  border-left: 4px solid var(--primary-color);
+}
+
+.sidebar .nav-link.active {
+  background-color: var(--primary-color);
+  color: white;
+  font-weight: 500;
+  border-left: 4px solid var(--primary-color);
+}
+
+.sidebar .nav-link i {
+  margin-right: 15px;
+  width: 20px;
+  text-align: center;
+}
+
+.content-frame {
+  margin-left: 260px;
+  width: calc(100% - 260px);
+  height: 100vh;
+  border: none;
+  transition: all 0.3s;
+}
+
+/* Estilo para a página de Login (em auth/login.html) */
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--content-bg);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+}
+
+/* --- Estilos para Páginas Internas (Carregadas no iFrame) --- */
+body.iframe-page {
+  padding: 25px;
+  background-color: var(--content-bg);
+}
+
+/* --- Sobrescrita de Classes do Bootstrap para aplicar o tema --- */
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+.btn-primary:hover {
+  background-color: var(--primary-hover-color);
+  border-color: var(--primary-hover-color);
+  color: var(--dark-gray); /* Melhora o contraste no hover */
+}
+.bg-primary {
+  background-color: var(--primary-color) !important;
+}
+.text-primary {
+  color: var(--primary-color) !important;
+}
+.btn-info {
+  background-color: var(--info-color);
+  border-color: var(--info-color);
+}
+
+/* --- Componentes Comuns --- */
+.card-header-icon {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-title-icon {
+    margin-right: 10px;
+}
+
+/* --- Tabelas (Clientes, Serviços, Gerenciar OS) --- */
+.table-hover tbody tr:hover {
+  background-color: #e9ecef;
+}
+.table td .btn {
+  margin-right: 5px;
+}
+
+.badge {
+  font-size: 0.8rem;
+  padding: 0.5em 0.7em;
+  font-weight: 500;
+}
+
+/* NOVO ESTILO PARA AS LISTAS DO DASHBOARD */
+.dashboard-list {
+    max-height: 220px; /* Limita a altura da lista */
+    overflow-y: auto; /* Adiciona barra de rolagem se necessário */
+}
+
+.dashboard-list .list-group-item {
+    border-left: 0;
+    border-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+}
