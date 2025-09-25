@@ -1,0 +1,4 @@
+vendor/
+auth/site/backend/pdfs/
+pdfs/
+!*.backend
