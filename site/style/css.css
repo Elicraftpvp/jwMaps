@@ -1,42 +1,38 @@
 /* Estilos Globais com o Novo Tema Verde */
 :root {
-  /* Novas Cores do Tema */
-  --primary-color: #51BE41; /* Verde Principal (RGB: 81, 190, 65) */
-  --primary-hover-color: #87F66C; /* Verde Secundário/Hover (RGB: 135, 246, 108) */
-
-  /* Cores de Suporte (Mantidas para consistência de UI) */
+  --primary-color: #51BE41;
+  --primary-hover-color: #87F66C;
   --secondary-color: #6c757d;
   --warning-color: #ffc107;
   --danger-color: #dc3545;
   --info-color: #0dcaf0;
   --light-gray: #f8f9fa;
   --dark-gray: #343a40;
-  
-  /* Cores da Interface */
-  --sidebar-bg: #212529; /* Preto */
+  --sidebar-bg: #212529;
   --sidebar-link-color: #adb5bd;
-  --sidebar-link-hover: #ffffff; /* Branco */
+  --sidebar-link-hover: #ffffff;
   --content-bg: #f0f2f5; 
 }
 
 body {
   background-color: var(--content-bg);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-x: hidden; /* Previne scroll horizontal */
 }
 
-/* Estrutura Principal com Sidebar (em index.html) */
+/* Estrutura Principal */
 .wrapper {
   display: flex;
   width: 100%;
   min-height: 100vh;
 }
 
+/* Sidebar para DESKTOP */
 .sidebar {
   width: 260px;
+  min-width: 260px; /* Previne que a sidebar encolha */
   background-color: var(--sidebar-bg);
   color: white;
-  position: fixed;
-  height: 100%;
   transition: all 0.3s;
   z-index: 1000;
 }
@@ -53,7 +49,7 @@ body {
   font-size: 1.2rem;
 }
 
-.sidebar .nav-link {
+.sidebar .nav-link, .offcanvas .nav-link {
   color: var(--sidebar-link-color);
   padding: 15px 20px;
   font-size: 1rem;
@@ -61,34 +57,33 @@ body {
   border-left: 4px solid transparent;
 }
 
-.sidebar .nav-link:hover {
+.sidebar .nav-link:hover, .offcanvas .nav-link:hover {
   background-color: rgba(255, 255, 255, 0.1);
   color: var(--sidebar-link-hover);
   border-left: 4px solid var(--primary-color);
 }
 
-.sidebar .nav-link.active {
+.sidebar .nav-link.active, .offcanvas .nav-link.active {
   background-color: var(--primary-color);
   color: white;
   font-weight: 500;
   border-left: 4px solid var(--primary-color);
 }
 
-.sidebar .nav-link i {
+.sidebar .nav-link i, .offcanvas .nav-link i {
   margin-right: 15px;
   width: 20px;
   text-align: center;
 }
 
 .content-frame {
-  margin-left: 260px;
-  width: calc(100% - 260px);
-  height: 100vh;
+  width: 100%;
+  height: calc(100vh - 56px); /* 56px é a altura da navbar mobile */
   border: none;
   transition: all 0.3s;
 }
 
-/* Estilo para a página de Login (em auth/login.html) */
+/* Estilo para a página de Login */
 .login-container {
   min-height: 100vh;
   display: flex;
@@ -96,73 +91,72 @@ body {
   justify-content: center;
   background-color: var(--content-bg);
 }
+.login-card { width: 100%; max-width: 400px; }
 
-.login-card {
-  width: 100%;
-  max-width: 400px;
-}
-
-/* --- Estilos para Páginas Internas (Carregadas no iFrame) --- */
+/* Páginas Internas (iFrame) */
 body.iframe-page {
   padding: 25px;
   background-color: var(--content-bg);
 }
 
-/* --- Sobrescrita de Classes do Bootstrap para aplicar o tema --- */
-.btn-primary {
-  background-color: var(--primary-color);
-  border-color: var(--primary-color);
-}
-.btn-primary:hover {
-  background-color: var(--primary-hover-color);
-  border-color: var(--primary-hover-color);
-  color: var(--dark-gray); /* Melhora o contraste no hover */
-}
-.bg-primary {
-  background-color: var(--primary-color) !important;
-}
-.text-primary {
-  color: var(--primary-color) !important;
-}
-.btn-info {
-  background-color: var(--info-color);
-  border-color: var(--info-color);
+/* Sobrescrita de Classes do Bootstrap */
+.btn-primary { background-color: var(--primary-color); border-color: var(--primary-color); }
+.btn-primary:hover { background-color: var(--primary-hover-color); border-color: var(--primary-hover-color); color: var(--dark-gray); }
+.bg-primary { background-color: var(--primary-color) !important; }
+.text-primary { color: var(--primary-color) !important; }
+.btn-info { background-color: var(--info-color); border-color: var(--info-color); }
+
+/* Componentes Comuns */
+.card-header-icon { display: flex; justify-content: space-between; align-items: center; }
+.card-title-icon { margin-right: 10px; }
+
+/* Tabelas */
+.table-hover tbody tr:hover { background-color: #e9ecef; }
+.table td .btn { margin-right: 5px; }
+.badge { font-size: 0.8rem; padding: 0.5em 0.7em; font-weight: 500; }
+
+/* Listas do Dashboard */
+.dashboard-list { max-height: 220px; overflow-y: auto; }
+.dashboard-list .list-group-item { border-left: 0; border-right: 0; padding-left: 0; padding-right: 0; }
+
+/* Visualizador de PDF (Desktop) */
+.pdf-viewer-container { position: relative; cursor: pointer; overflow: hidden; background-color: #e9ecef; }
+.pdf-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); color: white; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; font-weight: bold; opacity: 0; transition: opacity 0.3s ease; }
+.pdf-viewer-container:hover .pdf-overlay { opacity: 1; }
+#pdf-modal .modal-dialog { max-width: 95vw; }
+
+/* --- NOVOS ESTILOS PARA MOBILE --- */
+.pdf-mobile-link { display: none; } /* Escondido por padrão */
+
+
+/* --- REGRAS DE RESPONSIVIDADE --- */
+@media (max-width: 991.98px) {
+  /* Esconde a sidebar fixa de desktop */
+  #sidebar {
+    display: none !important;
+  }
+  
+  /* Ajusta o iframe para ocupar toda a tela */
+  .content-frame {
+    margin-left: 0;
+    width: 100%;
+    height: calc(100vh - 56px); /* Desconta a altura da navbar mobile */
+  }
+
+  /* --- NOVOS ESTILOS PARA PDF em MOBILE --- */
+  /* Esconde o visualizador embutido de desktop */
+  .pdf-desktop-viewer {
+      display: none !important;
+  }
+  
+  /* Mostra o botão/link para abrir em nova aba */
+  .pdf-mobile-link {
+      display: block !important;
+  }
 }
 
-/* --- Componentes Comuns --- */
-.card-header-icon {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.card-title-icon {
-    margin-right: 10px;
-}
-
-/* --- Tabelas (Clientes, Serviços, Gerenciar OS) --- */
-.table-hover tbody tr:hover {
-  background-color: #e9ecef;
-}
-.table td .btn {
-  margin-right: 5px;
-}
-
-.badge {
-  font-size: 0.8rem;
-  padding: 0.5em 0.7em;
-  font-weight: 500;
-}
-
-/* NOVO ESTILO PARA AS LISTAS DO DASHBOARD */
-.dashboard-list {
-    max-height: 220px; /* Limita a altura da lista */
-    overflow-y: auto; /* Adiciona barra de rolagem se necessário */
-}
-
-.dashboard-list .list-group-item {
-    border-left: 0;
-    border-right: 0;
-    padding-left: 0;
-    padding-right: 0;
+@media (min-width: 992px) {
+    .content-frame {
+        height: 100vh; /* Em desktop, volta a ocupar a tela inteira */
+    }
 }

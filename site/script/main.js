@@ -1,8 +1,5 @@
 // site/script/main.js
 document.addEventListener('DOMContentLoaded', () => {
-    const sidebar = document.getElementById('sidebar');
-    if (!sidebar) return;
-
     // 1. Verifica se o usuário está logado
     const usuarioLogadoString = sessionStorage.getItem('usuarioLogado');
     if (!usuarioLogadoString) {
@@ -11,8 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const usuario = JSON.parse(usuarioLogadoString);
 
-    // 2. Monta o menu dinamicamente com base no cargo do usuário
-    const menu = document.getElementById('menu-principal');
+    // 2. Monta o HTML do menu
     let menuHTML = `
         <li class="nav-item">
             <a class="nav-link active" href="pages/dashboard.html" target="contentFrame">
@@ -42,7 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (usuario.cargo === 'dirigente') {
-        // Link para a view pessoal do dirigente
         menuHTML += `
             <li class="nav-item">
                 <a class="nav-link" href="backend/vista_dirigente.php?id=${usuario.id}" target="contentFrame">
@@ -53,18 +48,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     menuHTML += `
-        <li class="nav-item">
+        <li class="nav-item mt-auto">
             <a class="nav-link" href="#" id="logout-btn">
                 <i class="fas fa-sign-out-alt"></i> Sair
             </a>
         </li>
     `;
 
-    menu.innerHTML = menuHTML;
+    // 3. Popula ambos os menus (desktop e mobile)
+    const menuDesktop = document.getElementById('menu-principal-desktop');
+    const menuMobile = document.getElementById('menu-principal-mobile');
+    if(menuDesktop) menuDesktop.innerHTML = menuHTML;
+    if(menuMobile) menuMobile.innerHTML = menuHTML;
 
-    // 3. Lógica para marcar o link do menu como 'ativo' ao ser clicado
-    const navLinks = sidebar.querySelectorAll('.nav-link');
-    navLinks.forEach(link => {
+
+    // 4. Lógica para marcar o link do menu como 'ativo' e fechar offcanvas
+    const allNavLinks = document.querySelectorAll('.nav-link');
+    const sidebarMobileElement = document.getElementById('sidebarMobile');
+    const sidebarMobileInstance = bootstrap.Offcanvas.getInstance(sidebarMobileElement) || new bootstrap.Offcanvas(sidebarMobileElement);
+
+    allNavLinks.forEach(link => {
         link.addEventListener('click', function(e) {
             if (this.id === 'logout-btn') {
                 e.preventDefault();
@@ -72,10 +75,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = '../login.html';
                 return;
             }
-            // Aplica a classe 'active' apenas se o link abrir no iframe
+
             if (this.getAttribute('target') === 'contentFrame') {
-                navLinks.forEach(l => l.classList.remove('active'));
-                this.classList.add('active');
+                // Remove 'active' de todos os links em ambos os menus
+                allNavLinks.forEach(l => l.classList.remove('active'));
+                
+                // Adiciona 'active' ao link clicado e seu correspondente no outro menu
+                const href = this.getAttribute('href');
+                document.querySelectorAll(`.nav-link[href="${href}"]`).forEach(matchingLink => {
+                    matchingLink.classList.add('active');
+                });
+
+                // Fecha o menu offcanvas se estiver aberto (em mobile)
+                if (sidebarMobileInstance) {
+                    sidebarMobileInstance.hide();
+                }
             }
         });
     });
