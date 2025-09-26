@@ -8,18 +8,56 @@ document.addEventListener('DOMContentLoaded', () => {
     const entregarModal = new bootstrap.Modal(entregarModalElement);
     const entregarModalLabel = document.getElementById('entregarModalLabel');
     const selectDirigentes = document.getElementById('entregar_dirigente_id');
+    
+    // ▼▼▼ NOVOS ELEMENTOS E VARIÁVEIS DE ESTADO ▼▼▼
+    const filtroDirigenteMenu = document.getElementById('filtroDirigenteMenu');
+    const filtroDirigenteBtnIcon = document.querySelector('#filtroDirigenteBtn i');
+    let filtroDirigenteId = null; 
     let editMode = false;
     let editId = null;
+
+    // ▼▼▼ NOVA FUNÇÃO PARA POPULAR O FILTRO ▼▼▼
+    const popularFiltroDirigentes = (mapas) => {
+        const dirigentesComMapas = [...new Map(mapas.filter(m => m.dirigente_id).map(m => [m.dirigente_id, { id: m.dirigente_id, nome: m.dirigente_nome }])).values()];
+        dirigentesComMapas.sort((a, b) => a.nome.localeCompare(b.nome));
+
+        filtroDirigenteMenu.innerHTML = '<li><a class="dropdown-item" href="#" data-id=""><strong>Mostrar Todos</strong></a></li><li><hr class="dropdown-divider"></li>';
+        
+        if (dirigentesComMapas.length === 0) {
+            filtroDirigenteMenu.innerHTML += '<li><span class="dropdown-item-text text-muted">Nenhum mapa em uso</span></li>';
+        } else {
+            dirigentesComMapas.forEach(dirigente => {
+                filtroDirigenteMenu.innerHTML += `<li><a class="dropdown-item" href="#" data-id="${dirigente.id}">${dirigente.nome}</a></li>`;
+            });
+        }
+    };
 
     const carregarMapas = async () => {
         tableBody.innerHTML = `<tr><td colspan="7" class="text-center"><div class="spinner-border spinner-border-sm"></div></td></tr>`;
         try {
             const response = await fetch(`${API_BASE_URL}/mapas_api.php`);
-            const mapas = await response.json();
-            tableBody.innerHTML = '';
-            if (mapas.length === 0) { tableBody.innerHTML = `<tr><td colspan="7" class="text-center">Nenhum mapa cadastrado.</td></tr>`; return; }
+            let mapas = await response.json(); // Alterado para 'let'
 
-            // ORDENAR MAPAS POR ID (do menor para o maior)
+            // ▼▼▼ MUDANÇA: Popular filtro ANTES de filtrar os dados para exibição ▼▼▼
+            popularFiltroDirigentes(mapas);
+
+            // ▼▼▼ MUDANÇA: Aplicar o filtro se houver um selecionado ▼▼▼
+            if (filtroDirigenteId) {
+                mapas = mapas.filter(mapa => mapa.dirigente_id == filtroDirigenteId);
+                filtroDirigenteBtnIcon.classList.remove('text-secondary');
+                filtroDirigenteBtnIcon.classList.add('text-primary'); // Ícone ativo
+            } else {
+                filtroDirigenteBtnIcon.classList.add('text-secondary');
+                filtroDirigenteBtnIcon.classList.remove('text-primary'); // Ícone inativo
+            }
+            
+            tableBody.innerHTML = '';
+            if (mapas.length === 0) {
+                const mensagem = filtroDirigenteId ? 'Nenhum mapa encontrado para este dirigente.' : 'Nenhum mapa cadastrado.';
+                tableBody.innerHTML = `<tr><td colspan="7" class="text-center">${mensagem}</td></tr>`; 
+                return;
+            }
+
             mapas.sort((a, b) => a.id - b.id);
 
             mapas.forEach(mapa => {
@@ -91,12 +129,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!data.identificador || !data.quadra_inicio || !data.quadra_fim) { alert('Todos os campos são obrigatórios.'); return; }
         if (parseInt(data.quadra_fim) < parseInt(data.quadra_inicio)) { alert('A quadra final deve ser maior ou igual à inicial.'); return; }
         
-        // --- MUDANÇA 1: Usaremos sempre POST ---
         const url = `${API_BASE_URL}/mapas_api.php`;
-        const method = 'POST'; // Sempre será POST
+        const method = 'POST';
 
         if (editMode) {
-            // Adicionamos um campo para o PHP saber que é uma edição
             data.action = 'edit_details';
             data.id = editId;
         }
@@ -128,7 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         if (!data.dirigente_id || !data.data_entrega) { alert('Selecione um dirigente e uma data.'); return; }
         try {
-            // --- MUDANÇA 2: Trocado PUT por POST ---
             await fetch(`${API_BASE_URL}/mapas_api.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             entregarModal.hide();
             carregarMapas();
@@ -157,7 +192,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (confirm('Deseja resgatar este mapa? Ele ficará disponível para ser entregue a outro dirigente.')) {
                 try {
                     const data = { action: 'resgatar', mapa_id: id };
-                    // --- MUDANÇA 3: Trocado PUT por POST ---
                     await fetch(`${API_BASE_URL}/mapas_api.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
                     carregarMapas();
                 } catch (error) { alert('Não foi possível resgatar o mapa.'); }
@@ -165,6 +199,17 @@ document.addEventListener('DOMContentLoaded', () => {
         } 
         else if (target.classList.contains('btn-edit')) {
             prepararEdicao(id);
+        }
+    });
+
+    // ▼▼▼ NOVO EVENT LISTENER PARA O DROPDOWN DE FILTRO ▼▼▼
+    filtroDirigenteMenu.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = e.target.closest('a.dropdown-item');
+        if (target) {
+            const id = target.dataset.id;
+            filtroDirigenteId = id ? parseInt(id, 10) : null;
+            carregarMapas(); // Recarrega a lista com o filtro aplicado
         }
     });
     

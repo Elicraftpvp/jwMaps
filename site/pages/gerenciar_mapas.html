@@ -24,7 +24,21 @@
                                 <th>Identificador</th>
                                 <th>Quadras</th>
                                 <th>Status</th>
-                                <th>Dirigente</th>
+                                <!-- ▼▼▼ MUDANÇA AQUI ▼▼▼ -->
+                                <th>
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <span>Dirigente</span>
+                                        <div class="dropdown">
+                                            <a href="#" role="button" id="filtroDirigenteBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-filter text-secondary" title="Filtrar por Dirigente"></i>
+                                            </a>
+                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="filtroDirigenteBtn" id="filtroDirigenteMenu">
+                                                <!-- Opções de filtro serão carregadas pelo JS -->
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </th>
+                                <!-- ▲▲▲ FIM DA MUDANÇA ▲▲▲ -->
                                 <th class="text-center">Tempo (dias)</th>
                                 <th>Ações</th>
                             </tr>
