@@ -1,69 +1,77 @@
 // site/script/dirigentes.js
-
 document.addEventListener('DOMContentLoaded', () => {
     const tableBody = document.getElementById('users-table-body');
     const userModalElement = document.getElementById('userModal');
     const modal = new bootstrap.Modal(userModalElement);
     const modalTitle = document.getElementById('userModalLabel');
+    const mostrarInativosCheck = document.getElementById('mostrar-inativos-check');
     let editMode = false;
     let editId = null;
 
     const carregarUsuarios = async () => {
-        tableBody.innerHTML = `<tr><td colspan="5" class="text-center"><div class="spinner-border spinner-border-sm"></div></td></tr>`;
+        const showInactive = mostrarInativosCheck.checked;
+        tableBody.innerHTML = `<tr><td colspan="5" class="text-center"><div class="spinner-border"></div></td></tr>`;
         try {
-            const response = await fetch(`${API_BASE_URL}/dirigentes_api.php`);
-            if (!response.ok) throw new Error('Erro na requisição');
+            const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?show_inactive=${showInactive}`);
             const users = await response.json();
-            
             tableBody.innerHTML = '';
-            if (users.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="text-center">Nenhum usuário cadastrado.</td></tr>`;
-                return;
-            }
+            if (users.length === 0) { tableBody.innerHTML = `<tr><td colspan="5" class="text-center">Nenhum usuário.</td></tr>`; return; }
+            
             users.forEach(u => {
-                const row = `
-                    <tr>
-                        <td>${u.id}</td>
+                const isInactive = u.status === 'inativo';
+                const statusBadge = isInactive ? `<span class="badge bg-danger">Inativo</span>` : `<span class="badge bg-success">Ativo</span>`;
+                const rowClass = isInactive ? 'table-secondary text-muted' : '';
+                const actionButton = isInactive 
+                    ? `<button class="btn btn-sm btn-success btn-reactivate" data-id="${u.id}" title="Reativar"><i class="fas fa-undo"></i></button>`
+                    : `<button class="btn btn-sm btn-danger btn-delete" data-id="${u.id}" title="Desativar"><i class="fas fa-trash-alt"></i></button>`;
+                const linkButton = u.cargo === 'dirigente' && u.token_acesso
+                    ? `<button class="btn btn-sm btn-info btn-copy-link" data-token="${u.token_acesso}" title="Copiar Link Público"><i class="fas fa-link"></i></button>`
+                    : '';
+
+                const row = `<tr class="${rowClass}">
                         <td>${u.nome}</td>
                         <td>${u.login}</td>
-                        <td><span class="badge bg-${u.cargo === 'servo' ? 'success' : 'secondary'}">${u.cargo}</span></td>
+                        <td><span class="badge bg-secondary text-capitalize">${u.cargo}</span></td>
+                        <td>${statusBadge}</td>
                         <td>
-                            <button class="btn btn-sm btn-warning btn-edit" data-id="${u.id}" title="Editar"><i class="fas fa-edit"></i></button>
-                            <button class="btn btn-sm btn-danger btn-delete" data-id="${u.id}" title="Excluir"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>`;
+                            ${linkButton}
+                            <button class="btn btn-sm btn-warning btn-edit" data-id="${u.id}" title="Editar" ${isInactive ? 'disabled' : ''}><i class="fas fa-edit"></i></button>
+                            ${actionButton}
+                        </td></tr>`;
                 tableBody.innerHTML += row;
             });
-        } catch (error) {
-            tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar usuários.</td></tr>`;
-        }
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+            tooltipTriggerList.map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+        } catch (error) { tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar usuários.</td></tr>`; }
     };
 
     const prepararEdicao = async (id) => {
         try {
             const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`);
-            if (!response.ok) throw new Error('Usuário não encontrado');
             const user = await response.json();
-
             document.getElementById('user_nome').value = user.nome;
             document.getElementById('user_login').value = user.login;
             document.getElementById('user_cargo').value = user.cargo;
-            document.getElementById('user_senha').value = ''; // Senha sempre vazia ao editar
+            document.getElementById('user_senha').value = '';
 
+            const linkSection = document.getElementById('link-publico-section');
+            if (user.cargo === 'dirigente') {
+                const linkInput = document.getElementById('user_public_link');
+                const publicUrl = `${window.location.origin}${window.location.pathname.replace(/\/pages\/.*$/, '')}/backend/vista_publica.php?token=${user.token_acesso}`;
+                linkInput.value = publicUrl;
+                linkSection.classList.remove('d-none');
+            } else { linkSection.classList.add('d-none'); }
             editMode = true;
             editId = id;
             modalTitle.textContent = 'Editar Usuário';
-            
             modal.show();
-        } catch (error) {
-            alert('Não foi possível carregar os dados do usuário.');
-        }
+        } catch (error) { alert('Não foi possível carregar os dados do usuário.'); }
     };
 
     const resetarModal = () => {
         document.getElementById('form-user').reset();
-        editMode = false;
-        editId = null;
+        document.getElementById('link-publico-section').classList.add('d-none');
+        editMode = false; editId = null;
         modalTitle.textContent = 'Adicionar Usuário';
     };
 
@@ -72,62 +80,64 @@ document.addEventListener('DOMContentLoaded', () => {
             nome: document.getElementById('user_nome').value,
             login: document.getElementById('user_login').value,
             cargo: document.getElementById('user_cargo').value,
-            senha: document.getElementById('user_senha').value // Envia senha (vazia ou não)
+            senha: document.getElementById('user_senha').value
         };
-
-        if (!data.nome || !data.login || !data.cargo) {
-            alert('Nome, Login e Cargo são obrigatórios.');
-            return;
-        }
-
-        if (!editMode && !data.senha) {
-            alert('A senha é obrigatória ao criar um novo usuário.');
-            return;
-        }
-        
+        if (!data.nome || !data.login || !data.cargo) { alert('Nome, Login e Cargo são obrigatórios.'); return; }
+        if (!editMode && !data.senha) { alert('A senha é obrigatória ao criar um novo usuário.'); return; }
         const url = editMode ? `${API_BASE_URL}/dirigentes_api.php?id=${editId}` : `${API_BASE_URL}/dirigentes_api.php`;
         const method = editMode ? 'PUT' : 'POST';
-
         try {
-            const response = await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-
-            if (!response.ok) {
-                 const errorData = await response.json();
-                 throw new Error(errorData.message || 'Erro ao salvar usuário.');
-            }
-
+            const response = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            if (!response.ok) { const err = await response.json(); throw new Error(err.message); }
             modal.hide();
             carregarUsuarios();
-        } catch (error) {
-            alert(`Falha ao salvar usuário: ${error.message}`);
-        }
+        } catch (error) { alert(`Falha ao salvar: ${error.message}`); }
     });
+
+    document.getElementById('regenerar-token-btn').addEventListener('click', async () => {
+        if (!editId || !confirm('O link antigo deixará de funcionar. Deseja continuar?')) return;
+        try {
+            const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${editId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'regenerate_token' }) });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message);
+            const newUrl = `${window.location.origin}${window.location.pathname.replace(/\/pages\/.*$/, '')}/backend/vista_publica.php?token=${result.novoToken}`;
+            document.getElementById('user_public_link').value = newUrl;
+            carregarUsuarios();
+            alert('Novo link gerado!');
+        } catch (error) { alert(`Erro: ${error.message}`); }
+    });
+    
+    mostrarInativosCheck.addEventListener('change', carregarUsuarios);
 
     tableBody.addEventListener('click', async (e) => {
         const target = e.target.closest('button');
         if (!target) return;
-
         const id = target.dataset.id;
 
         if (target.classList.contains('btn-delete')) {
-            if (confirm('Deseja realmente excluir este usuário?')) {
-                try {
-                    await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`, { method: 'DELETE' });
-                    carregarUsuarios();
-                } catch (error) {
-                    alert('Não foi possível excluir o usuário.');
-                }
+            if (confirm('Desativar este usuário?')) {
+                try { await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`, { method: 'DELETE' }); carregarUsuarios(); } 
+                catch (error) { alert('Não foi possível desativar.'); }
+            }
+        } else if (target.classList.contains('btn-reactivate')) {
+            if (confirm('Reativar este usuário?')) {
+                try { await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reactivate' }) }); carregarUsuarios(); } 
+                catch (error) { alert('Não foi possível reativar.'); }
             }
         } else if (target.classList.contains('btn-edit')) {
             prepararEdicao(id);
+        } else if (target.classList.contains('btn-copy-link')) {
+            const token = target.dataset.token;
+            const url = `${window.location.origin}${window.location.pathname.replace(/\/pages\/.*$/, '')}/backend/vista_publica.php?token=${token}`;
+            navigator.clipboard.writeText(url).then(() => {
+                const tooltip = bootstrap.Tooltip.getInstance(target);
+                target.setAttribute('data-bs-original-title', 'Copiado!');
+                tooltip.show();
+                setTimeout(() => { target.setAttribute('data-bs-original-title', 'Copiar Link Público'); tooltip.hide(); }, 2000);
+            });
         }
     });
 
     userModalElement.addEventListener('hidden.bs.modal', resetarModal);
-
     carregarUsuarios();
 });
