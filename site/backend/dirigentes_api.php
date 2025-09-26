@@ -46,10 +46,8 @@ switch ($method) {
         break;
 
     case 'PUT':
-        if (!$id) { exit(http_response_code(400)); }
+        if (!$id) { http_response_code(400); exit; }
         $data = json_decode(file_get_contents('php://input'), true);
-
-        // Ações específicas
         $action = $data['action'] ?? 'edit';
 
         if ($action === 'reactivate') {
@@ -82,7 +80,7 @@ switch ($method) {
         break;
 
     case 'DELETE': // Inativar
-        if (!$id) { exit(http_response_code(400)); }
+        if (!$id) { http_response_code(400); exit; }
         $sql = "UPDATE users SET status = 'inativo' WHERE id = ?";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$id]);

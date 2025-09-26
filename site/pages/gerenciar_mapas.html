@@ -9,50 +9,56 @@
     <link rel="stylesheet" href="../style/css.css">
 </head>
 <body class="iframe-page">
-
     <div class="container-fluid">
         <div class="card shadow-sm">
             <div class="card-header card-header-icon">
                 <h4 class="mb-0"><i class="fas fa-map card-title-icon"></i> Gerenciar Mapas</h4>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#mapaModal">
-                    <i class="fas fa-plus-circle me-2"></i> Adicionar Mapa
-                </button>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#mapaModal"><i class="fas fa-plus-circle me-2"></i> Adicionar Mapa</button>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover align-middle">
                         <thead class="table-light">
                             <tr>
                                 <th>ID</th>
                                 <th>Identificador</th>
+                                <th>Quadras</th>
                                 <th>Status</th>
                                 <th>Dirigente</th>
-                                <th>Data de Entrega</th>
+                                <th class="text-center">Tempo (dias)</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
-                        <tbody id="mapas-table-body">
-                            <!-- Conteúdo dinâmico -->
-                        </tbody>
+                        <tbody id="mapas-table-body"></tbody>
                     </table>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Adicionar Mapa -->
-    <div class="modal fade" id="mapaModal" tabindex="-1" aria-hidden="true">
+    <!-- Modal Adicionar/Editar Mapa -->
+    <div class="modal fade" id="mapaModal" tabindex="-1" aria-labelledby="mapaModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Adicionar Novo Mapa</h5>
+                    <h5 class="modal-title" id="mapaModalLabel">Adicionar Novo Mapa</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="form-add-mapa">
+                    <form id="form-mapa">
                         <div class="mb-3">
-                            <label for="mapa_identificador" class="form-label">Identificador do Mapa</label>
+                            <label for="mapa_identificador" class="form-label">Identificador</label>
                             <input type="text" class="form-control" id="mapa_identificador" placeholder="Ex: Mapa 01 - Centro" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label for="mapa_quadra_inicio" class="form-label">Quadra Inicial</label>
+                                <input type="number" class="form-control" id="mapa_quadra_inicio" min="1" required>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label for="mapa_quadra_fim" class="form-label">Quadra Final</label>
+                                <input type="number" class="form-control" id="mapa_quadra_fim" min="1" required>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -73,19 +79,15 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="form-entregar-mapa">
-                        <input type="hidden" id="entregar_mapa_id">
-                        <div class="mb-3">
-                            <label for="entregar_dirigente_id" class="form-label">Selecione o Dirigente</label>
-                            <select class="form-select" id="entregar_dirigente_id" required>
-                                <!-- Opções de dirigentes carregadas via JS -->
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="entregar_data" class="form-label">Data de Entrega</label>
-                            <input type="date" class="form-control" id="entregar_data" required>
-                        </div>
-                    </form>
+                    <input type="hidden" id="entregar_mapa_id">
+                    <div class="mb-3">
+                        <label for="entregar_dirigente_id" class="form-label">Selecione o Dirigente</label>
+                        <select class="form-select" id="entregar_dirigente_id" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="entregar_data" class="form-label">Data de Entrega</label>
+                        <input type="date" class="form-control" id="entregar_data" required>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>

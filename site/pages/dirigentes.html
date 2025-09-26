@@ -21,7 +21,7 @@
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover align-middle">
                         <thead class="table-light"><tr><th>Nome</th><th>Login</th><th>Cargo</th><th>Status</th><th>Ações</th></tr></thead>
                         <tbody id="users-table-body"></tbody>
                     </table>
@@ -34,15 +34,14 @@
     <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title" id="userModalLabel">Adicionar Usuário</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                <div class="modal-header"><h5 class="modal-title" id="userModalLabel">Adicionar Usuário</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
                     <form id="form-user">
                         <div class="mb-3"><label for="user_nome" class="form-label">Nome Completo</label><input type="text" class="form-control" id="user_nome" required></div>
-                        <div class="mb-3"><label for="user_login" class="form-label">Login de Acesso</label><input type="text" class="form-control" id="user_login" required></div>
+                        <div class="mb-3"><label for="user_login" class="form-label">Login</label><input type="text" class="form-control" id="user_login" required></div>
                         <div class="mb-3"><label for="user_cargo" class="form-label">Cargo</label><select class="form-select" id="user_cargo" required><option value="dirigente">Dirigente</option><option value="servo">Servo</option></select></div>
-                        <div class="mb-3"><label for="user_senha" class="form-label">Senha</label><input type="password" class="form-control" id="user_senha" aria-describedby="senhaHelp"><div id="senhaHelp" class="form-text">Deixe em branco para não alterar a senha atual (ao editar).</div></div>
+                        <div class="mb-3"><label for="user_senha" class="form-label">Senha</label><input type="password" class="form-control" id="user_senha" aria-describedby="senhaHelp"><div id="senhaHelp" class="form-text">Deixe em branco para não alterar (ao editar).</div></div>
                         
-                        <!-- NOVO: Seção do Link Público (visível apenas ao editar) -->
                         <div id="link-publico-section" class="d-none mt-4">
                             <hr>
                             <label for="user_public_link" class="form-label">Link de Acesso Público</label>
@@ -50,7 +49,6 @@
                                 <input type="text" id="user_public_link" class="form-control" readonly>
                                 <button class="btn btn-outline-secondary" type="button" id="regenerar-token-btn" title="Gerar novo link"><i class="fas fa-sync-alt"></i></button>
                             </div>
-                            <div class="form-text">Este link permite ao dirigente ver e atualizar seus mapas sem login.</div>
                         </div>
                     </form>
                 </div>
