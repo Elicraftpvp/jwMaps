@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let editId = null;
 
     const carregarMapas = async () => {
-        tableBody.innerHTML = `<tr><td colspan="7" class="text-center"><div class="spinner-border"></div></td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="7" class="text-center"><div class="spinner-border spinner-border-sm"></div></td></tr>`;
         try {
             const response = await fetch(`${API_BASE_URL}/mapas_api.php`);
             const mapas = await response.json();
@@ -91,12 +91,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!data.identificador || !data.quadra_inicio || !data.quadra_fim) { alert('Todos os campos são obrigatórios.'); return; }
         if (parseInt(data.quadra_fim) < parseInt(data.quadra_inicio)) { alert('A quadra final deve ser maior ou igual à inicial.'); return; }
         
-        const url = editMode ? `${API_BASE_URL}/mapas_api.php?id=${editId}` : `${API_BASE_URL}/mapas_api.php`;
-        const method = editMode ? 'PUT' : 'POST';
+        // --- MUDANÇA 1: Usaremos sempre POST ---
+        const url = `${API_BASE_URL}/mapas_api.php`;
+        const method = 'POST'; // Sempre será POST
+
+        if (editMode) {
+            // Adicionamos um campo para o PHP saber que é uma edição
+            data.action = 'edit_details';
+            data.id = editId;
+        }
+
         try {
-            const response = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-            const result = await response.json();
-            if(!response.ok) throw new Error(result.message);
+            await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             mapaModal.hide();
             carregarMapas();
         } catch (error) { alert('Erro ao salvar o mapa: ' + error.message); }
@@ -107,7 +113,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`${API_BASE_URL}/mapas_api.php?recurso=dirigentes`);
             const dirigentes = await response.json();
             selectDirigentes.innerHTML = '<option value="">Selecione...</option>';
-            dirigentes.forEach(d => selectDirigentes.innerHTML += `<option value="${d.id}">${d.nome}</option>`);
+            dirigentes.forEach(d => {
+                selectDirigentes.innerHTML += `<option value="${d.id}">${d.nome}</option>`;
+            });
         } catch (error) { selectDirigentes.innerHTML = '<option value="">Erro ao carregar</option>'; }
     };
 
@@ -120,7 +128,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         if (!data.dirigente_id || !data.data_entrega) { alert('Selecione um dirigente e uma data.'); return; }
         try {
-            await fetch(`${API_BASE_URL}/mapas_api.php`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            // --- MUDANÇA 2: Trocado PUT por POST ---
+            await fetch(`${API_BASE_URL}/mapas_api.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             entregarModal.hide();
             carregarMapas();
         } catch (error) { alert('Erro ao entregar o mapa.'); }
@@ -145,10 +154,11 @@ document.addEventListener('DOMContentLoaded', () => {
             entregarModal.show();
         } 
         else if (target.classList.contains('btn-resgatar')) {
-            if (confirm('Deseja resgatar este mapa? Ele ficará disponível.')) {
+            if (confirm('Deseja resgatar este mapa? Ele ficará disponível para ser entregue a outro dirigente.')) {
                 try {
                     const data = { action: 'resgatar', mapa_id: id };
-                    await fetch(`${API_BASE_URL}/mapas_api.php`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                    // --- MUDANÇA 3: Trocado PUT por POST ---
+                    await fetch(`${API_BASE_URL}/mapas_api.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
                     carregarMapas();
                 } catch (error) { alert('Não foi possível resgatar o mapa.'); }
             }
