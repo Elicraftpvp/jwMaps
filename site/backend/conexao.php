@@ -1,9 +1,9 @@
 <?php
 // site/backend/conexao.php
-$host = 'localhost';
-$dbname = 'jw_mapas';
-$user = 'root';
-$pass = '';
+$host = 'sql208.infinityfree.com';
+$dbname = 'if0_40020567_jw_mapas';
+$user = 'if0_40020567';
+$pass = 'sZe6Hr3xyL7p';
 $charset = 'utf8mb4';
 
 $options = [
