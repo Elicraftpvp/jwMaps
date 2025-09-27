@@ -18,7 +18,7 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  /* A linha "overflow: hidden;" foi REMOVIDA daqui. */
   background-color: var(--content-bg);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -27,7 +27,7 @@ html, body {
 .wrapper {
   display: flex;
   width: 100%;
-  height: 100vh;
+  height: 100vh; /* Esta linha já impede que o wrapper seja maior que a tela */
 }
 
 #content {
@@ -51,8 +51,6 @@ html, body {
   background-color: var(--sidebar-bg);
   color: white;
   z-index: 1000;
-  /* 1. ESSENCIAL: Transforma a sidebar inteira em um container flex vertical.
-     Agora ela pode gerenciar a altura de seus filhos (o header e a lista de menu). */
   display: flex;
   flex-direction: column;
 }
@@ -61,16 +59,11 @@ html, body {
   padding: 20px;
   text-align: center;
   border-bottom: 1px solid #495057;
-  /* Garante que o header não encolha */
   flex-shrink: 0;
 }
 
-/* 2. ESSENCIAL: A lista <ul> (que já é um flex container por causa do Bootstrap)
-   agora é instruída a CRESCER e ocupar todo o espaço vertical que sobrar. */
 #menu-principal-desktop {
     flex-grow: 1;
-    /* As classes 'nav' e 'flex-column' do Bootstrap já fazem a lista se comportar
-       como um flex container para os seus <li>, então não precisamos repetir. */
 }
 
 /* Regras que se aplicam tanto ao menu desktop quanto ao mobile */
@@ -84,14 +77,11 @@ html, body {
     flex-grow: 1;
 }
 
-/* 3. A MÁGICA: O último <li> de AMBOS os menus ganha uma margem superior automática.
-   Como a <ul> pai agora ocupa 100% da altura disponível, 'auto' significa "use todo o espaço livre". */
 #menu-principal-desktop > .nav-item:last-child,
 #menu-principal-mobile > .nav-item:last-child {
     margin-top: auto;
 }
 
-/* 4. Adiciona um separador visual para o botão de sair em ambos os menus. */
 #menu-principal-desktop > .nav-item:last-child .nav-link,
 #menu-principal-mobile > .nav-item:last-child .nav-link {
     border-top: 1px solid #495057;
