@@ -72,7 +72,6 @@ try {
         .pdf-preview-container iframe { width: 100%; height: 100%; border: none; }
         .pdf-preview-container .btn-expand { position: absolute; top: 8px; right: 8px; z-index: 10; }
 
-        /* MODIFICAÇÃO 1: CSS para expandir o modal e o conteúdo do PDF */
         #pdfModal .modal-dialog {
             max-width: 95%;
             height: 95vh;
@@ -85,9 +84,9 @@ try {
             flex-direction: column;
         }
         #pdfModal .modal-body {
-            flex-grow: 1; /* Faz o corpo do modal ocupar todo o espaço restante */
+            flex-grow: 1;
             padding: 0;
-            overflow: hidden; /* Evita barras de rolagem duplas */
+            overflow: hidden;
         }
         #pdfModal iframe { width: 100%; height: 100%; border: none; }
 
@@ -183,7 +182,6 @@ try {
         const saveQuadra = async (quadraId, valor, statusDiv) => {
             statusDiv.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
             try {
-                // MODIFICAÇÃO 2: Voltando a enviar JSON, que é o que a API espera
                 const response = await fetch(`${API_BASE_URL}/mapas_api.php`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -196,7 +194,6 @@ try {
 
                 const result = await response.json();
                 
-                // MODIFICAÇÃO 3: Corrigindo a verificação de sucesso para 'status', como a API retorna
                 if (result.status === 'success') {
                     statusDiv.innerHTML = '<i class="fas fa-check text-success"></i>';
                     setTimeout(() => { statusDiv.innerHTML = ''; }, 2000);
@@ -246,21 +243,21 @@ try {
                 btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
                 btn.disabled = true;
                 try {
-                    // MODIFICAÇÃO 2 (Repetida): Voltando a enviar JSON
                     const response = await fetch(`${API_BASE_URL}/mapas_api.php`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'devolver_mapa', mapa_id: mapaId, data_devolucao: dataDevolucao })
+                        // ***** ALTERAÇÃO AQUI *****
+                        // O nome da ação foi corrigido de 'devolver_mapa' para 'devolver' para corresponder à API.
+                        body: JSON.stringify({ action: 'devolver', mapa_id: mapaId, data_devolucao: dataDevolucao })
                     });
                     
                     if (!response.ok) {
-                        const errorData = await response.json().catch(() => null); // Tenta pegar erro da API
+                        const errorData = await response.json().catch(() => null);
                         throw new Error(errorData?.message || `Erro na rede: ${response.statusText}`);
                     }
 
                     const result = await response.json();
 
-                    // MODIFICAÇÃO 3 (Repetida): Verificando se a resposta contém uma mensagem de sucesso
                     if (result.message) { 
                         showAlert('Mapa devolvido com sucesso!', 'success'); 
                         document.getElementById(`mapa-card-${mapaId}`).remove(); 
@@ -291,7 +288,6 @@ try {
                 if (pdfSrc) {
                     const iframe = document.createElement('iframe');
                     iframe.src = pdfSrc;
-                    // O CSS na tag <style> já cuida do tamanho
                     modalBody.appendChild(iframe);
                 } else {
                     modalBody.innerHTML = '<div class="alert alert-danger m-3">URL do PDF não encontrada.</div>';

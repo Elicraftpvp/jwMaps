@@ -8,6 +8,34 @@ document.addEventListener('DOMContentLoaded', () => {
     let editMode = false;
     let editId = null;
 
+    // CORREÇÃO 3: Função para verificar se existem usuários inativos e desabilitar o checkbox se não houver.
+    const verificarExistenciaDeInativos = async () => {
+        try {
+            // Faz uma chamada para buscar apenas os inativos
+            const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?show_inactive=true`);
+            const inativos = await response.json();
+
+            const label = document.querySelector('label[for="mostrar-inativos-check"]');
+
+            if (inativos.length > 0) {
+                mostrarInativosCheck.disabled = false;
+                if(label) label.classList.remove('text-muted');
+            } else {
+                mostrarInativosCheck.disabled = true;
+                if(label) label.classList.add('text-muted');
+                // Garante que se não há inativos, a caixa seja desmarcada e os ativos sejam exibidos.
+                if (mostrarInativosCheck.checked) {
+                    mostrarInativosCheck.checked = false;
+                    carregarUsuarios(); 
+                }
+            }
+        } catch (error) {
+            console.error("Erro ao verificar usuários inativos.", error);
+            mostrarInativosCheck.disabled = true; // Desabilita em caso de erro
+        }
+    };
+
+    // CORREÇÃO 2: Simplificada a lógica de carregamento para mostrar ATIVOS OU INATIVOS, mas não ambos.
     const carregarUsuarios = async () => {
         const showInactive = mostrarInativosCheck.checked;
         tableBody.innerHTML = `<tr><td colspan="5" class="text-center"><div class="spinner-border"></div></td></tr>`;
@@ -15,7 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?show_inactive=${showInactive}`);
             const users = await response.json();
             tableBody.innerHTML = '';
-            if (users.length === 0) { tableBody.innerHTML = `<tr><td colspan="5" class="text-center">Nenhum usuário.</td></tr>`; return; }
+            if (users.length === 0) { 
+                const message = showInactive ? "Nenhum usuário inativo." : "Nenhum usuário ativo.";
+                tableBody.innerHTML = `<tr><td colspan="5" class="text-center">${message}</td></tr>`; 
+                return; 
+            }
             
             users.forEach(u => {
                 const isInactive = u.status === 'inativo';
@@ -86,12 +118,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!editMode && !data.senha) { alert('A senha é obrigatória ao criar um novo usuário.'); return; }
         
         const url = editMode ? `${API_BASE_URL}/dirigentes_api.php?id=${editId}` : `${API_BASE_URL}/dirigentes_api.php`;
-        
-        // MUDANÇA: POST substituindo PUT para edição
         const method = 'POST'; 
         
         try {
-            // Adicionamos um parâmetro 'action' para diferenciar a requisição de edição (PUT se tornou POST)
             if (editMode) {
                 data.action = 'update'; 
             }
@@ -111,7 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('regenerar-token-btn').addEventListener('click', async () => {
         if (!editId || !confirm('O link antigo deixará de funcionar. Deseja continuar?')) return;
         try {
-            // MUDANÇA: POST substituindo PUT
             const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${editId}`, { 
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' }, 
@@ -137,17 +165,35 @@ document.addEventListener('DOMContentLoaded', () => {
         if (target.classList.contains('btn-delete')) {
             if (confirm('Desativar este usuário?')) {
                 try { 
-                    // MUDANÇA: DELETE -> POST com action 'delete_user'
                     await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`, { 
                         method: 'POST', 
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ action: 'delete_user' })
                     }); 
                     carregarUsuarios(); 
+                    verificarExistenciaDeInativos(); // Re-verifica após desativar
                 } 
                 catch (error) { alert('Não foi possível desativar.'); }
             }
         } else if (target.classList.contains('btn-reactivate')) {
+            // CORREÇÃO 1: Botão de reativar agora envia um POST direto, sem abrir o modal.
+            if (confirm('Reativar este usuário?')) {
+                 try {
+                    await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        // OBS: Confirme se 'reactivate' é a ação esperada pela sua API
+                        body: JSON.stringify({ action: 'reactivate' }) 
+                    });
+                    // Mostra a lista de inativos após reativar um (para que ele suma da lista de inativos)
+                    if(!mostrarInativosCheck.checked) mostrarInativosCheck.checked = true;
+                    carregarUsuarios();
+                    verificarExistenciaDeInativos(); // Re-verifica após reativar
+                } catch (error) {
+                    alert('Não foi possível reativar o usuário.');
+                }
+            }
+        } else if (target.classList.contains('btn-edit')) {
             prepararEdicao(id);
         } else if (target.classList.contains('btn-copy-link')) {
             const token = target.dataset.token;
@@ -162,5 +208,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     userModalElement.addEventListener('hidden.bs.modal', resetarModal);
+    
+    // Carregamento inicial
     carregarUsuarios();
+    verificarExistenciaDeInativos();
 });
