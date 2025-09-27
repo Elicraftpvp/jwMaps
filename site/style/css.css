@@ -14,35 +14,91 @@
   --content-bg: #f0f2f5; 
 }
 
-body {
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
   background-color: var(--content-bg);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  overflow-x: hidden; /* Previne scroll horizontal */
 }
 
 /* Estrutura Principal */
 .wrapper {
   display: flex;
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
 }
 
-/* Sidebar para DESKTOP */
+#content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.content-frame {
+  flex-grow: 1; 
+  width: 100%;
+  border: none;
+}
+
+
+/* Sidebar para DESKTOP (Estilos de Estrutura) */
 .sidebar {
   width: 260px;
-  min-width: 260px; /* Previne que a sidebar encolha */
+  min-width: 260px;
   background-color: var(--sidebar-bg);
   color: white;
-  transition: all 0.3s;
   z-index: 1000;
+  /* 1. ESSENCIAL: Transforma a sidebar inteira em um container flex vertical.
+     Agora ela pode gerenciar a altura de seus filhos (o header e a lista de menu). */
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar-header {
   padding: 20px;
   text-align: center;
   border-bottom: 1px solid #495057;
+  /* Garante que o header não encolha */
+  flex-shrink: 0;
 }
 
+/* 2. ESSENCIAL: A lista <ul> (que já é um flex container por causa do Bootstrap)
+   agora é instruída a CRESCER e ocupar todo o espaço vertical que sobrar. */
+#menu-principal-desktop {
+    flex-grow: 1;
+    /* As classes 'nav' e 'flex-column' do Bootstrap já fazem a lista se comportar
+       como um flex container para os seus <li>, então não precisamos repetir. */
+}
+
+/* Regras que se aplicam tanto ao menu desktop quanto ao mobile */
+.offcanvas-body {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+}
+
+#menu-principal-mobile {
+    flex-grow: 1;
+}
+
+/* 3. A MÁGICA: O último <li> de AMBOS os menus ganha uma margem superior automática.
+   Como a <ul> pai agora ocupa 100% da altura disponível, 'auto' significa "use todo o espaço livre". */
+#menu-principal-desktop > .nav-item:last-child,
+#menu-principal-mobile > .nav-item:last-child {
+    margin-top: auto;
+}
+
+/* 4. Adiciona um separador visual para o botão de sair em ambos os menus. */
+#menu-principal-desktop > .nav-item:last-child .nav-link,
+#menu-principal-mobile > .nav-item:last-child .nav-link {
+    border-top: 1px solid #495057;
+}
+
+
+/* Estilos de Aparência dos Links (sem mudança) */
 .sidebar-header h3 {
   color: white;
   font-weight: 600;
@@ -76,14 +132,7 @@ body {
   text-align: center;
 }
 
-.content-frame {
-  width: 100%;
-  height: calc(100vh - 56px); /* 56px é a altura da navbar mobile */
-  border: none;
-  transition: all 0.3s;
-}
-
-/* Estilo para a página de Login */
+/* Restante do CSS (sem alterações) */
 .login-container {
   min-height: 100vh;
   display: flex;
@@ -92,71 +141,35 @@ body {
   background-color: var(--content-bg);
 }
 .login-card { width: 100%; max-width: 400px; }
-
-/* Páginas Internas (iFrame) */
 body.iframe-page {
   padding: 25px;
   background-color: var(--content-bg);
 }
-
-/* Sobrescrita de Classes do Bootstrap */
 .btn-primary { background-color: var(--primary-color); border-color: var(--primary-color); }
 .btn-primary:hover { background-color: var(--primary-hover-color); border-color: var(--primary-hover-color); color: var(--dark-gray); }
 .bg-primary { background-color: var(--primary-color) !important; }
 .text-primary { color: var(--primary-color) !important; }
 .btn-info { background-color: var(--info-color); border-color: var(--info-color); }
-
-/* Componentes Comuns */
 .card-header-icon { display: flex; justify-content: space-between; align-items: center; }
 .card-title-icon { margin-right: 10px; }
-
-/* Tabelas */
 .table-hover tbody tr:hover { background-color: #e9ecef; }
 .table td .btn { margin-right: 5px; }
 .badge { font-size: 0.8rem; padding: 0.5em 0.7em; font-weight: 500; }
-
-/* Listas do Dashboard */
-.dashboard-list { max-height: 220px; overflow-y: auto; }
-.dashboard-list .list-group-item { border-left: 0; border-right: 0; padding-left: 0; padding-right: 0; }
-
-/* Visualizador de PDF (Desktop) */
 .pdf-viewer-container { position: relative; cursor: pointer; overflow: hidden; background-color: #e9ecef; }
 .pdf-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); color: white; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; font-weight: bold; opacity: 0; transition: opacity 0.3s ease; }
 .pdf-viewer-container:hover .pdf-overlay { opacity: 1; }
 #pdf-modal .modal-dialog { max-width: 95vw; }
-
-/* --- NOVOS ESTILOS PARA MOBILE --- */
-.pdf-mobile-link { display: none; } /* Escondido por padrão */
-
-
-/* --- REGRAS DE RESPONSIVIDADE --- */
+.pdf-mobile-link { display: none; }
 @media (max-width: 991.98px) {
-  /* Esconde a sidebar fixa de desktop */
-  #sidebar {
-    display: none !important;
-  }
-  
-  /* Ajusta o iframe para ocupar toda a tela */
-  .content-frame {
-    margin-left: 0;
-    width: 100%;
-    height: calc(100vh - 56px); /* Desconta a altura da navbar mobile */
-  }
-
-  /* --- NOVOS ESTILOS PARA PDF em MOBILE --- */
-  /* Esconde o visualizador embutido de desktop */
-  .pdf-desktop-viewer {
-      display: none !important;
-  }
-  
-  /* Mostra o botão/link para abrir em nova aba */
-  .pdf-mobile-link {
-      display: block !important;
-  }
+  #sidebar { display: none !important; }
+  .pdf-desktop-viewer { display: none !important; }
+  .pdf-mobile-link { display: block !important; }
 }
-
-@media (min-width: 992px) {
-    .content-frame {
-        height: 100vh; /* Em desktop, volta a ocupar a tela inteira */
-    }
-}
+html, body.iframe-page { height: 100%; }
+body.iframe-page { display: flex; flex-direction: column; }
+.iframe-page .container-fluid { flex-grow: 1; display: flex; flex-direction: column; }
+.row-deck { display: flex; flex-wrap: wrap; flex-grow: 1; }
+.row-deck > [class*='col-'] { display: flex; flex-direction: column; }
+.card.h-100 { flex: 1 1 auto; display: flex; flex-direction: column; }
+.card-body-scrollable { flex-grow: 1; overflow-y: auto; padding: 0; }
+.card-body-scrollable .list-group-item { padding-left: 1.25rem; padding-right: 1.25rem; }

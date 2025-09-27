@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const countDirigentes = document.getElementById('count-dirigentes');
     const listaMapasRecentes = document.getElementById('lista-mapas-recentes');
     const listaHistoricoRecente = document.getElementById('lista-historico-recente');
+    const listaMapasEmUso = document.getElementById('lista-mapas-em-uso'); // Novo elemento
 
     // Verificar se API_BASE_URL está definida
     if (typeof API_BASE_URL === 'undefined') {
@@ -14,17 +15,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const mostrarErro = (mensagem) => {
-        const errorMsg = `<li class="list-group-item text-center text-danger">${mensagem}</li>`;
+        const errorMsg = `<li class="list-group-item text-center text-danger p-3">${mensagem}</li>`;
         [countDisponiveis, countEmUso, countDirigentes].forEach(el => el.textContent = '!');
         listaMapasRecentes.innerHTML = errorMsg;
         listaHistoricoRecente.innerHTML = errorMsg;
+        listaMapasEmUso.innerHTML = errorMsg; // Exibir erro no novo card também
     };
 
     const carregarDados = async () => {
         try {
             // Mostrar loading
-            listaMapasRecentes.innerHTML = '<li class="list-group-item text-center"><div class="spinner-border spinner-border-sm"></div> Carregando...</li>';
-            listaHistoricoRecente.innerHTML = '<li class="list-group-item text-center"><div class="spinner-border spinner-border-sm"></div> Carregando...</li>';
+            const loadingMsg = '<li class="list-group-item text-center p-3"><div class="spinner-border spinner-border-sm"></div> Carregando...</li>';
+            listaMapasRecentes.innerHTML = loadingMsg;
+            listaHistoricoRecente.innerHTML = loadingMsg;
+            listaMapasEmUso.innerHTML = loadingMsg; // Loading para o novo card
 
             const response = await fetch(`${API_BASE_URL}/dashboard_api.php`);
             
@@ -44,7 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             countEmUso.textContent = data.stats.em_uso || 0;
             countDirigentes.textContent = data.stats.dirigentes || 0;
 
-            // Atualizar lista de mapas recentes
+            // Atualizar lista de mapas recentes (Entregues)
             listaMapasRecentes.innerHTML = '';
             if (data.recentes.length > 0) {
                 data.recentes.forEach(mapa => {
@@ -60,10 +64,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     listaMapasRecentes.innerHTML += item;
                 });
             } else {
-                listaMapasRecentes.innerHTML = '<li class="list-group-item text-center text-muted">Nenhum mapa em uso no momento.</li>';
+                listaMapasRecentes.innerHTML = '<li class="list-group-item text-center text-muted p-3">Nenhum mapa em uso no momento.</li>';
             }
             
-            // Atualizar histórico recente - CORREÇÃO: usando pessoas_faladas_total
+            // Atualizar histórico recente (Devolvidos)
             listaHistoricoRecente.innerHTML = '';
             if (data.historico.length > 0) {
                 data.historico.forEach(h => {
@@ -79,8 +83,42 @@ document.addEventListener('DOMContentLoaded', async () => {
                     listaHistoricoRecente.innerHTML += item;
                 });
             } else {
-                listaHistoricoRecente.innerHTML = '<li class="list-group-item text-center text-muted">Nenhum mapa foi devolvido ainda.</li>';
+                listaHistoricoRecente.innerHTML = '<li class="list-group-item text-center text-muted p-3">Nenhum mapa foi devolvido ainda.</li>';
             }
+
+            // --- INÍCIO DA MODIFICAÇÃO ---
+            // MODIFICADO: Atualizar lista de Mapas em Uso por mais de 30 dias
+            listaMapasEmUso.innerHTML = '';
+            const hoje = new Date();
+            const trintaDiasEmMs = 30 * 24 * 60 * 60 * 1000; // 30 dias em milissegundos
+
+            // Filtra a lista de mapas para incluir apenas aqueles entregues há mais de 30 dias
+            const mapasAtrasados = data.recentes.filter(mapa => {
+                if (!mapa.data_entrega) {
+                    return false; // Ignora mapas que não têm data de entrega
+                }
+                const dataEntrega = new Date(mapa.data_entrega + 'T00:00:00');
+                const diferencaEmMs = hoje.getTime() - dataEntrega.getTime();
+                
+                return diferencaEmMs > trintaDiasEmMs;
+            });
+
+            if (mapasAtrasados.length > 0) {
+                mapasAtrasados.forEach(mapa => {
+                    const dataEntregaFormatada = new Date(mapa.data_entrega + 'T00:00:00').toLocaleDateString('pt-BR');
+                    
+                    const item = `
+                        <li class="list-group-item">
+                            <strong>Mapa:</strong> ${mapa.identificador || 'N/A'}<br>
+                            <strong>Dirigente:</strong> ${mapa.dirigente_nome || 'N/A'}<br>
+                            <small class="text-muted">Entregue em: <strong class="text-danger">${dataEntregaFormatada}</strong></small>
+                        </li>`;
+                    listaMapasEmUso.innerHTML += item;
+                });
+            } else {
+                listaMapasEmUso.innerHTML = '<li class="list-group-item text-center text-muted p-3">Nenhum mapa em uso há mais de 30 dias.</li>';
+            }
+            // --- FIM DA MODIFICAÇÃO ---
 
         } catch (error) {
             console.error('Erro ao carregar dashboard:', error);
