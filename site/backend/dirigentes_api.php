@@ -32,59 +32,76 @@ switch ($method) {
 
     case 'POST':
         $data = json_decode(file_get_contents('php://input'), true);
-        if (empty($data['senha'])) { http_response_code(400); echo json_encode(['message' => 'Senha é obrigatória para novos usuários.']); exit; }
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE login = ?");
-        $stmt->execute([$data['login']]);
-        if ($stmt->fetchColumn() > 0) { http_response_code(409); echo json_encode(['message' => 'Este login já está em uso.']); exit; }
+        $action = $data['action'] ?? 'create'; // Define a ação esperada
         
-        $token = gerarTokenUnico($pdo);
-        $hash = password_hash($data['senha'], PASSWORD_DEFAULT);
-        $sql = "INSERT INTO users (nome, login, senha, cargo, status, token_acesso) VALUES (?, ?, ?, ?, 'ativo', ?)";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$data['nome'], $data['login'], $hash, $data['cargo'], $token]);
-        echo json_encode(['message' => 'Usuário criado com sucesso!']);
-        break;
-
-    case 'PUT':
-        if (!$id) { http_response_code(400); exit; }
-        $data = json_decode(file_get_contents('php://input'), true);
-        $action = $data['action'] ?? 'edit';
-
-        if ($action === 'reactivate') {
-            $stmt = $pdo->prepare("UPDATE users SET status = 'ativo' WHERE id = ?");
-            $stmt->execute([$id]);
-            echo json_encode(['message' => 'Usuário reativado com sucesso!']);
-        } 
-        elseif ($action === 'regenerate_token') {
-            $novoToken = gerarTokenUnico($pdo);
-            $stmt = $pdo->prepare("UPDATE users SET token_acesso = ? WHERE id = ?");
-            $stmt->execute([$novoToken, $id]);
-            echo json_encode(['message' => 'Novo link gerado com sucesso!', 'novoToken' => $novoToken]);
-        }
-        else { // Ação padrão de edição
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE login = ? AND id != ?");
-            $stmt->execute([$data['login'], $id]);
-            if ($stmt->fetchColumn() > 0) { http_response_code(409); echo json_encode(['message' => 'Este login já está em uso por outro usuário.']); exit; }
-            if (!empty($data['senha'])) {
-                $hash = password_hash($data['senha'], PASSWORD_DEFAULT);
-                $sql = "UPDATE users SET nome = ?, login = ?, cargo = ?, senha = ? WHERE id = ?";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([$data['nome'], $data['login'], $data['cargo'], $hash, $id]);
-            } else {
-                $sql = "UPDATE users SET nome = ?, login = ?, cargo = ? WHERE id = ?";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([$data['nome'], $data['login'], $data['cargo'], $id]);
+        if ($id) {
+            // LÓGICA DE UPDATE, REATIVAÇÃO, REGENERAÇÃO E DELEÇÃO (Antigos PUT e DELETE)
+            
+            if ($action === 'reactivate') {
+                $stmt = $pdo->prepare("UPDATE users SET status = 'ativo' WHERE id = ?");
+                $stmt->execute([$id]);
+                echo json_encode(['message' => 'Usuário reativado com sucesso!']);
+                exit;
+            } 
+            
+            elseif ($action === 'regenerate_token') {
+                $novoToken = gerarTokenUnico($pdo);
+                $stmt = $pdo->prepare("UPDATE users SET token_acesso = ? WHERE id = ?");
+                $stmt->execute([$novoToken, $id]);
+                echo json_encode(['message' => 'Novo link gerado com sucesso!', 'novoToken' => $novoToken]);
+                exit;
             }
-            echo json_encode(['message' => 'Usuário atualizado com sucesso!']);
+            
+            elseif ($action === 'delete_user') { // Ação para inativar (antigo DELETE)
+                $stmt = $pdo->prepare("UPDATE users SET status = 'inativo' WHERE id = ?");
+                $stmt->execute([$id]);
+                echo json_encode(['message' => 'Usuário desativado com sucesso!']);
+                exit;
+            }
+
+            elseif ($action === 'update') { // Edição (antigo PUT)
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE login = ? AND id != ?");
+                $stmt->execute([$data['login'], $id]);
+                if ($stmt->fetchColumn() > 0) { http_response_code(409); echo json_encode(['message' => 'Este login já está em uso por outro usuário.']); exit; }
+                
+                if (!empty($data['senha'])) {
+                    $hash = password_hash($data['senha'], PASSWORD_DEFAULT);
+                    $sql = "UPDATE users SET nome = ?, login = ?, cargo = ?, senha = ? WHERE id = ?";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([$data['nome'], $data['login'], $data['cargo'], $hash, $id]);
+                } else {
+                    $sql = "UPDATE users SET nome = ?, login = ?, cargo = ? WHERE id = ?";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([$data['nome'], $data['login'], $data['cargo'], $id]);
+                }
+                echo json_encode(['message' => 'Usuário atualizado com sucesso!']);
+                exit;
+            }
+            
+            // Se chegou aqui com ID, mas ação não reconhecida (erro)
+            http_response_code(400);
+            echo json_encode(['message' => 'Ação de processamento inválida.']);
+            exit;
+
+        } else {
+            // LÓGICA DE CREATE (Antigo POST)
+            if (empty($data['senha'])) { http_response_code(400); echo json_encode(['message' => 'Senha é obrigatória para novos usuários.']); exit; }
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE login = ?");
+            $stmt->execute([$data['login']]);
+            if ($stmt->fetchColumn() > 0) { http_response_code(409); echo json_encode(['message' => 'Este login já está em uso.']); exit; }
+            
+            $token = gerarTokenUnico($pdo);
+            $hash = password_hash($data['senha'], PASSWORD_DEFAULT);
+            $sql = "INSERT INTO users (nome, login, senha, cargo, status, token_acesso) VALUES (?, ?, ?, ?, 'ativo', ?)";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$data['nome'], $data['login'], $hash, $data['cargo'], $token]);
+            echo json_encode(['message' => 'Usuário criado com sucesso!']);
         }
         break;
 
-    case 'DELETE': // Inativar
-        if (!$id) { http_response_code(400); exit; }
-        $sql = "UPDATE users SET status = 'inativo' WHERE id = ?";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$id]);
-        echo json_encode(['message' => 'Usuário desativado com sucesso!']);
+    case 'DELETE':
+        // Este bloco agora está obsoleto e não deve ser atingido se o JS foi alterado corretamente
+        http_response_code(405); // Método não permitido, pois usamos POST para tudo
         break;
 
     default:

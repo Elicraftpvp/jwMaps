@@ -84,10 +84,24 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         if (!data.nome || !data.login || !data.cargo) { alert('Nome, Login e Cargo são obrigatórios.'); return; }
         if (!editMode && !data.senha) { alert('A senha é obrigatória ao criar um novo usuário.'); return; }
+        
         const url = editMode ? `${API_BASE_URL}/dirigentes_api.php?id=${editId}` : `${API_BASE_URL}/dirigentes_api.php`;
-        const method = editMode ? 'PUT' : 'POST';
+        
+        // MUDANÇA: POST substituindo PUT para edição
+        const method = 'POST'; 
+        
         try {
-            const response = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            // Adicionamos um parâmetro 'action' para diferenciar a requisição de edição (PUT se tornou POST)
+            if (editMode) {
+                data.action = 'update'; 
+            }
+            
+            const response = await fetch(url, { 
+                method: method, 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(data) 
+            });
+            
             if (!response.ok) { const err = await response.json(); throw new Error(err.message); }
             modal.hide();
             carregarUsuarios();
@@ -97,7 +111,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('regenerar-token-btn').addEventListener('click', async () => {
         if (!editId || !confirm('O link antigo deixará de funcionar. Deseja continuar?')) return;
         try {
-            const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${editId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'regenerate_token' }) });
+            // MUDANÇA: POST substituindo PUT
+            const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${editId}`, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ action: 'regenerate_token' }) 
+            });
+            
             const result = await response.json();
             if (!response.ok) throw new Error(result.message);
             const newUrl = `${window.location.origin}${window.location.pathname.replace(/\/pages\/.*$/, '')}/backend/vista_publica.php?token=${result.novoToken}`;
@@ -116,15 +136,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (target.classList.contains('btn-delete')) {
             if (confirm('Desativar este usuário?')) {
-                try { await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`, { method: 'DELETE' }); carregarUsuarios(); } 
+                try { 
+                    // MUDANÇA: DELETE -> POST com action 'delete_user'
+                    await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`, { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'delete_user' })
+                    }); 
+                    carregarUsuarios(); 
+                } 
                 catch (error) { alert('Não foi possível desativar.'); }
             }
         } else if (target.classList.contains('btn-reactivate')) {
-            if (confirm('Reativar este usuário?')) {
-                try { await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reactivate' }) }); carregarUsuarios(); } 
-                catch (error) { alert('Não foi possível reativar.'); }
-            }
-        } else if (target.classList.contains('btn-edit')) {
             prepararEdicao(id);
         } else if (target.classList.contains('btn-copy-link')) {
             const token = target.dataset.token;
