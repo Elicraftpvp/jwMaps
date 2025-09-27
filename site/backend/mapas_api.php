@@ -101,31 +101,79 @@ function handle_post_unified($pdo) {
 
             case 'resgatar':
                 if (empty($data['mapa_id'])) throw new Exception('ID do mapa não fornecido.', 400);
-                $sql = "UPDATE mapas SET dirigente_id = NULL, data_entrega = NULL WHERE id = ?";
-                $pdo->prepare($sql)->execute([$data['mapa_id']]);
-                echo json_encode(['message' => 'Mapa resgatado e disponível novamente.']);
-                break;
-            
-            case 'devolver':
-                // Sua lógica completa de devolução foi mantida
-                if (empty($data['mapa_id']) || empty($data['data_devolucao'])) throw new Exception('Dados insuficientes.', 400);
+
                 $pdo->beginTransaction();
+
+                // Busca os dados atuais do mapa para o histórico
                 $stmt_mapa = $pdo->prepare("SELECT dirigente_id, data_entrega FROM mapas WHERE id = ?");
                 $stmt_mapa->execute([$data['mapa_id']]);
                 $mapa_atual = $stmt_mapa->fetch();
-                if (!$mapa_atual) throw new Exception("Mapa não encontrado.");
+
+                if (!$mapa_atual || empty($mapa_atual['dirigente_id'])) {
+                    throw new Exception("Mapa não encontrado ou não está em uso.", 404);
+                }
+
+                // Soma o total de pessoas faladas nas quadras
                 $stmt_quadras = $pdo->prepare("SELECT numero, pessoas_faladas FROM quadras WHERE mapa_id = ?");
                 $stmt_quadras->execute([$data['mapa_id']]);
                 $quadras_data = $stmt_quadras->fetchAll();
                 $total_faladas = 0;
-                foreach($quadras_data as $q) { $total_faladas += $q['pessoas_faladas']; }
+                foreach($quadras_data as $q) { $total_faladas += (int)$q['pessoas_faladas']; }
                 $dados_quadras_json = json_encode($quadras_data);
+                
+                // Define a data de devolução como hoje
+                $data_devolucao_hoje = date('Y-m-d');
+
+                // Insere o registro no histórico
                 $sql_hist = "INSERT INTO historico_mapas (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_quadras) VALUES (?, ?, ?, ?, ?, ?)";
-                $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['data_entrega'], $data['data_devolucao'], $total_faladas, $dados_quadras_json]);
+                $pdo->prepare($sql_hist)->execute([
+                    $data['mapa_id'], 
+                    $mapa_atual['dirigente_id'], 
+                    $mapa_atual['data_entrega'], 
+                    $data_devolucao_hoje, 
+                    $total_faladas, 
+                    $dados_quadras_json
+                ]);
+
+                // Reseta o mapa na tabela principal
                 $sql_reset = "UPDATE mapas SET dirigente_id = NULL, data_entrega = NULL, data_devolucao = NULL WHERE id = ?";
                 $pdo->prepare($sql_reset)->execute([$data['mapa_id']]);
+                
+                // Reseta os contadores das quadras do mapa
                 $sql_reset_quadras = "UPDATE quadras SET pessoas_faladas = 0 WHERE mapa_id = ?";
                 $pdo->prepare($sql_reset_quadras)->execute([$data['mapa_id']]);
+                
+                $pdo->commit();
+                echo json_encode(['message' => 'Mapa resgatado, movido para o histórico e disponível novamente.']);
+                break;
+            
+            case 'devolver':
+                // Lógica de devolução (iniciada pelo dirigente)
+                if (empty($data['mapa_id']) || empty($data['data_devolucao'])) throw new Exception('Dados insuficientes.', 400);
+                
+                $pdo->beginTransaction();
+                
+                $stmt_mapa = $pdo->prepare("SELECT dirigente_id, data_entrega FROM mapas WHERE id = ?");
+                $stmt_mapa->execute([$data['mapa_id']]);
+                $mapa_atual = $stmt_mapa->fetch();
+                if (!$mapa_atual) throw new Exception("Mapa não encontrado.");
+
+                $stmt_quadras = $pdo->prepare("SELECT numero, pessoas_faladas FROM quadras WHERE mapa_id = ?");
+                $stmt_quadras->execute([$data['mapa_id']]);
+                $quadras_data = $stmt_quadras->fetchAll();
+                $total_faladas = 0;
+                foreach($quadras_data as $q) { $total_faladas += (int)$q['pessoas_faladas']; }
+                $dados_quadras_json = json_encode($quadras_data);
+                
+                $sql_hist = "INSERT INTO historico_mapas (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_quadras) VALUES (?, ?, ?, ?, ?, ?)";
+                $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['data_entrega'], $data['data_devolucao'], $total_faladas, $dados_quadras_json]);
+                
+                $sql_reset = "UPDATE mapas SET dirigente_id = NULL, data_entrega = NULL, data_devolucao = NULL WHERE id = ?";
+                $pdo->prepare($sql_reset)->execute([$data['mapa_id']]);
+                
+                $sql_reset_quadras = "UPDATE quadras SET pessoas_faladas = 0 WHERE mapa_id = ?";
+                $pdo->prepare($sql_reset_quadras)->execute([$data['mapa_id']]);
+                
                 $pdo->commit();
                 echo json_encode(['message' => 'Mapa devolvido e registrado no histórico com sucesso!']);
                 break;
@@ -146,7 +194,7 @@ function handle_post_unified($pdo) {
             $pdo->rollBack();
         }
         // Usa o código do erro da exceção, ou 500 como padrão
-        $errorCode = $e->getCode() ?: 500;
+        $errorCode = $e->getCode() && is_int($e->getCode()) && $e->getCode() !== 0 ? $e->getCode() : 500;
         http_response_code($errorCode);
         echo json_encode(['message' => 'Erro: ' . $e->getMessage()]);
     }
@@ -163,9 +211,10 @@ function handle_delete($pdo, $id) {
     try {
         $pdo->beginTransaction();
         $pdo->prepare("DELETE FROM quadras WHERE mapa_id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM historico_mapas WHERE mapa_id = ?")->execute([$id]); // Adicionado para limpar histórico
         $pdo->prepare("DELETE FROM mapas WHERE id = ?")->execute([$id]);
         $pdo->commit();
-        echo json_encode(['message' => 'Mapa e suas quadras foram excluídos com sucesso.']);
+        echo json_encode(['message' => 'Mapa, suas quadras e histórico foram excluídos com sucesso.']);
     } catch (Exception $e) {
         $pdo->rollBack();
         http_response_code(500);
