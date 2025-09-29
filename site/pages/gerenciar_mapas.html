@@ -21,21 +21,52 @@
                         <thead class="table-light">
                             <tr>
                                 <th>ID</th>
-                                <th>Identificador</th>
+                                <th>
+                                    <!-- ▼▼▼ MUDANÇA AQUI: FILTRO DE ORDENAÇÃO ADICIONADO AO IDENTIFICADOR ▼▼▼ -->
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="dropdown">
+                                            <a href="#" role="button" id="filtroOrdenacaoBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-filter text-secondary" title="Ordenar por Identificador"></i>
+                                            </a>
+                                            <ul class="dropdown-menu" aria-labelledby="filtroOrdenacaoBtn">
+                                                <li><a class="dropdown-item" href="#" data-sort="id"><strong>Padrão (ID)</strong></a></li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li><a class="dropdown-item" href="#" data-sort="asc">Ordenar A-Z / 0-9</a></li>
+                                                <li><a class="dropdown-item" href="#" data-sort="desc">Ordenar Z-A / 9-0</a></li>
+                                            </ul>
+                                        </div>
+                                        <span>Identificador</span>
+                                    </div>
+                                </th>
+                                <th>
+                                    <!-- ▼▼▼ MUDANÇA AQUI: FILTRO DE REGIÃO ▼▼▼ -->
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="dropdown">
+                                            <a href="#" role="button" id="filtroRegiaoBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-filter text-secondary" title="Filtrar por Região"></i>
+                                            </a>
+                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="filtroRegiaoBtn" id="filtroRegiaoMenu">
+                                                <!-- Opções carregadas pelo JS -->
+                                            </ul>
+                                        </div>
+                                        <span>Região</span>
+                                    </div>
+                                </th>
+                                <th>Tipo</th>
                                 <th>Quadras</th>
                                 <th>Status</th>
-                                <!-- ▼▼▼ MUDANÇA AQUI ▼▼▼ -->
                                 <th>
+                                    <!-- ▼▼▼ MUDANÇA AQUI: FILTRO DE DIRIGENTE ▼▼▼ -->
                                     <div class="d-flex align-items-center justify-content-between">
-                                        <span>Dirigente</span>
                                         <div class="dropdown">
                                             <a href="#" role="button" id="filtroDirigenteBtn" data-bs-toggle="dropdown" aria-expanded="false">
                                                 <i class="fas fa-filter text-secondary" title="Filtrar por Dirigente"></i>
                                             </a>
                                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="filtroDirigenteBtn" id="filtroDirigenteMenu">
-                                                <!-- Opções de filtro serão carregadas pelo JS -->
+                                                <!-- Opções carregadas pelo JS -->
                                             </ul>
                                         </div>
+                                        <span>Dirigente</span>
                                     </div>
                                 </th>
                                 <!-- ▲▲▲ FIM DA MUDANÇA ▲▲▲ -->
@@ -118,13 +149,7 @@
             </div>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="../script/common.js"></script>
-    <script src="../script/gerenciar_mapas.js"></script>
-</body>
-</html>
-
+    
     <!-- Modal Histórico do Mapa -->
     <div class="modal fade" id="historicoMapaModal" tabindex="-1" aria-labelledby="historicoMapaModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -156,3 +181,8 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../script/common.js"></script>
+    <script src="../script/gerenciar_mapas.js"></script>
+</body>
+</html>

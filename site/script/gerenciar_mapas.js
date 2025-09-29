@@ -8,15 +8,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const entregarModal = new bootstrap.Modal(entregarModalElement);
     const entregarModalLabel = document.getElementById('entregarModalLabel');
     const selectDirigentes = document.getElementById('entregar_dirigente_id');
+    const historicoMapaModalElement = document.getElementById("historicoMapaModal");
+    const historicoMapaModal = new bootstrap.Modal(historicoMapaModalElement);
+    const historicoMapaIdentificadorSpan = document.getElementById("historico_mapa_identificador");
+    const historicoTableBody = document.getElementById("historico-table-body");
     
-    // ▼▼▼ NOVOS ELEMENTOS E VARIÁVEIS DE ESTADO ▼▼▼
+    // ▼▼▼ ELEMENTOS E VARIÁVEIS DE ESTADO DOS FILTROS ▼▼▼
+    const filtroOrdenacaoMenu = document.getElementById('filtroOrdenacaoBtn').nextElementSibling;
+    const filtroOrdenacaoBtnIcon = document.querySelector('#filtroOrdenacaoBtn i');
     const filtroDirigenteMenu = document.getElementById('filtroDirigenteMenu');
     const filtroDirigenteBtnIcon = document.querySelector('#filtroDirigenteBtn i');
+    const filtroRegiaoMenu = document.getElementById("filtroRegiaoMenu");
+    const filtroRegiaoBtnIcon = document.querySelector("#filtroRegiaoBtn i");
+
     let filtroDirigenteId = null; 
+    let filtroRegiao = null; 
+    let sortOrder = 'id'; // 'id', 'asc', 'desc'
     let editMode = false;
     let editId = null;
 
-    // ▼▼▼ NOVA FUNÇÃO PARA POPULAR O FILTRO ▼▼▼
+    // ▼▼▼ FUNÇÕES PARA POPULAR OS MENUS DE FILTRO ▼▼▼
+    const popularFiltroRegioes = (mapas) => {
+        const regioesComMapas = [...new Set(mapas.filter(m => m.regiao).map(m => m.regiao))].sort();
+
+        filtroRegiaoMenu.innerHTML = '<li><a class="dropdown-item" href="#" data-regiao=""><strong>Mostrar Todas</strong></a></li><li><hr class="dropdown-divider"></li>';
+        
+        if (regioesComMapas.length === 0) {
+            filtroRegiaoMenu.innerHTML += '<li><span class="dropdown-item-text text-muted">Nenhuma região</span></li>';
+        } else {
+            regioesComMapas.forEach(regiao => {
+                filtroRegiaoMenu.innerHTML += `<li><a class="dropdown-item" href="#" data-regiao="${regiao}">${regiao}</a></li>`;
+            });
+        }
+    };
+
     const popularFiltroDirigentes = (mapas) => {
         const dirigentesComMapas = [...new Map(mapas.filter(m => m.dirigente_id).map(m => [m.dirigente_id, { id: m.dirigente_id, nome: m.dirigente_nome }])).values()];
         dirigentesComMapas.sort((a, b) => a.nome.localeCompare(b.nome));
@@ -24,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
         filtroDirigenteMenu.innerHTML = '<li><a class="dropdown-item" href="#" data-id=""><strong>Mostrar Todos</strong></a></li><li><hr class="dropdown-divider"></li>';
         
         if (dirigentesComMapas.length === 0) {
-            filtroDirigenteMenu.innerHTML += '<li><span class="dropdown-item-text text-muted">Nenhum mapa em uso</span></li>';
+            filtroDirigenteMenu.innerHTML += '<li><span class="dropdown-item-text text-muted">Nenhum em uso</span></li>';
         } else {
             dirigentesComMapas.forEach(dirigente => {
                 filtroDirigenteMenu.innerHTML += `<li><a class="dropdown-item" href="#" data-id="${dirigente.id}">${dirigente.nome}</a></li>`;
@@ -33,32 +58,49 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const carregarMapas = async () => {
-        tableBody.innerHTML = `<tr><td colspan="7" class="text-center"><div class="spinner-border spinner-border-sm"></div></td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="9" class="text-center"><div class="spinner-border spinner-border-sm"></div></td></tr>`;
         try {
             const response = await fetch(`${API_BASE_URL}/mapas_api.php`);
-            let mapas = await response.json(); // Alterado para 'let'
+            let mapas = await response.json();
+            let mapasOriginais = [...mapas]; // Cópia para popular filtros
 
-            // ▼▼▼ MUDANÇA: Popular filtro ANTES de filtrar os dados para exibição ▼▼▼
-            popularFiltroDirigentes(mapas);
+            // Popula os filtros com base em TODOS os mapas, antes de filtrar
+            popularFiltroDirigentes(mapasOriginais);
+            popularFiltroRegioes(mapasOriginais);
 
-            // ▼▼▼ MUDANÇA: Aplicar o filtro se houver um selecionado ▼▼▼
+            // Aplica filtro de Dirigente
             if (filtroDirigenteId) {
                 mapas = mapas.filter(mapa => mapa.dirigente_id == filtroDirigenteId);
-                filtroDirigenteBtnIcon.classList.remove('text-secondary');
-                filtroDirigenteBtnIcon.classList.add('text-primary'); // Ícone ativo
+                filtroDirigenteBtnIcon.classList.replace("text-secondary", "text-primary");
             } else {
-                filtroDirigenteBtnIcon.classList.add('text-secondary');
-                filtroDirigenteBtnIcon.classList.remove('text-primary'); // Ícone inativo
-            }
-            
-            tableBody.innerHTML = '';
-            if (mapas.length === 0) {
-                const mensagem = filtroDirigenteId ? 'Nenhum mapa encontrado para este dirigente.' : 'Nenhum mapa cadastrado.';
-                tableBody.innerHTML = `<tr><td colspan="7" class="text-center">${mensagem}</td></tr>`; 
-                return;
+                filtroDirigenteBtnIcon.classList.replace("text-primary", "text-secondary");
             }
 
-            mapas.sort((a, b) => a.id - b.id);
+            // Aplica filtro de Região
+            if (filtroRegiao) {
+                mapas = mapas.filter(mapa => mapa.regiao === filtroRegiao);
+                filtroRegiaoBtnIcon.classList.replace("text-secondary", "text-primary");
+            } else {
+                filtroRegiaoBtnIcon.classList.replace("text-primary", "text-secondary");
+            }
+            
+            // Aplica ordenação
+            if (sortOrder === 'asc') {
+                mapas.sort((a, b) => a.identificador.localeCompare(b.identificador, undefined, {numeric: true}));
+                filtroOrdenacaoBtnIcon.classList.replace("text-secondary", "text-primary");
+            } else if (sortOrder === 'desc') {
+                mapas.sort((a, b) => b.identificador.localeCompare(a.identificador, undefined, {numeric: true}));
+                filtroOrdenacaoBtnIcon.classList.replace("text-secondary", "text-primary");
+            } else {
+                mapas.sort((a, b) => a.id - b.id); // Padrão
+                filtroOrdenacaoBtnIcon.classList.replace("text-primary", "text-secondary");
+            }
+
+            tableBody.innerHTML = '';
+            if (mapas.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="9" class="text-center">Nenhum mapa encontrado com os filtros aplicados.</td></tr>`; 
+                return;
+            }
 
             mapas.forEach(mapa => {
                 let status, acaoEntregarResgatar, diasComDirigenteBadge;
@@ -81,6 +123,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const row = `<tr>
                         <td>${mapa.id}</td>
                         <td>${mapa.identificador}</td>
+                        <td>${mapa.regiao || 'N/D'}</td>
+                        <td>${mapa.tipo || 'N/D'}</td>
                         <td>${quadraRange}</td>
                         <td>${status}</td>
                         <td>${mapa.dirigente_nome || '---'}</td>
@@ -88,14 +132,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td>
                             ${acaoEntregarResgatar}
                             <button class="btn btn-sm btn-warning btn-edit" data-id="${mapa.id}" title="Editar"><i class="fas fa-pencil-alt"></i></button>
-                            <button class="btn btn-sm btn-info btn-history" data-id="${mapa.id}" data-identificador="${mapa.identificador}" title="Ver Histórico"><i class="fas fa-history"></i></button>
+                            <button class="btn btn-sm btn-secondary btn-history" data-id="${mapa.id}" data-identificador="${mapa.identificador}" title="Ver Histórico"><i class="fas fa-history"></i></button>
                             <button class="btn btn-sm btn-danger btn-delete" data-id="${mapa.id}" title="Excluir"><i class="fas fa-trash"></i></button>
                         </td></tr>`;
                 tableBody.innerHTML += row;
             });
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
             tooltipTriggerList.map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-        } catch (error) { tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Erro ao carregar mapas.</td></tr>`; }
+        } catch (error) { tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger">Erro ao carregar mapas.</td></tr>`; }
     };
     
     const prepararEdicao = async (id) => {
@@ -121,51 +165,40 @@ document.addEventListener('DOMContentLoaded', () => {
         mapaModalLabel.textContent = "Adicionar Novo Mapa";
     };
 
-    const historicoMapaModalElement = document.getElementById("historicoMapaModal");
-    const historicoMapaModal = new bootstrap.Modal(historicoMapaModalElement);
-    const historicoMapaIdentificadorSpan = document.getElementById("historico_mapa_identificador");
-    const historicoTableBody = document.getElementById("historico-table-body");
-
     const carregarHistoricoMapa = async (mapaId, identificador) => {
         historicoMapaIdentificadorSpan.textContent = identificador;
-        historicoTableBody.innerHTML = `<tr><td colspan="5" class="text-center"><div class="spinner-border spinner-border-sm"></div> Carregando histórico...</div></td></tr>`;
+        historicoTableBody.innerHTML = `<tr><td colspan="5" class="text-center"><div class="spinner-border spinner-border-sm"></div> Carregando...</div></td></tr>`;
+        historicoMapaModal.show();
         try {
             const response = await fetch(`${API_BASE_URL}/mapas_api.php?recurso=history&id=${mapaId}`);
             const historico = await response.json();
             historicoTableBody.innerHTML = "";
 
-            if (historico.length === 0) {
+            if (!Array.isArray(historico) || historico.length === 0) {
                 historicoTableBody.innerHTML = `<tr><td colspan="5" class="text-center">Nenhum histórico encontrado para este mapa.</td></tr>`;
-            } else {
-                historico.forEach(item => {
-                    const dataEntrega = new Date(item.data_entrega).toLocaleDateString();
-                    const dataDevolucao = item.data_devolucao ? new Date(item.data_devolucao).toLocaleDateString() : "Em Uso";
-                    const dadosQuadras = JSON.parse(item.dados_quadras || "[]");
-                    let detalhesQuadrasHtml = "";
-                    if (dadosQuadras.length > 0) {
-                        detalhesQuadrasHtml = `<ul class="list-unstyled mb-0">`;
-                        dadosQuadras.forEach(quadra => {
-                            detalhesQuadrasHtml += `<li>Quadra ${quadra.numero}: ${quadra.pessoas_faladas} pessoas faladas</li>`;
-                        });
-                        detalhesQuadrasHtml += `</ul>`;
-                    } else {
-                        detalhesQuadrasHtml = "N/D";
-                    }
-
-                    const row = `<tr>
-                                    <td>${item.dirigente_nome}</td>
-                                    <td>${dataEntrega}</td>
-                                    <td>${dataDevolucao}</td>
-                                    <td>${item.pessoas_faladas_total}</td>
-                                    <td>${detalhesQuadrasHtml}</td>
-                                </tr>`;
-                    historicoTableBody.innerHTML += row;
-                });
+                return;
             }
-            historicoMapaModal.show();
+            
+            historico.forEach(item => {
+                const dataEntrega = new Date(item.data_entrega + 'T00:00:00').toLocaleDateString();
+                const dataDevolucao = item.data_devolucao ? new Date(item.data_devolucao + 'T00:00:00').toLocaleDateString() : "Em Uso";
+                const dadosQuadras = JSON.parse(item.dados_quadras || "[]");
+                let detalhesQuadrasHtml = dadosQuadras.length > 0
+                    ? `<ul class="list-unstyled mb-0">${dadosQuadras.map(q => `<li>Q.${q.numero}: ${q.pessoas_faladas}</li>`).join('')}</ul>`
+                    : "N/D";
+                
+                const row = `<tr>
+                                <td>${item.dirigente_nome}</td>
+                                <td>${dataEntrega}</td>
+                                <td>${dataDevolucao}</td>
+                                <td class="text-center">${item.pessoas_faladas_total}</td>
+                                <td>${detalhesQuadrasHtml}</td>
+                            </tr>`;
+                historicoTableBody.innerHTML += row;
+            });
+            
         } catch (error) {
-            historicoTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar histórico: ${error.message}</td></tr>`;
-            console.error("Erro ao carregar histórico do mapa:", error);
+            historicoTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar histórico.</td></tr>`;
         }
     };
 
@@ -179,11 +212,11 @@ document.addEventListener('DOMContentLoaded', () => {
             regiao: document.getElementById("mapa_regiao").value,
             tipo: document.getElementById("mapa_tipo").value,
         };
-        if (!data.identificador || !data.quadra_inicio || !data.quadra_fim) { alert('Todos os campos são obrigatórios.'); return; }
+        if (!data.identificador || !data.quadra_inicio || !data.quadra_fim) { alert('Identificador e Quadras são obrigatórios.'); return; }
         if (parseInt(data.quadra_fim) < parseInt(data.quadra_inicio)) { alert('A quadra final deve ser maior ou igual à inicial.'); return; }
         
+        const method = editMode ? 'POST' : 'POST';
         const url = `${API_BASE_URL}/mapas_api.php`;
-        const method = 'POST';
 
         if (editMode) {
             data.action = 'edit_details';
@@ -191,7 +224,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            const response = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            if (!response.ok) throw new Error('Falha na requisição');
             mapaModal.hide();
             carregarMapas();
         } catch (error) { alert('Erro ao salvar o mapa: ' + error.message); }
@@ -202,9 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`${API_BASE_URL}/mapas_api.php?recurso=dirigentes`);
             const dirigentes = await response.json();
             selectDirigentes.innerHTML = '<option value="">Selecione...</option>';
-            dirigentes.forEach(d => {
-                selectDirigentes.innerHTML += `<option value="${d.id}">${d.nome}</option>`;
-            });
+            dirigentes.forEach(d => selectDirigentes.innerHTML += `<option value="${d.id}">${d.nome}</option>`);
         } catch (error) { selectDirigentes.innerHTML = '<option value="">Erro ao carregar</option>'; }
     };
 
@@ -259,14 +291,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ▼▼▼ NOVO EVENT LISTENER PARA O DROPDOWN DE FILTRO ▼▼▼
-    filtroDirigenteMenu.addEventListener('click', (e) => {
+    // ▼▼▼ EVENT LISTENERS PARA OS FILTROS ▼▼▼
+    filtroOrdenacaoMenu.addEventListener("click", (e) => {
         e.preventDefault();
-        const target = e.target.closest('a.dropdown-item');
+        const target = e.target.closest("a.dropdown-item");
+        if (target && target.dataset.sort) {
+            sortOrder = target.dataset.sort;
+            carregarMapas();
+        }
+    });
+
+    filtroDirigenteMenu.addEventListener("click", (e) => {
+        e.preventDefault();
+        const target = e.target.closest("a.dropdown-item");
         if (target) {
-            const id = target.dataset.id;
-            filtroDirigenteId = id ? parseInt(id, 10) : null;
-            carregarMapas(); // Recarrega a lista com o filtro aplicado
+            filtroDirigenteId = target.dataset.id ? parseInt(target.dataset.id, 10) : null;
+            carregarMapas();
+        }
+    });
+
+    filtroRegiaoMenu.addEventListener("click", (e) => {
+        e.preventDefault();
+        const target = e.target.closest("a.dropdown-item");
+        if (target) {
+            filtroRegiao = target.dataset.regiao || null;
+            carregarMapas();
         }
     });
     
