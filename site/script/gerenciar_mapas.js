@@ -88,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td>
                             ${acaoEntregarResgatar}
                             <button class="btn btn-sm btn-warning btn-edit" data-id="${mapa.id}" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+                            <button class="btn btn-sm btn-info btn-history" data-id="${mapa.id}" data-identificador="${mapa.identificador}" title="Ver Histórico"><i class="fas fa-history"></i></button>
                             <button class="btn btn-sm btn-danger btn-delete" data-id="${mapa.id}" title="Excluir"><i class="fas fa-trash"></i></button>
                         </td></tr>`;
                 tableBody.innerHTML += row;
@@ -102,8 +103,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`${API_BASE_URL}/mapas_api.php?id=${id}`);
             const mapa = await response.json();
             document.getElementById('mapa_identificador').value = mapa.identificador;
-            document.getElementById('mapa_quadra_inicio').value = mapa.quadra_inicio;
-            document.getElementById('mapa_quadra_fim').value = mapa.quadra_fim;
+            document.getElementById("mapa_quadra_inicio").value = mapa.quadra_inicio;
+            document.getElementById("mapa_quadra_fim").value = mapa.quadra_fim;
+            document.getElementById("mapa_regiao").value = mapa.regiao || "";
+            document.getElementById("mapa_tipo").value = mapa.tipo || "";
             editMode = true;
             editId = id;
             mapaModalLabel.textContent = 'Editar Mapa';
@@ -112,10 +115,58 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const resetarModal = () => {
-        document.getElementById('form-mapa').reset();
+        document.getElementById("form-mapa").reset();
         editMode = false;
         editId = null;
-        mapaModalLabel.textContent = 'Adicionar Novo Mapa';
+        mapaModalLabel.textContent = "Adicionar Novo Mapa";
+    };
+
+    const historicoMapaModalElement = document.getElementById("historicoMapaModal");
+    const historicoMapaModal = new bootstrap.Modal(historicoMapaModalElement);
+    const historicoMapaIdentificadorSpan = document.getElementById("historico_mapa_identificador");
+    const historicoTableBody = document.getElementById("historico-table-body");
+
+    const carregarHistoricoMapa = async (mapaId, identificador) => {
+        historicoMapaIdentificadorSpan.textContent = identificador;
+        historicoTableBody.innerHTML = `<tr><td colspan="5" class="text-center"><div class="spinner-border spinner-border-sm"></div> Carregando histórico...</div></td></tr>`;
+        try {
+            const response = await fetch(`${API_BASE_URL}/mapas_api.php?recurso=history&id=${mapaId}`);
+            const historico = await response.json();
+            historicoTableBody.innerHTML = "";
+
+            if (historico.length === 0) {
+                historicoTableBody.innerHTML = `<tr><td colspan="5" class="text-center">Nenhum histórico encontrado para este mapa.</td></tr>`;
+            } else {
+                historico.forEach(item => {
+                    const dataEntrega = new Date(item.data_entrega).toLocaleDateString();
+                    const dataDevolucao = item.data_devolucao ? new Date(item.data_devolucao).toLocaleDateString() : "Em Uso";
+                    const dadosQuadras = JSON.parse(item.dados_quadras || "[]");
+                    let detalhesQuadrasHtml = "";
+                    if (dadosQuadras.length > 0) {
+                        detalhesQuadrasHtml = `<ul class="list-unstyled mb-0">`;
+                        dadosQuadras.forEach(quadra => {
+                            detalhesQuadrasHtml += `<li>Quadra ${quadra.numero}: ${quadra.pessoas_faladas} pessoas faladas</li>`;
+                        });
+                        detalhesQuadrasHtml += `</ul>`;
+                    } else {
+                        detalhesQuadrasHtml = "N/D";
+                    }
+
+                    const row = `<tr>
+                                    <td>${item.dirigente_nome}</td>
+                                    <td>${dataEntrega}</td>
+                                    <td>${dataDevolucao}</td>
+                                    <td>${item.pessoas_faladas_total}</td>
+                                    <td>${detalhesQuadrasHtml}</td>
+                                </tr>`;
+                    historicoTableBody.innerHTML += row;
+                });
+            }
+            historicoMapaModal.show();
+        } catch (error) {
+            historicoTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar histórico: ${error.message}</td></tr>`;
+            console.error("Erro ao carregar histórico do mapa:", error);
+        }
     };
 
     mapaModalElement.addEventListener('hidden.bs.modal', resetarModal);
@@ -124,7 +175,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = {
             identificador: document.getElementById('mapa_identificador').value,
             quadra_inicio: document.getElementById('mapa_quadra_inicio').value,
-            quadra_fim: document.getElementById('mapa_quadra_fim').value,
+            quadra_fim: document.getElementById("mapa_quadra_fim").value,
+            regiao: document.getElementById("mapa_regiao").value,
+            tipo: document.getElementById("mapa_tipo").value,
         };
         if (!data.identificador || !data.quadra_inicio || !data.quadra_fim) { alert('Todos os campos são obrigatórios.'); return; }
         if (parseInt(data.quadra_fim) < parseInt(data.quadra_inicio)) { alert('A quadra final deve ser maior ou igual à inicial.'); return; }
@@ -197,8 +250,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) { alert('Não foi possível resgatar o mapa.'); }
             }
         } 
-        else if (target.classList.contains('btn-edit')) {
+        else if (target.classList.contains("btn-edit")) {
             prepararEdicao(id);
+        }
+        else if (target.classList.contains("btn-history")) {
+            const identificador = target.dataset.identificador;
+            await carregarHistoricoMapa(id, identificador);
         }
     });
 
