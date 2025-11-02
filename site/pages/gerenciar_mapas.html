@@ -22,7 +22,6 @@
                             <tr>
                                 <th>ID</th>
                                 <th>
-                                    <!-- ▼▼▼ MUDANÇA AQUI: FILTRO DE ORDENAÇÃO ADICIONADO AO IDENTIFICADOR ▼▼▼ -->
                                     <div class="d-flex align-items-center justify-content-between">
                                         <div class="dropdown">
                                             <a href="#" role="button" id="filtroOrdenacaoBtn" data-bs-toggle="dropdown" aria-expanded="false">
@@ -39,7 +38,6 @@
                                     </div>
                                 </th>
                                 <th>
-                                    <!-- ▼▼▼ MUDANÇA AQUI: FILTRO DE REGIÃO ▼▼▼ -->
                                     <div class="d-flex align-items-center justify-content-between">
                                         <div class="dropdown">
                                             <a href="#" role="button" id="filtroRegiaoBtn" data-bs-toggle="dropdown" aria-expanded="false">
@@ -56,7 +54,6 @@
                                 <th>Quadras</th>
                                 <th>Status</th>
                                 <th>
-                                    <!-- ▼▼▼ MUDANÇA AQUI: FILTRO DE DIRIGENTE ▼▼▼ -->
                                     <div class="d-flex align-items-center justify-content-between">
                                         <div class="dropdown">
                                             <a href="#" role="button" id="filtroDirigenteBtn" data-bs-toggle="dropdown" aria-expanded="false">
@@ -69,7 +66,6 @@
                                         <span>Dirigente</span>
                                     </div>
                                 </th>
-                                <!-- ▲▲▲ FIM DA MUDANÇA ▲▲▲ -->
                                 <th class="text-center">Tempo (dias)</th>
                                 <th>Ações</th>
                             </tr>
@@ -181,8 +177,10 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="../script/common.js"></script>
-    <script src="../script/gerenciar_mapas.js"></script>
+    <!-- ▼▼▼ MUDANÇA AQUI: Adicionado o atributo 'defer' ▼▼▼ -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
+    <script src="../script/common.js" defer></script>
+    <script src="../script/gerenciar_mapas.js" defer></script>
+    <!-- ▲▲▲ FIM DA MUDANÇA ▲▲▲ -->
 </body>
 </html>
