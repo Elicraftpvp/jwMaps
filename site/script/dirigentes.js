@@ -85,8 +85,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("user_login").value = user.login;
             document.getElementById("user_cargo").value = user.cargo;
             document.getElementById("user_senha").value = '';
-            document.getElementById("user_telefone").value = user.telefone || '';
-            document.getElementById("user_email_contato").value = user.email_contato || '';
+            
+            
 
             const linkSection = document.getElementById('link-publico-section');
             if (user.cargo === 'dirigente') {
@@ -115,8 +115,8 @@ document.addEventListener('DOMContentLoaded', () => {
             login: document.getElementById('user_login').value,
             cargo: document.getElementById('user_cargo').value,
             senha: document.getElementById("user_senha").value,
-            telefone: document.getElementById("user_telefone").value,
-            email_contato: document.getElementById("user_email_contato").value
+            
+            
         };
         if (!data.nome || !data.login || !data.cargo) { alert('Nome, Login e Cargo são obrigatórios.'); return; }
         if (!editMode && !data.senha) { alert('A senha é obrigatória ao criar um novo usuário.'); return; }
