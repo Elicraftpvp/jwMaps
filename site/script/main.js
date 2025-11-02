@@ -29,11 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <i class="fas fa-users"></i> Gerenciar Dirigentes
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="pages/historico.html" target="contentFrame">
-                    <i class="fas fa-history"></i> Relatórios
-                </a>
-            </li>
+<li class="nav-item">
+            <a class="nav-link" href="pages/controle.html" target="contentFrame">
+                <i class="fas fa-history"></i> Controle
+            </a>
+        </li>
         `;
     }
 
