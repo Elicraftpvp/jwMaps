@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle</title>
+    <!-- Mapeamento do CSS padrão -->
+    <link rel="stylesheet" href="../style/css.css">
+    <style>
+        /* Estilos para o novo layout */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column; /* Organiza os elementos verticalmente */
+            height: 100vh;
+            overflow: hidden;
+            background-color: #fff;
+        }
+
+        /* Barra de navegação superior */
+        .top-nav {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 2px solid #000;
+            flex-shrink: 0; /* Impede que o header encolha */
+            background-color: #fff;
+        }
+
+        /* Setas de navegação */
+        .nav-arrow {
+            background: none;
+            border: none;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0 15px;
+            color: #000;
+            line-height: 1;
+        }
+
+        .nav-arrow:hover {
+            color: #555;
+        }
+
+        /* Container dos botões */
+        .nav-buttons-container {
+            display: flex;
+            flex-grow: 1;
+            overflow-x: hidden; /* Esconde a barra de rolagem */
+            scroll-behavior: smooth; /* Rolagem suave */
+            white-space: nowrap; /* Impede que os botões quebrem linha */
+            margin: 0 10px;
+        }
+
+        /* Estilo dos botões */
+        .nav-button {
+            display: inline-block;
+            padding: 10px 25px;
+            margin: 0 5px;
+            border: 2px solid #000;
+            background-color: #fff;
+            text-decoration: none;
+            color: #000;
+            font-size: 16px;
+            text-align: center;
+            cursor: pointer;
+            flex-shrink: 0; /* Impede que os botões encolham */
+            transition: background-color 0.3s;
+        }
+
+        /* Estilo do botão ao passar o mouse ou quando ativo */
+        .nav-button:hover, .nav-button.active {
+            background-color: #f0f0f0;
+        }
+
+        /* Área de conteúdo principal */
+        .content-area {
+            flex-grow: 1;
+            padding: 0;
+            margin: 0;
+        }
+
+        #display-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header class="top-nav">
+        <button id="scroll-left" class="nav-arrow">&#x2190;</button>
+        <div id="nav-buttons-container" class="nav-buttons-container">
+            <a href="#" class="nav-button" onclick="loadPage('controle/historico_mapas.html', this)">Histórico de Mapas</a>
+            <a href="#" class="nav-button" onclick="loadPage('controle/planilha_mapas.html', this)">Planilha de Mapas</a>
+            <a href="#" class="nav-button" onclick="loadPage('controle/historico_carrinho.html', this)">Histórico do Carrinho</a>
+            <a href="#" class="nav-button" onclick="loadPage('controle/planilha_carrinho.html', this)">Planilha do Carrinho</a>
+        </div>
+        <button id="scroll-right" class="nav-arrow">&#x2192;</button>
+    </header>
+
+    <main class="content-area">
+        <!-- O texto "Pagina HTML" foi removido para dar espaço ao conteúdo real -->
+        <iframe id="display-frame" src="controle/historico_mapas.html" title="Conteúdo da Página"></iframe>
+    </main>
+
+    <!-- Mapeamento dos scripts JS padrões -->
+    <script src="../script/common.js"></script>
+    <script src="../script/main.js"></script>
+
+    <script>
+        // Função para carregar a página e destacar o botão ativo
+        function loadPage(page, clickedButton) {
+            const iframe = document.getElementById('display-frame');
+            const buttons = document.querySelectorAll('.nav-button');
+
+            // Atualiza o iframe
+            if (iframe) {
+                iframe.src = page;
+            }
+
+            // Remove a classe 'active' de todos os botões
+            buttons.forEach(button => {
+                button.classList.remove('active');
+            });
+
+            // Adiciona a classe 'active' apenas ao botão clicado
+            if (clickedButton) {
+                clickedButton.classList.add('active');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const scrollContainer = document.getElementById('nav-buttons-container');
+            const scrollLeftBtn = document.getElementById('scroll-left');
+            const scrollRightBtn = document.getElementById('scroll-right');
+            const scrollAmount = 200; // Quantidade de pixels para rolar
+
+            // Evento para rolar para a esquerda
+            scrollLeftBtn.addEventListener('click', () => {
+                scrollContainer.scrollLeft -= scrollAmount;
+            });
+
+            // Evento para rolar para a direita
+            scrollRightBtn.addEventListener('click', () => {
+                scrollContainer.scrollLeft += scrollAmount;
+            });
+
+            // Carrega a primeira página por padrão e ativa o primeiro botão
+            const firstButton = document.querySelector('.nav-button');
+            if (firstButton) {
+                firstButton.click();
+            }
+        });
+    </script>
+
+</body>
+</html>
