@@ -18,7 +18,6 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  /* A linha "overflow: hidden;" foi REMOVIDA daqui. */
   background-color: var(--content-bg);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -27,7 +26,7 @@ html, body {
 .wrapper {
   display: flex;
   width: 100%;
-  height: 100vh; /* Esta linha já impede que o wrapper seja maior que a tela */
+  height: 100vh;
 }
 
 #content {
@@ -66,7 +65,6 @@ html, body {
     flex-grow: 1;
 }
 
-/* Regras que se aplicam tanto ao menu desktop quanto ao mobile */
 .offcanvas-body {
     display: flex;
     flex-direction: column;
@@ -87,8 +85,6 @@ html, body {
     border-top: 1px solid #495057;
 }
 
-
-/* Estilos de Aparência dos Links (sem mudança) */
 .sidebar-header h3 {
   color: white;
   font-weight: 600;
@@ -121,6 +117,46 @@ html, body {
   width: 20px;
   text-align: center;
 }
+
+/* ================================================================== */
+/* === NOVA SEÇÃO DE ESTILOS PARA AS ABAS DA PÁGINA DE CONTROLE === */
+/* ================================================================== */
+
+/* Container das abas */
+.nav-tabs-custom {
+    border-bottom: 2px solid #dee2e6; /* Linha sutil para separar do conteúdo */
+    background-color: #ffffff; /* Fundo branco para destacar as abas */
+    padding: 0 1rem; /* Espaçamento lateral */
+}
+
+/* Estilo para cada link (aba) */
+.nav-tabs-custom .nav-link {
+    border: none; /* Remove a borda padrão do Bootstrap */
+    border-bottom: 3px solid transparent; /* Borda inferior transparente para o efeito de transição */
+    color: var(--secondary-color); /* Cor do texto para abas inativas */
+    font-weight: 500;
+    padding: 1rem 1.25rem;
+    margin-bottom: -2px; /* Alinha a borda inferior com a borda do container */
+    transition: all 0.2s ease-in-out;
+}
+
+/* Efeito ao passar o mouse sobre uma aba INATIVA */
+.nav-tabs-custom .nav-link:not(.active):hover {
+    color: var(--dark-gray);
+    border-bottom-color: #e9ecef; /* Cor sutil para o hover */
+}
+
+/* Estilo para a aba ATIVA */
+.nav-tabs-custom .nav-link.active {
+    color: var(--primary-color); /* Usa a cor primária do tema */
+    background-color: transparent; /* Remove qualquer fundo */
+    border-bottom-color: var(--primary-color); /* Cria o indicador visual verde */
+    font-weight: 600;
+}
+
+/* ================================================================== */
+/* =================== FIM DA NOVA SEÇÃO DE ESTILOS =================== */
+/* ================================================================== */
 
 /* Restante do CSS (sem alterações) */
 .login-container {
@@ -163,3 +199,83 @@ body.iframe-page { display: flex; flex-direction: column; }
 .card.h-100 { flex: 1 1 auto; display: flex; flex-direction: column; }
 .card-body-scrollable { flex-grow: 1; overflow-y: auto; padding: 0; }
 .card-body-scrollable .list-group-item { padding-left: 1.25rem; padding-right: 1.25rem; }
+
+/* Ajusta a tabela para ter um visual mais limpo */
+#tabela-dirigentes-body td {
+    vertical-align: middle;
+    padding: 0.9rem 1rem;
+    font-size: 0.95rem;
+}
+
+/* Estilo para as células vazias na tabela, como no exemplo */
+.celula-vazia {
+    background-color: #343a401a; /* Cinza escuro com transparência */
+}
+
+/* Estilo para destacar uma célula específica (amarelo, como no exemplo) */
+.mapa-destaque {
+    background-color: #ffc107 !important; /* Cor de aviso do Bootstrap */
+    color: var(--dark-gray);
+    font-weight: bold;
+}
+
+/* Container para a lista de mapas disponíveis */
+#lista-mapas-disponiveis {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px; /* Espaçamento entre os badges */
+}
+
+/* Estilo para cada "badge" de mapa disponível */
+.mapa-disponivel-badge {
+    background-color: #e9f5e7; /* Verde bem claro */
+    color: #2a6e2c; /* Verde escuro para o texto */
+    border: 1px solid #a3d9a3;
+    font-size: 0.9rem;
+    padding: 0.6em 1em;
+    font-weight: 500;
+}
+
+
+.planilha-container .table-bordered {
+    border-color: #b0b0b0; /* Bordas mais escuras, como no Excel */
+}
+
+.planilha-container .table-bordered th,
+.planilha-container .table-bordered td {
+    border: 1px solid #b0b0b0;
+    font-size: 0.9rem; /* Fonte um pouco menor para caber mais info */
+    padding: 0.5rem;
+}
+
+.planilha-container thead .planilha-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+    background-color: #f0f0f0;
+}
+
+.planilha-container thead .table-secondary th {
+    background-color: #e9ecef;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Alinhamento do texto dentro das células */
+#tabela-dirigentes-body td:nth-child(2) {
+    text-align: left; /* Alinha o nome do dirigente à esquerda */
+    font-weight: 500;
+}
+
+/* Estilo de destaque amarelo, como no exemplo */
+.mapa-destaque {
+    background-color: #ffc107 !important;
+    font-weight: bold;
+}
+
+/* Célula de "Quando usar" na tabela de disponíveis */
+.quando-usar-disponiveis {
+    text-align: left !important;
+    vertical-align: top !important;
+    font-size: 0.85rem;
+    background-color: #f8f9fa;
+}
