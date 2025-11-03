@@ -12,8 +12,11 @@ if (empty($token)) {
 }
 
 try {
-    // Busca o dirigente pelo token
-    $stmt_user = $pdo->prepare("SELECT id, nome FROM users WHERE token_acesso = ? AND status = 'ativo' AND cargo = 'dirigente'");
+    // --- INÍCIO DA CORREÇÃO ---
+    // Busca o dirigente pelo token e pela permissão de Dirigente (bit 1)
+    $stmt_user = $pdo->prepare("SELECT id, nome FROM users WHERE token_acesso = ? AND status = 'ativo' AND (permissoes & 1) = 1");
+    // --- FIM DA CORREÇÃO ---
+    
     $stmt_user->execute([$token]);
     $dirigente = $stmt_user->fetch();
     if (!$dirigente) {
@@ -56,6 +59,7 @@ try {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../style/css.css">
     <style> 
+        /* SEU CSS AQUI - NENHUMA ALTERAÇÃO NECESSÁRIA */
         body { padding: 15px; background-color: var(--content-bg); } 
         .quadra-item { border-bottom: 1px solid #eee; }
         .quadra-item:last-child { border-bottom: none; }
@@ -94,6 +98,7 @@ try {
     </style>
 </head>
 <body>
+    <!-- SEU HTML AQUI - NENHUMA ALTERAÇÃO NECESSÁRIA -->
     <nav class="navbar navbar-dark bg-dark mb-4 rounded shadow-sm">
         <div class="container-fluid"><span class="navbar-brand"><i class="fas fa-map-marked-alt me-2"></i>Mapas de <?php echo htmlspecialchars($dirigente['nome']); ?></span></div>
     </nav>
@@ -176,134 +181,133 @@ try {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../script/common.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const API_BASE_URL = '.'; 
-        
-        const saveQuadra = async (quadraId, valor, statusDiv) => {
-            statusDiv.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-            try {
-                const response = await fetch(`${API_BASE_URL}/mapas_api.php`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'update_quadra', quadra_id: quadraId, pessoas_faladas: parseInt(valor) })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Erro na rede: ${response.status} ${response.statusText}`);
-                }
-
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    statusDiv.innerHTML = '<i class="fas fa-check text-success"></i>';
-                    setTimeout(() => { statusDiv.innerHTML = ''; }, 2000);
-                } else { 
-                    throw new Error(result.message || 'A API retornou um erro inesperado.'); 
-                }
-            } catch (error) {
-                console.error('Erro ao salvar:', error);
-                showAlert(`Erro ao salvar: ${error.message}`, 'danger');
-                statusDiv.innerHTML = '<i class="fas fa-times text-danger"></i>';
-                setTimeout(() => { statusDiv.innerHTML = ''; }, 3000);
-            }
-        };
-
-        const debounce = (func, wait) => { let timeout; return (...args) => { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), wait); }; };
-        const debouncedSave = debounce(saveQuadra, 800);
-        
-        document.querySelectorAll('.quadra-input').forEach(input => {
-            input.addEventListener('input', (e) => {
-                const quadraId = e.target.dataset.quadraId;
-                const statusDiv = document.getElementById(`status_save_q${quadraId}`);
-                debouncedSave(quadraId, e.target.value, statusDiv);
-                updateTotal(e.target.closest('.quadra-list'));
-            });
-        });
-        
-        document.querySelectorAll('.btn-increment').forEach(btn => {
-            btn.addEventListener('click', (e) => { const input = e.target.closest('.input-group').querySelector('.quadra-input'); input.value = parseInt(input.value || 0) + 1; input.dispatchEvent(new Event('input', { bubbles: true })); });
-        });
-        
-        document.querySelectorAll('.btn-decrement').forEach(btn => {
-            btn.addEventListener('click', (e) => { const input = e.target.closest('.input-group').querySelector('.quadra-input'); const currentValue = parseInt(input.value || 0); if (currentValue > 0) { input.value = currentValue - 1; input.dispatchEvent(new Event('input', { bubbles: true })); } });
-        });
-        
-        const updateTotal = (quadraList) => { const mapaId = quadraList.dataset.mapaId; let total = 0; quadraList.querySelectorAll('.quadra-input').forEach(input => { total += parseInt(input.value) || 0; }); document.getElementById(`total-pessoas-mapa-${mapaId}`).textContent = total; };
-        
-        document.querySelectorAll('.quadra-list').forEach(list => updateTotal(list));
-        
-        document.querySelectorAll('.form-devolver').forEach(form => {
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const mapaId = e.target.dataset.mapaId;
-                const dataDevolucao = document.getElementById(`data_devolucao_${mapaId}`).value;
-                if (!dataDevolucao) { showAlert('Por favor, selecione a data de devolução.', 'warning'); return; }
-                const btn = e.target.querySelector('button[type="submit"]');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
-                btn.disabled = true;
+        // SEU JAVASCRIPT AQUI - NENHUMA ALTERAÇÃO NECESSÁRIA
+        document.addEventListener('DOMContentLoaded', () => {
+            const API_BASE_URL = '.'; 
+            
+            const saveQuadra = async (quadraId, valor, statusDiv) => {
+                statusDiv.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
                 try {
                     const response = await fetch(`${API_BASE_URL}/mapas_api.php`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        // ***** ALTERAÇÃO AQUI *****
-                        // O nome da ação foi corrigido de 'devolver_mapa' para 'devolver' para corresponder à API.
-                        body: JSON.stringify({ action: 'devolver', mapa_id: mapaId, data_devolucao: dataDevolucao })
+                        body: JSON.stringify({ action: 'update_quadra', quadra_id: quadraId, pessoas_faladas: parseInt(valor) })
                     });
-                    
+
                     if (!response.ok) {
-                        const errorData = await response.json().catch(() => null);
-                        throw new Error(errorData?.message || `Erro na rede: ${response.statusText}`);
+                        throw new Error(`Erro na rede: ${response.status} ${response.statusText}`);
                     }
 
                     const result = await response.json();
-
-                    if (result.message) { 
-                        showAlert('Mapa devolvido com sucesso!', 'success'); 
-                        document.getElementById(`mapa-card-${mapaId}`).remove(); 
+                    
+                    if (result.status === 'success') {
+                        statusDiv.innerHTML = '<i class="fas fa-check text-success"></i>';
+                        setTimeout(() => { statusDiv.innerHTML = ''; }, 2000);
                     } else { 
-                        throw new Error(result.message || 'A API retornou uma resposta inesperada.'); 
+                        throw new Error(result.message || 'A API retornou um erro inesperado.'); 
                     }
-                } catch (error) { 
-                    console.error('Erro ao devolver mapa:', error); 
-                    showAlert('Erro ao devolver o mapa: ' + error.message, 'danger'); 
-                } finally { 
-                    btn.innerHTML = originalText; 
-                    btn.disabled = false; 
+                } catch (error) {
+                    console.error('Erro ao salvar:', error);
+                    showAlert(`Erro ao salvar: ${error.message}`, 'danger');
+                    statusDiv.innerHTML = '<i class="fas fa-times text-danger"></i>';
+                    setTimeout(() => { statusDiv.innerHTML = ''; }, 3000);
                 }
+            };
+
+            const debounce = (func, wait) => { let timeout; return (...args) => { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), wait); }; };
+            const debouncedSave = debounce(saveQuadra, 800);
+            
+            document.querySelectorAll('.quadra-input').forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const quadraId = e.target.dataset.quadraId;
+                    const statusDiv = document.getElementById(`status_save_q${quadraId}`);
+                    debouncedSave(quadraId, e.target.value, statusDiv);
+                    updateTotal(e.target.closest('.quadra-list'));
+                });
             });
+            
+            document.querySelectorAll('.btn-increment').forEach(btn => {
+                btn.addEventListener('click', (e) => { const input = e.target.closest('.input-group').querySelector('.quadra-input'); input.value = parseInt(input.value || 0) + 1; input.dispatchEvent(new Event('input', { bubbles: true })); });
+            });
+            
+            document.querySelectorAll('.btn-decrement').forEach(btn => {
+                btn.addEventListener('click', (e) => { const input = e.target.closest('.input-group').querySelector('.quadra-input'); const currentValue = parseInt(input.value || 0); if (currentValue > 0) { input.value = currentValue - 1; input.dispatchEvent(new Event('input', { bubbles: true })); } });
+            });
+            
+            const updateTotal = (quadraList) => { const mapaId = quadraList.dataset.mapaId; let total = 0; quadraList.querySelectorAll('.quadra-input').forEach(input => { total += parseInt(input.value) || 0; }); document.getElementById(`total-pessoas-mapa-${mapaId}`).textContent = total; };
+            
+            document.querySelectorAll('.quadra-list').forEach(list => updateTotal(list));
+            
+            document.querySelectorAll('.form-devolver').forEach(form => {
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const mapaId = e.target.dataset.mapaId;
+                    const dataDevolucao = document.getElementById(`data_devolucao_${mapaId}`).value;
+                    if (!dataDevolucao) { showAlert('Por favor, selecione a data de devolução.', 'warning'); return; }
+                    const btn = e.target.querySelector('button[type="submit"]');
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
+                    btn.disabled = true;
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/mapas_api.php`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'devolver', mapa_id: mapaId, data_devolucao: dataDevolucao })
+                        });
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => null);
+                            throw new Error(errorData?.message || `Erro na rede: ${response.statusText}`);
+                        }
+
+                        const result = await response.json();
+
+                        if (result.message) { 
+                            showAlert('Mapa devolvido com sucesso!', 'success'); 
+                            document.getElementById(`mapa-card-${mapaId}`).remove(); 
+                        } else { 
+                            throw new Error(result.message || 'A API retornou uma resposta inesperada.'); 
+                        }
+                    } catch (error) { 
+                        console.error('Erro ao devolver mapa:', error); 
+                        showAlert('Erro ao devolver o mapa: ' + error.message, 'danger'); 
+                    } finally { 
+                        btn.innerHTML = originalText; 
+                        btn.disabled = false; 
+                    }
+                });
+            });
+
+            const pdfModal = document.getElementById('pdfModal');
+            if (pdfModal) {
+                pdfModal.addEventListener('show.bs.modal', (event) => {
+                    const button = event.relatedTarget;
+                    const pdfSrc = button.getAttribute('data-pdf-src');
+                    const pdfTitle = button.getAttribute('data-pdf-title');
+                    
+                    pdfModal.querySelector('.modal-title').textContent = pdfTitle;
+                    const modalBody = pdfModal.querySelector('#pdf-modal-body');
+                    modalBody.innerHTML = ''; 
+
+                    if (pdfSrc) {
+                        const iframe = document.createElement('iframe');
+                        iframe.src = pdfSrc;
+                        modalBody.appendChild(iframe);
+                    } else {
+                        modalBody.innerHTML = '<div class="alert alert-danger m-3">URL do PDF não encontrada.</div>';
+                    }
+                });
+            }
+            
+            const showAlert = (message, type) => {
+                const alertContainer = document.getElementById('alert-container');
+                const alert = document.createElement('div');
+                alert.className = `alert alert-${type} alert-dismissible fade show`;
+                alert.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+                alertContainer.appendChild(alert);
+                setTimeout(() => { alert.remove(); }, 5000);
+            };
         });
-
-        const pdfModal = document.getElementById('pdfModal');
-        if (pdfModal) {
-            pdfModal.addEventListener('show.bs.modal', (event) => {
-                const button = event.relatedTarget;
-                const pdfSrc = button.getAttribute('data-pdf-src');
-                const pdfTitle = button.getAttribute('data-pdf-title');
-                
-                pdfModal.querySelector('.modal-title').textContent = pdfTitle;
-                const modalBody = pdfModal.querySelector('#pdf-modal-body');
-                modalBody.innerHTML = ''; 
-
-                if (pdfSrc) {
-                    const iframe = document.createElement('iframe');
-                    iframe.src = pdfSrc;
-                    modalBody.appendChild(iframe);
-                } else {
-                    modalBody.innerHTML = '<div class="alert alert-danger m-3">URL do PDF não encontrada.</div>';
-                }
-            });
-        }
-        
-        const showAlert = (message, type) => {
-            const alertContainer = document.getElementById('alert-container');
-            const alert = document.createElement('div');
-            alert.className = `alert alert-${type} alert-dismissible fade show`;
-            alert.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-            alertContainer.appendChild(alert);
-            setTimeout(() => { alert.remove(); }, 5000);
-        };
-    });
     </script>
 </body>
 </html>

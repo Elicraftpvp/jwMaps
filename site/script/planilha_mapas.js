@@ -6,8 +6,8 @@ async function carregarDadosDaPlanilha() {
     const dirigentesBody = document.getElementById('tabela-dirigentes-body');
     const mapasDisponiveisContainer = document.getElementById('lista-mapas-disponiveis');
 
-    const URL_MAPAS = '/jwMaps/site/backend/mapas_api.php';
-    const URL_DIRIGENTES = '/jwMaps/site/backend/dirigentes_api.php?show_inactive=false';
+    const URL_MAPAS = `${API_BASE_URL_CONTROLE}/mapas_api.php`;
+    const URL_DIRIGENTES = `${API_BASE_URL_CONTROLE}/dirigentes_api.php?show_inactive=false`;
 
     try {
         const [mapasResponse, dirigentesResponse] = await Promise.all([
