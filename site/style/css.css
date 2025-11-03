@@ -185,8 +185,30 @@ html, body {
 .planilha-dirigentes-table td {
     padding: 0.5rem; /* Espaçamento ao redor do badge */
     border-bottom: 1px solid #dee2e6;
-    vertical-align: middle; /* Garante alinhamento vertical */
-    text-align: center; /* Centraliza os badges por padrão */
+    vertical-align: middle;
+    text-align: center;
+}
+
+.mapas-dirigente-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    min-height: 30px; /* Garante que o container seja visível para o drop */
+    padding: 5px;
+    border: 1px dashed #ccc; /* Visual para indicar que é uma área de drop */
+    border-radius: 0.375rem;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.mapa-item {
+    cursor: grab;
+}
+
+.sortable-ghost {
+    opacity: 0.4;
+    background-color: #f8f9fa;
+    border: 1px dashed #000;
 }
 
 .planilha-dirigentes-table tbody td:first-child {

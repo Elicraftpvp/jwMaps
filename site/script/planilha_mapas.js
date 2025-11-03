@@ -25,6 +25,11 @@ async function carregarDadosDaPlanilha() {
         renderizarTabelaDirigentes(todosOsMapas, todosOsDirigentes, dirigentesBody);
         renderizarMapasDisponiveis(todosOsMapas, mapasDisponiveisContainer);
 
+        // Chama a função de inicialização do drag-and-drop
+        if (typeof inicializarDragAndDrop === 'function') {
+            inicializarDragAndDrop();
+        }
+
     } catch (error) {
         console.error('Erro geral ao carregar dados da planilha:', error);
         dirigentesBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger p-4">Falha ao carregar os dados.</td></tr>`;
@@ -38,7 +43,7 @@ function renderizarTabelaDirigentes(todosOsMapas, todosOsDirigentes, tbody) {
         .reduce((acc, mapa) => {
             const id = mapa.dirigente_id;
             if (!acc[id]) acc[id] = [];
-            acc[id].push({ identificador: mapa.identificador, regiao: mapa.regiao });
+            acc[id].push({ id: mapa.id, identificador: mapa.identificador, regiao: mapa.regiao });
             return acc;
         }, {});
 
@@ -56,24 +61,14 @@ function renderizarTabelaDirigentes(todosOsMapas, todosOsDirigentes, tbody) {
         const mapasDoDirigente = mapasPorDirigenteId[dirigente.id] || [];
         
         let htmlCelulas = `<td>${dirigente.nome}</td>`;
+        htmlCelulas += `<td colspan="4"><div class="mapas-dirigente-container" data-dirigente-id="${dirigente.id}">`;
 
-        for (let i = 0; i < 4; i++) {
-            const mapa = mapasDoDirigente[i];
-            if (mapa) {
-                // USA AS CLASSES 'badge' + 'mapa-atribuido-badge'
-                let badgeClasses = 'badge mapa-atribuido-badge';
-                
-                if (mapa.identificador === 'Mapa 30') {
-                    badgeClasses += ' mapa-destaque';
-                }
-                
-                const textoMapa = mapa.regiao ? `${mapa.identificador} - ${mapa.regiao}` : mapa.identificador;
-                
-                htmlCelulas += `<td><span class="${badgeClasses}">${textoMapa}</span></td>`;
-            } else {
-                htmlCelulas += '<td></td>';
-            }
-        }
+        mapasDoDirigente.forEach(mapa => {
+            const textoMapa = mapa.regiao ? `${mapa.identificador} - ${mapa.regiao}` : mapa.identificador;
+            htmlCelulas += `<span class="badge mapa-atribuido-badge" data-mapa-id="${mapa.id}">${textoMapa}</span>`;
+        });
+
+        htmlCelulas += `</div></td>`;
         
         tr.innerHTML = htmlCelulas;
         tbody.appendChild(tr);
@@ -94,7 +89,8 @@ function renderizarMapasDisponiveis(todosOsMapas, container) {
         const span = document.createElement('span');
         
         // USA AS CLASSES 'badge' + 'mapa-disponivel-badge', EXATAMENTE COMO NO SEU EXEMPLO
-        span.className = 'badge mapa-disponivel-badge';
+        span.className = 'badge mapa-disponivel-badge mapa-item';
+        span.setAttribute('data-mapa-id', mapa.id);
         
         span.textContent = mapa.regiao ? `${mapa.identificador} - ${mapa.regiao}` : mapa.identificador;
         
