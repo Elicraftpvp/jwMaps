@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function carregarDadosDaPlanilha() {
     const dirigentesBody = document.getElementById('tabela-dirigentes-body');
-    const mapasDisponiveisContainer = document.getElementById('lista-mapas-disponiveis'); // Alterado para o ID do container
+    const mapasDisponiveisContainer = document.getElementById('lista-mapas-disponiveis');
 
     const URL_MAPAS = '/jwMaps/site/backend/mapas_api.php';
     const URL_DIRIGENTES = '/jwMaps/site/backend/dirigentes_api.php?show_inactive=false';
@@ -23,7 +23,7 @@ async function carregarDadosDaPlanilha() {
         const todosOsDirigentes = await dirigentesResponse.json();
 
         renderizarTabelaDirigentes(todosOsMapas, todosOsDirigentes, dirigentesBody);
-        renderizarMapasDisponiveis(todosOsMapas, mapasDisponiveisContainer); // Passa o container correto
+        renderizarMapasDisponiveis(todosOsMapas, mapasDisponiveisContainer);
 
     } catch (error) {
         console.error('Erro geral ao carregar dados da planilha:', error);
@@ -38,16 +38,16 @@ function renderizarTabelaDirigentes(todosOsMapas, todosOsDirigentes, tbody) {
         .reduce((acc, mapa) => {
             const id = mapa.dirigente_id;
             if (!acc[id]) acc[id] = [];
-            acc[id].push(mapa.identificador);
+            acc[id].push({ identificador: mapa.identificador, regiao: mapa.regiao });
             return acc;
         }, {});
 
     const dirigentesComMapas = todosOsDirigentes.filter(d => mapasPorDirigenteId[d.id] && mapasPorDirigenteId[d.id].length > 0);
 
-    tbody.innerHTML = ''; // Limpa o "carregando"
+    tbody.innerHTML = '';
 
     if (dirigentesComMapas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Nenhum dirigente com mapas atribuídos no momento.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Nenhum dirigente com mapas atribuídos.</td></tr>';
         return;
     }
 
@@ -57,14 +57,21 @@ function renderizarTabelaDirigentes(todosOsMapas, todosOsDirigentes, tbody) {
         
         let htmlCelulas = `<td>${dirigente.nome}</td>`;
 
-        // Adiciona 4 colunas de mapa
         for (let i = 0; i < 4; i++) {
             const mapa = mapasDoDirigente[i];
             if (mapa) {
-                const classeDestaque = mapa === 'Mapa 30' ? 'mapa-destaque' : '';
-                htmlCelulas += `<td class="${classeDestaque}">${mapa}</td>`;
+                // USA AS CLASSES 'badge' + 'mapa-atribuido-badge'
+                let badgeClasses = 'badge mapa-atribuido-badge';
+                
+                if (mapa.identificador === 'Mapa 30') {
+                    badgeClasses += ' mapa-destaque';
+                }
+                
+                const textoMapa = mapa.regiao ? `${mapa.identificador} - ${mapa.regiao}` : mapa.identificador;
+                
+                htmlCelulas += `<td><span class="${badgeClasses}">${textoMapa}</span></td>`;
             } else {
-                htmlCelulas += '<td></td>'; // Célula vazia
+                htmlCelulas += '<td></td>';
             }
         }
         
@@ -74,11 +81,9 @@ function renderizarTabelaDirigentes(todosOsMapas, todosOsDirigentes, tbody) {
 }
 
 function renderizarMapasDisponiveis(todosOsMapas, container) {
-    const mapasDisponiveis = todosOsMapas
-        .filter(mapa => !mapa.dirigente_id)
-        .map(mapa => mapa.identificador);
+    const mapasDisponiveis = todosOsMapas.filter(mapa => !mapa.dirigente_id);
 
-    container.innerHTML = ''; // Limpa o "carregando"
+    container.innerHTML = '';
     
     if (mapasDisponiveis.length === 0) {
         container.innerHTML = '<p class="text-center m-0">Nenhum mapa disponível no momento.</p>';
@@ -87,8 +92,12 @@ function renderizarMapasDisponiveis(todosOsMapas, container) {
 
     mapasDisponiveis.forEach(mapa => {
         const span = document.createElement('span');
+        
+        // USA AS CLASSES 'badge' + 'mapa-disponivel-badge', EXATAMENTE COMO NO SEU EXEMPLO
         span.className = 'badge mapa-disponivel-badge';
-        span.textContent = mapa;
+        
+        span.textContent = mapa.regiao ? `${mapa.identificador} - ${mapa.regiao}` : mapa.identificador;
+        
         container.appendChild(span);
     });
 }

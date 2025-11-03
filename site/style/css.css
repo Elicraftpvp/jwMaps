@@ -119,46 +119,138 @@ html, body {
 }
 
 /* ================================================================== */
-/* === NOVA SEÇÃO DE ESTILOS PARA AS ABAS DA PÁGINA DE CONTROLE === */
+/* === SEÇÃO DE ESTILOS PARA AS ABAS DA PÁGINA DE CONTROLE === */
 /* ================================================================== */
 
 /* Container das abas */
 .nav-tabs-custom {
-    border-bottom: 2px solid #dee2e6; /* Linha sutil para separar do conteúdo */
-    background-color: #ffffff; /* Fundo branco para destacar as abas */
-    padding: 0 1rem; /* Espaçamento lateral */
+    border-bottom: 2px solid #dee2e6;
+    background-color: #ffffff;
+    padding: 0 1rem;
 }
 
 /* Estilo para cada link (aba) */
 .nav-tabs-custom .nav-link {
-    border: none; /* Remove a borda padrão do Bootstrap */
-    border-bottom: 3px solid transparent; /* Borda inferior transparente para o efeito de transição */
-    color: var(--secondary-color); /* Cor do texto para abas inativas */
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--secondary-color);
     font-weight: 500;
     padding: 1rem 1.25rem;
-    margin-bottom: -2px; /* Alinha a borda inferior com a borda do container */
+    margin-bottom: -2px;
     transition: all 0.2s ease-in-out;
 }
 
 /* Efeito ao passar o mouse sobre uma aba INATIVA */
 .nav-tabs-custom .nav-link:not(.active):hover {
     color: var(--dark-gray);
-    border-bottom-color: #e9ecef; /* Cor sutil para o hover */
+    border-bottom-color: #e9ecef;
 }
 
 /* Estilo para a aba ATIVA */
 .nav-tabs-custom .nav-link.active {
-    color: var(--primary-color); /* Usa a cor primária do tema */
-    background-color: transparent; /* Remove qualquer fundo */
-    border-bottom-color: var(--primary-color); /* Cria o indicador visual verde */
+    color: var(--primary-color);
+    background-color: transparent;
+    border-bottom-color: var(--primary-color);
     font-weight: 600;
 }
 
 /* ================================================================== */
-/* =================== FIM DA NOVA SEÇÃO DE ESTILOS =================== */
+/* === ESTILOS PARA PLANILHA E BADGES DE MAPAS (REATORADO) === */
 /* ================================================================== */
 
-/* Restante do CSS (sem alterações) */
+/* --- ESTRUTURA DA TABELA DE DIRIGENTES --- */
+.planilha-dirigentes-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+/* Estilo para cada "badge" de mapa disponível */
+.mapa-disponivel-badge {
+    background-color: #e9f5e7; /* Verde bem claro */
+    color: #2a6e2c; /* Verde escuro para o texto */
+    border: 1px solid #a3d9a3;
+    font-size: 0.9rem;
+    padding: 0.6em 1em;
+    font-weight: 500;
+}
+
+.planilha-dirigentes-table thead .table-secondary th {
+    background-color: var(--light-gray);
+    font-weight: bold;
+    color: var(--dark-gray);
+    border-bottom: 2px solid #dee2e6;
+    padding: 0.75rem;
+}
+
+.planilha-dirigentes-table td {
+    padding: 0.5rem; /* Espaçamento ao redor do badge */
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle; /* Garante alinhamento vertical */
+    text-align: center; /* Centraliza os badges por padrão */
+}
+
+.planilha-dirigentes-table tbody td:first-child {
+    text-align: left; /* Alinha o nome do dirigente à esquerda */
+    font-weight: 500;
+    padding-left: 1rem;
+}
+
+/* --- ESTILO UNIFICADO DOS BADGES DE MAPA --- */
+
+/* 1. CLASSE BASE: Define o TAMANHO e a FORMA */
+.mapa-badge {
+    display: inline-block;
+    width: 95%; /* Ocupa quase toda a célula para visual uniforme */
+    max-width: 100px; /* Evita que fiquem grandes demais em telas largas */
+    font-size: 0.9rem;
+    padding: 0.6em 1em;
+    font-weight: 500;
+    border-radius: 0.375rem;
+    border: 1px solid transparent;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* 2. MODIFICADOR: Cor para mapas disponíveis (Verde) */
+.mapa-badge-disponivel {
+    background-color: #e9f5e7;
+    color: #2a6e2c;
+    border-color: #a3d9a3;
+    width: auto; /* Para a lista de disponíveis, a largura é automática */
+}
+
+/* 3. MODIFICADOR: Cor para mapas na planilha/atribuídos (Amarelo) */
+.mapa-badge-atribuido {
+    background-color: #fff9c4;
+    color: #333;
+    border-color: #fce28b;
+}
+
+/* 4. ESTADO DE DESTAQUE: Sobrescreve a cor para um mapa específico */
+.mapa-badge.mapa-destaque {
+    background-color: var(--warning-color) !important;
+    font-weight: bold;
+    border-color: #f5b300 !important;
+    color: var(--dark-gray);
+}
+
+/* Container para a lista de mapas disponíveis */
+#lista-mapas-disponiveis {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 1rem;
+}
+
+/* Estilo para as células vazias na tabela */
+.celula-vazia {
+    background-color: #343a401a;
+}
+
+/* ================================================================== */
+/* =================== RESTANTE DO CSS (SEM ALTERAÇÕES) ============= */
+/* ================================================================== */
+
 .login-container {
   min-height: 100vh;
   display: flex;
@@ -200,33 +292,106 @@ body.iframe-page { display: flex; flex-direction: column; }
 .card-body-scrollable { flex-grow: 1; overflow-y: auto; padding: 0; }
 .card-body-scrollable .list-group-item { padding-left: 1.25rem; padding-right: 1.25rem; }
 
-/* Ajusta a tabela para ter um visual mais limpo */
-#tabela-dirigentes-body td {
-    vertical-align: middle;
-    padding: 0.9rem 1rem;
-    font-size: 0.95rem;
+
+/* --- ESTRUTURA DA TABELA DE DIRIGENTES --- */
+.planilha-dirigentes-table {
+    border-collapse: separate;
+    border-spacing: 0;
 }
 
-/* Estilo para as células vazias na tabela, como no exemplo */
-.celula-vazia {
-    background-color: #343a401a; /* Cinza escuro com transparência */
-}
-
-/* Estilo para destacar uma célula específica (amarelo, como no exemplo) */
-.mapa-destaque {
-    background-color: #ffc107 !important; /* Cor de aviso do Bootstrap */
-    color: var(--dark-gray);
+.planilha-dirigentes-table thead .table-secondary th {
+    background-color: var(--light-gray);
     font-weight: bold;
+    color: var(--dark-gray);
+    border-bottom: 2px solid #dee2e6;
+    padding: 0.75rem;
+}
+
+.planilha-dirigentes-table td {
+    padding: 0.5rem; /* Espaçamento ao redor do badge */
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+    text-align: center;
+}
+
+.planilha-dirigentes-table tbody td:first-child {
+    text-align: left;
+    font-weight: 500;
+    padding-left: 1rem;
+}
+
+/* --- ESTILO UNIFICADO DOS BADGES DE MAPA --- */
+
+/* 1. CLASSE BASE: Define o TAMANHO e a FORMA (sem cor, sem largura fixa) */
+.mapa-badge {
+    display: inline-block; /* Permite que o tamanho se ajuste ao conteúdo */
+    font-size: 0.9rem;
+    padding: 0.6em 1em;
+    font-weight: 500;
+    border-radius: 0.375rem;
+    border: 1px solid transparent;
+    white-space: nowrap; /* Evita que o texto quebre em duas linhas */
+}
+
+/* 2. MODIFICADOR: Cor para mapas disponíveis (Verde) */
+.mapa-badge-disponivel {
+    background-color: #e9f5e7;
+    color: #2a6e2c;
+    border-color: #a3d9a3;
+}
+
+/* 3. MODIFICADOR: Cor para mapas na planilha/atribuídos (Amarelo) */
+.mapa-badge-atribuido {
+    background-color: #fff9c4;
+    color: #333;
+    border-color: #fce28b;
+}
+
+/* 4. ESTADO DE DESTAQUE: Sobrescreve a cor para um mapa específico */
+.mapa-badge.mapa-destaque {
+    background-color: var(--warning-color) !important;
+    font-weight: bold;
+    border-color: #f5b300 !important;
+    color: var(--dark-gray);
 }
 
 /* Container para a lista de mapas disponíveis */
 #lista-mapas-disponiveis {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px; /* Espaçamento entre os badges */
+    gap: 10px;
+    padding: 1rem;
 }
 
-/* Estilo para cada "badge" de mapa disponível */
+/* --- ESTRUTURA DA TABELA --- */
+.planilha-dirigentes-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.planilha-dirigentes-table thead th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+    border-bottom: 2px solid #dee2e6;
+    padding: 0.75rem;
+}
+
+.planilha-dirigentes-table td {
+    padding: 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+    text-align: center;
+}
+
+.planilha-dirigentes-table tbody td:first-child {
+    text-align: left;
+    font-weight: 500;
+    padding-left: 1rem;
+}
+
+/* --- ESTILOS DOS BADGES --- */
+
+/* 1. BADGE DISPONÍVEL (Verde) - O SEU CÓDIGO ORIGINAL */
 .mapa-disponivel-badge {
     background-color: #e9f5e7; /* Verde bem claro */
     color: #2a6e2c; /* Verde escuro para o texto */
@@ -236,99 +401,29 @@ body.iframe-page { display: flex; flex-direction: column; }
     font-weight: 500;
 }
 
-
-.planilha-container .table-bordered {
-    border-color: #b0b0b0; /* Bordas mais escuras, como no Excel */
+/* 2. BADGE ATRIBUÍDO (Amarelo) - CLONE DO ESTILO ACIMA COM CORES DIFERENTES */
+.mapa-atribuido-badge {
+    background-color: #fff9c4; /* Amarelo bem claro */
+    color: #5c5306; /* Amarelo escuro para o texto */
+    border: 1px solid #fce28b;
+    font-size: 0.9rem; /* EXATAMENTE IGUAL */
+    padding: 0.6em 1em; /* EXATAMENTE IGUAL */
+    font-weight: 500; /* EXATAMENTE IGUAL */
 }
 
-.planilha-container .table-bordered th,
-.planilha-container .table-bordered td {
-    border: 1px solid #b0b0b0;
-    font-size: 0.9rem; /* Fonte um pouco menor para caber mais info */
-    padding: 0.5rem;
-}
-
-.planilha-container thead .planilha-title {
-    font-size: 1.1rem;
+/* 3. DESTAQUE: Sobrescreve a cor amarela padrão com uma mais forte */
+.mapa-atribuido-badge.mapa-destaque {
+    background-color: var(--warning-color) !important;
     font-weight: bold;
-    background-color: #f0f0f0;
-}
-
-.planilha-container thead .table-secondary th {
-    background-color: #e9ecef;
-    font-weight: bold;
-    color: #333;
-}
-
-/* Alinhamento do texto dentro das células */
-#tabela-dirigentes-body td:nth-child(2) {
-    text-align: left; /* Alinha o nome do dirigente à esquerda */
-    font-weight: 500;
-}
-
-/* Estilo de destaque amarelo, como no exemplo */
-.mapa-destaque {
-    background-color: #ffc107 !important;
-    font-weight: bold;
-}
-
-/* Célula de "Quando usar" na tabela de disponíveis */
-.quando-usar-disponiveis {
-    text-align: left !important;
-    vertical-align: top !important;
-    font-size: 0.85rem;
-    background-color: #f8f9fa;
+    border-color: #f5b300 !important;
+    color: var(--dark-gray);
 }
 
 
-/* Estilos gerais para a tabela de dirigentes */
-.planilha-dirigentes-table {
-    border-color: #dee2e6; /* Bordas mais claras */
-}
-
-.planilha-dirigentes-table th,
-.planilha-dirigentes-table td {
-    border: 1px solid #dee2e6;
-    font-size: 0.95rem; /* Fonte padrão */
-    padding: 0.75rem 0.5rem; /* Mais espaçamento interno */
-}
-
-.planilha-dirigentes-table thead .table-secondary th {
-    background-color: #f8f9fa; /* Fundo mais claro para cabeçalhos */
-    font-weight: bold;
-    color: #333;
-    border-bottom: 2px solid #dee2e6;
-}
-
-/* Alinhamento do texto dentro das células */
-.planilha-dirigentes-table tbody td:first-child {
-    text-align: left; /* Alinha o nome do dirigente à esquerda */
-    font-weight: 500;
-}
-
-/* Estilo de destaque amarelo, como no exemplo */
-.mapa-destaque {
-    background-color: #ffc107 !important;
-    font-weight: bold;
-    color: var(--dark-gray); /* Para garantir contraste com o amarelo */
-}
-
-/* Container para a lista de mapas disponíveis (badge) */
+/* CONTAINER DOS MAPAS DISPONÍVEIS - O SEU CÓDIGO ORIGINAL */
 #lista-mapas-disponiveis {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px; /* Espaçamento entre os badges */
-    padding: 1rem; /* Adicionar padding ao corpo do card */
+    gap: 10px;
+    padding: 1rem;
 }
-
-/* Estilo para cada "badge" de mapa disponível */
-.mapa-disponivel-badge {
-    background-color: #e9f5e7; /* Verde bem claro */
-    color: #2a6e2c; /* Verde escuro para o texto */
-    border: 1px solid #a3d9a3;
-    font-size: 0.9rem;
-    padding: 0.6em 1em;
-    font-weight: 500;
-    border-radius: 0.375rem; /* Borda arredondada */
-}
-
