@@ -9,7 +9,7 @@ $id = $_GET['id'] ?? null;
 // Função auxiliar para gerar um token único
 function gerarTokenUnico($pdo) {
     do {
-        $token = bin2hex(random_bytes(16)); // Gera um token de 32 caracteres
+        $token = bin2hex(random_bytes(16));
         $stmt_token = $pdo->prepare("SELECT id FROM users WHERE token_acesso = ?");
         $stmt_token->execute([$token]);
     } while ($stmt_token->fetch());
@@ -18,94 +18,114 @@ function gerarTokenUnico($pdo) {
 
 switch ($method) {
     case 'GET':
+        // ... (nenhuma mudança necessária aqui, mantive para contexto)
         $show_inactive = $_GET['show_inactive'] ?? 'false';
         $whereClause = ($show_inactive === 'true') ? '' : "WHERE status = 'ativo'";
         if ($id) {
             $stmt = $pdo->prepare("SELECT id, nome, login, permissoes, status, token_acesso, telefone, email_contato FROM users WHERE id = ?");
             $stmt->execute([$id]);
-            echo json_encode($stmt->fetch());
+            echo json_encode($stmt->fetch(PDO::FETCH_ASSOC));
         } else {
             $stmt = $pdo->query("SELECT id, nome, login, permissoes, status, token_acesso, telefone, email_contato FROM users $whereClause ORDER BY nome");
-            echo json_encode($stmt->fetchAll());
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
         }
         break;
 
     case 'POST':
         $data = json_decode(file_get_contents('php://input'), true);
-        $action = $data['action'] ?? 'create'; // Define a ação esperada
-        
+        $action = $data['action'] ?? ($id ? 'update' : 'create');
+
         if ($id) {
-            // LÓGICA DE UPDATE, REATIVAÇÃO, REGENERAÇÃO E DELEÇÃO (Antigos PUT e DELETE)
+            // LÓGICA DE UPDATE, REATIVAÇÃO, REGENERAÇÃO E DESATIVAÇÃO
             
             if ($action === 'reactivate') {
                 $stmt = $pdo->prepare("UPDATE users SET status = 'ativo' WHERE id = ?");
                 $stmt->execute([$id]);
                 echo json_encode(['message' => 'Usuário reativado com sucesso!']);
-                exit;
-            } 
             
-            elseif ($action === 'regenerate_token') {
+            } elseif ($action === 'regenerate_token') {
                 $novoToken = gerarTokenUnico($pdo);
                 $stmt = $pdo->prepare("UPDATE users SET token_acesso = ? WHERE id = ?");
                 $stmt->execute([$novoToken, $id]);
                 echo json_encode(['message' => 'Novo link gerado com sucesso!', 'novoToken' => $novoToken]);
-                exit;
-            }
             
-            elseif ($action === 'delete_user') { // Ação para inativar (antigo DELETE)
+            } elseif ($action === 'delete_user') {
                 $stmt = $pdo->prepare("UPDATE users SET status = 'inativo' WHERE id = ?");
                 $stmt->execute([$id]);
                 echo json_encode(['message' => 'Usuário desativado com sucesso!']);
-                exit;
-            }
-
-            elseif ($action === 'update') { // Edição (antigo PUT)
+            
+            } elseif ($action === 'update') {
+                // ... (verificações iniciais sem mudança)
                 $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE login = ? AND id != ?");
                 $stmt->execute([$data['login'], $id]);
-                if ($stmt->fetchColumn() > 0) { http_response_code(409); echo json_encode(['message' => 'Este login já está em uso por outro usuário.']); exit; }
+                if ($stmt->fetchColumn() > 0) {
+                    http_response_code(409);
+                    echo json_encode(['message' => 'Este login já está em uso por outro usuário.']);
+                    exit;
+                }
+                
+                // --- INÍCIO DA CORREÇÃO ---
+                $is_dirigente = ($data["permissoes"] & 1) === 1;
+                $token_update_sql = '';
+                $params_token = [];
+
+                if ($is_dirigente) {
+                    $stmt_check = $pdo->prepare("SELECT token_acesso FROM users WHERE id = ?");
+                    $stmt_check->execute([$id]);
+                    if (empty($stmt_check->fetchColumn())) {
+                        $token_update_sql = ", token_acesso = ?";
+                        $params_token[] = gerarTokenUnico($pdo); // Adiciona o novo token ao array de parâmetros do token
+                    }
+                } else {
+                    $token_update_sql = ", token_acesso = NULL";
+                }
                 
                 if (!empty($data['senha'])) {
                     $hash = password_hash($data['senha'], PASSWORD_DEFAULT);
-                    $sql = "UPDATE users SET nome = ?, login = ?, permissoes = ?, senha = ?, telefone = ?, email_contato = ? WHERE id = ?";
-                    $stmt = $pdo->prepare($sql);
-                    $stmt->execute([$data["nome"], $data["login"], $data["permissoes"], $hash, $data["telefone"] ?? null, $data["email_contato"] ?? null, $id]);
+                    $sql = "UPDATE users SET nome = ?, login = ?, permissoes = ?, senha = ?, telefone = ?, email_contato = ? $token_update_sql WHERE id = ?";
+                    $params_base = [$data["nome"], $data["login"], $data["permissoes"], $hash, $data["telefone"] ?? null, $data["email_contato"] ?? null];
                 } else {
-                    $sql = "UPDATE users SET nome = ?, login = ?, permissoes = ?, telefone = ?, email_contato = ? WHERE id = ?";
-                    $stmt = $pdo->prepare($sql);
-                    $stmt->execute([$data["nome"], $data["login"], $data["permissoes"], $data["telefone"] ?? null, $data["email_contato"] ?? null, $id]);
+                    $sql = "UPDATE users SET nome = ?, login = ?, permissoes = ?, telefone = ?, email_contato = ? $token_update_sql WHERE id = ?";
+                    $params_base = [$data["nome"], $data["login"], $data["permissoes"], $data["telefone"] ?? null, $data["email_contato"] ?? null];
                 }
+                
+                // Junta os parâmetros base, os parâmetros do token (se houver) e o ID final
+                $params = array_merge($params_base, $params_token, [$id]);
+                
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($params);
+                // --- FIM DA CORREÇÃO ---
+                
                 echo json_encode(['message' => 'Usuário atualizado com sucesso!']);
-                exit;
-            }
             
-            // Se chegou aqui com ID, mas ação não reconhecida (erro)
-            http_response_code(400);
-            echo json_encode(['message' => 'Ação de processamento inválida.']);
-            exit;
-
+            } else {
+                http_response_code(400);
+                echo json_encode(['message' => 'Ação de processamento inválida.']);
+            }
         } else {
-            // LÓGICA DE CREATE (Antigo POST)
+            // ... (lógica de CREATE sem mudanças)
             if (empty($data['senha'])) { http_response_code(400); echo json_encode(['message' => 'Senha é obrigatória para novos usuários.']); exit; }
             $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE login = ?");
             $stmt->execute([$data['login']]);
             if ($stmt->fetchColumn() > 0) { http_response_code(409); echo json_encode(['message' => 'Este login já está em uso.']); exit; }
             
-            $token = gerarTokenUnico($pdo);
             $hash = password_hash($data['senha'], PASSWORD_DEFAULT);
-            $sql = "INSERT INTO users (nome, login, senha, permissoes, status, token_acesso, telefone, email_contato) VALUES (?, ?, ?, ?, 'ativo', ?, ?, ?)";
+            $token_to_save = (($data["permissoes"] & 1) === 1) ? gerarTokenUnico($pdo) : null;
+            
+            $sql = "INSERT INTO users (nome, login, senha, permissoes, status, token_acesso, telefone, email_contato) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$data["nome"], $data["login"], $hash, $data["permissoes"], $token, $data["telefone"] ?? null, $data["email_contato"] ?? null]);
-            echo json_encode(['message' => 'Usuário criado com sucesso!']);
+            
+            $params = [$data["nome"], $data["login"], $hash, $data["permissoes"], 'ativo', $token_to_save, $data["telefone"] ?? null, $data["email_contato"] ?? null];
+            
+            $stmt->execute($params);
+            
+            echo json_encode(['message' => 'Usuário criado com sucesso!', 'id' => $pdo->lastInsertId()]);
         }
-        break;
-
-    case 'DELETE':
-        // Este bloco agora está obsoleto e não deve ser atingido se o JS foi alterado corretamente
-        http_response_code(405); // Método não permitido, pois usamos POST para tudo
         break;
 
     default:
         http_response_code(405);
+        echo json_encode(['message' => 'Método não suportado.']);
         break;
 }
 ?>
