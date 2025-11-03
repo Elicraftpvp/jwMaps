@@ -21,11 +21,11 @@ switch ($method) {
         $show_inactive = $_GET['show_inactive'] ?? 'false';
         $whereClause = ($show_inactive === 'true') ? '' : "WHERE status = 'ativo'";
         if ($id) {
-            $stmt = $pdo->prepare("SELECT id, nome, login, cargo, status, token_acesso, telefone, email_contato FROM users WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT id, nome, login, permissoes, status, token_acesso, telefone, email_contato FROM users WHERE id = ?");
             $stmt->execute([$id]);
             echo json_encode($stmt->fetch());
         } else {
-            $stmt = $pdo->query("SELECT id, nome, login, cargo, status, token_acesso, telefone, email_contato FROM users $whereClause ORDER BY nome");
+            $stmt = $pdo->query("SELECT id, nome, login, permissoes, status, token_acesso, telefone, email_contato FROM users $whereClause ORDER BY nome");
             echo json_encode($stmt->fetchAll());
         }
         break;
@@ -66,13 +66,13 @@ switch ($method) {
                 
                 if (!empty($data['senha'])) {
                     $hash = password_hash($data['senha'], PASSWORD_DEFAULT);
-                    $sql = "UPDATE users SET nome = ?, login = ?, cargo = ?, senha = ?, telefone = ?, email_contato = ? WHERE id = ?";
+                    $sql = "UPDATE users SET nome = ?, login = ?, permissoes = ?, senha = ?, telefone = ?, email_contato = ? WHERE id = ?";
                     $stmt = $pdo->prepare($sql);
-                    $stmt->execute([$data["nome"], $data["login"], $data["cargo"], $hash, $data["telefone"] ?? null, $data["email_contato"] ?? null, $id]);
+                    $stmt->execute([$data["nome"], $data["login"], $data["permissoes"], $hash, $data["telefone"] ?? null, $data["email_contato"] ?? null, $id]);
                 } else {
-                    $sql = "UPDATE users SET nome = ?, login = ?, cargo = ?, telefone = ?, email_contato = ? WHERE id = ?";
+                    $sql = "UPDATE users SET nome = ?, login = ?, permissoes = ?, telefone = ?, email_contato = ? WHERE id = ?";
                     $stmt = $pdo->prepare($sql);
-                    $stmt->execute([$data["nome"], $data["login"], $data["cargo"], $data["telefone"] ?? null, $data["email_contato"] ?? null, $id]);
+                    $stmt->execute([$data["nome"], $data["login"], $data["permissoes"], $data["telefone"] ?? null, $data["email_contato"] ?? null, $id]);
                 }
                 echo json_encode(['message' => 'Usuário atualizado com sucesso!']);
                 exit;
@@ -92,9 +92,9 @@ switch ($method) {
             
             $token = gerarTokenUnico($pdo);
             $hash = password_hash($data['senha'], PASSWORD_DEFAULT);
-            $sql = "INSERT INTO users (nome, login, senha, cargo, status, token_acesso, telefone, email_contato) VALUES (?, ?, ?, ?, 'ativo', ?, ?, ?)";
+            $sql = "INSERT INTO users (nome, login, senha, permissoes, status, token_acesso, telefone, email_contato) VALUES (?, ?, ?, ?, 'ativo', ?, ?, ?)";
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$data["nome"], $data["login"], $hash, $data["cargo"], $token, $data["telefone"] ?? null, $data["email_contato"] ?? null]);
+            $stmt->execute([$data["nome"], $data["login"], $hash, $data["permissoes"], $token, $data["telefone"] ?? null, $data["email_contato"] ?? null]);
             echo json_encode(['message' => 'Usuário criado com sucesso!']);
         }
         break;

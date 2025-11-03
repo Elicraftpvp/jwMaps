@@ -56,14 +56,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const actionButton = isInactive 
                     ? `<button class="btn btn-sm btn-success btn-reactivate" data-id="${u.id}" title="Reativar"><i class="fas fa-undo"></i></button>`
                     : `<button class="btn btn-sm btn-danger btn-delete" data-id="${u.id}" title="Desativar"><i class="fas fa-trash-alt"></i></button>`;
-                const linkButton = u.cargo === 'dirigente' && u.token_acesso
+                // Permissão de Dirigente (bit 1)
+                const isDirigente = (u.permissoes & 1) === 1;
+                const linkButton = isDirigente && u.token_acesso
                     ? `<button class="btn btn-sm btn-info btn-copy-link" data-token="${u.token_acesso}" title="Copiar Link Público"><i class="fas fa-link"></i></button>`
                     : '';
 
                 const row = `<tr class="${rowClass}">
                         <td>${u.nome}</td>
                         <td>${u.login}</td>
-                        <td><span class="badge bg-secondary text-capitalize">${u.cargo}</span></td>
+                        <td><span class="badge bg-secondary">Permissões: ${u.permissoes}</span></td>
                         <td>${statusBadge}</td>
                         <td>
                             ${linkButton}
@@ -83,13 +85,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const user = await response.json();
             document.getElementById('user_nome').value = user.nome;
             document.getElementById("user_login").value = user.login;
-            document.getElementById("user_cargo").value = user.cargo;
+            // user.permissoes é o valor do bitmask. Marcar as checkboxes correspondentes.
+            const permissoesContainer = document.getElementById('user_permissoes_container');
+            permissoesContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                const bit = parseInt(checkbox.value);
+                checkbox.checked = (user.permissoes & bit) === bit;
+            });
             document.getElementById("user_senha").value = '';
             
             
 
             const linkSection = document.getElementById('link-publico-section');
-            if (user.cargo === 'dirigente') {
+            // Permissão de Dirigente (bit 1)
+            if ((user.permissoes & 1) === 1) {
                 const linkInput = document.getElementById('user_public_link');
                 const publicUrl = `${window.location.origin}${window.location.pathname.replace(/\/pages\/.*$/, '')}/backend/vista_publica.php?token=${user.token_acesso}`;
                 linkInput.value = publicUrl;
@@ -110,15 +118,26 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     document.getElementById('salvar-user-btn').addEventListener('click', async () => {
-        const data = {
+        const getPermissoesBitmask = () => {
+                let bitmask = 0;
+                const permissoesContainer = document.getElementById('user_permissoes_container');
+                permissoesContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                    if (checkbox.checked) {
+                        bitmask |= parseInt(checkbox.value);
+                    }
+                });
+                return bitmask;
+            };
+
+            const data = {
             nome: document.getElementById('user_nome').value,
             login: document.getElementById('user_login').value,
-            cargo: document.getElementById('user_cargo').value,
+            permissoes: getPermissoesBitmask(),
             senha: document.getElementById("user_senha").value,
             
             
         };
-        if (!data.nome || !data.login || !data.cargo) { alert('Nome, Login e Cargo são obrigatórios.'); return; }
+        if (!data.nome || !data.login) { alert('Nome e Login são obrigatórios.'); return; }
         if (!editMode && !data.senha) { alert('A senha é obrigatória ao criar um novo usuário.'); return; }
         
         const url = editMode ? `${API_BASE_URL}/dirigentes_api.php?id=${editId}` : `${API_BASE_URL}/dirigentes_api.php`;
