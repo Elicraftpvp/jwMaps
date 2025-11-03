@@ -10,53 +10,52 @@
 </head>
 <body class="iframe-page">
 
-<div class="container-fluid py-3 planilha-container">
+<div class="container-fluid py-3">
     
-    <!-- Tabela Principal: Pós Visita do Super -->
-    <table class="table table-bordered align-middle text-center mb-4">
-        <thead>
-            <tr class="table-light">
-                <th colspan="7" class="planilha-title">Pós Visita do Super</th>
-            </tr>
-            <tr class="table-secondary">
-                <th style="width: 15%;">Quando usar</th>
-                <th style="width: 15%;">Dirigente</th>
-                <th colspan="5">Mapas</th>
-            </tr>
-        </thead>
-        <tbody id="tabela-dirigentes-body">
-            <!-- Linha de carregamento inicial -->
-            <tr>
-                <td colspan="7" class="p-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Carregando...</span>
-                    </div>
-                    <p class="mt-2 mb-0">Carregando dirigentes...</p>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    <!-- Card para Mapas por Dirigente (antiga tabela principal) -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0 fw-bold"><i class="fas fa-user-tie me-2 text-primary"></i>Mapas por Dirigente</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle text-center mb-0 planilha-dirigentes-table">
+                    <thead>
+                        <tr class="table-secondary">
+                            <th style="width: 20%;">Dirigente</th>
+                            <th colspan="4">Mapas</th> <!-- 4 colunas para mapas -->
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-dirigentes-body">
+                        <!-- Linha de carregamento inicial -->
+                        <tr>
+                            <td colspan="5" class="p-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Carregando dirigentes...</span>
+                                </div>
+                                <p class="mt-2 mb-0">Carregando dirigentes...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-    <!-- Tabela Secundária: Outros Mapas Disponíveis -->
-    <table class="table table-bordered align-middle text-center">
-        <thead>
-            <tr class="table-light">
-                <th style="width: 30%;">Quando usar</th>
-                <th colspan="4" class="planilha-title">Outros mapas disponíveis</th>
-            </tr>
-        </thead>
-        <tbody id="tabela-disponiveis-body">
-            <!-- Linha de carregamento inicial -->
-            <tr>
-                <td colspan="5" class="p-5">
-                    <div class="spinner-border text-success" role="status">
-                        <span class="visually-hidden">Carregando...</span>
-                    </div>
-                    <p class="mt-2 mb-0">Carregando mapas disponíveis...</p>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    <!-- Card para Mapas Disponíveis (restaurado) -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0 fw-bold"><i class="fas fa-map-marked-alt me-2 text-success"></i>Mapas Disponíveis</h5>
+        </div>
+        <div class="card-body" id="lista-mapas-disponiveis">
+            <!-- Os mapas disponíveis serão preenchidos dinamicamente -->
+            <div class="text-center p-3">
+                <div class="spinner-border text-success" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
 </div>
 

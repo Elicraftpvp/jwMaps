@@ -279,3 +279,56 @@ body.iframe-page { display: flex; flex-direction: column; }
     font-size: 0.85rem;
     background-color: #f8f9fa;
 }
+
+
+/* Estilos gerais para a tabela de dirigentes */
+.planilha-dirigentes-table {
+    border-color: #dee2e6; /* Bordas mais claras */
+}
+
+.planilha-dirigentes-table th,
+.planilha-dirigentes-table td {
+    border: 1px solid #dee2e6;
+    font-size: 0.95rem; /* Fonte padrão */
+    padding: 0.75rem 0.5rem; /* Mais espaçamento interno */
+}
+
+.planilha-dirigentes-table thead .table-secondary th {
+    background-color: #f8f9fa; /* Fundo mais claro para cabeçalhos */
+    font-weight: bold;
+    color: #333;
+    border-bottom: 2px solid #dee2e6;
+}
+
+/* Alinhamento do texto dentro das células */
+.planilha-dirigentes-table tbody td:first-child {
+    text-align: left; /* Alinha o nome do dirigente à esquerda */
+    font-weight: 500;
+}
+
+/* Estilo de destaque amarelo, como no exemplo */
+.mapa-destaque {
+    background-color: #ffc107 !important;
+    font-weight: bold;
+    color: var(--dark-gray); /* Para garantir contraste com o amarelo */
+}
+
+/* Container para a lista de mapas disponíveis (badge) */
+#lista-mapas-disponiveis {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px; /* Espaçamento entre os badges */
+    padding: 1rem; /* Adicionar padding ao corpo do card */
+}
+
+/* Estilo para cada "badge" de mapa disponível */
+.mapa-disponivel-badge {
+    background-color: #e9f5e7; /* Verde bem claro */
+    color: #2a6e2c; /* Verde escuro para o texto */
+    border: 1px solid #a3d9a3;
+    font-size: 0.9rem;
+    padding: 0.6em 1em;
+    font-weight: 500;
+    border-radius: 0.375rem; /* Borda arredondada */
+}
+
