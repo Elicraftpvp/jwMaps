@@ -8,22 +8,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let editMode = false;
     let editId = null;
 
-    // CORREÇÃO 3: Função para verificar se existem usuários inativos e desabilitar o checkbox se não houver.
     const verificarExistenciaDeInativos = async () => {
         try {
-            // Faz uma chamada para buscar apenas os inativos
             const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?show_inactive=true`);
             const inativos = await response.json();
-
             const label = document.querySelector('label[for="mostrar-inativos-check"]');
-
             if (inativos.length > 0) {
                 mostrarInativosCheck.disabled = false;
                 if(label) label.classList.remove('text-muted');
             } else {
                 mostrarInativosCheck.disabled = true;
                 if(label) label.classList.add('text-muted');
-                // Garante que se não há inativos, a caixa seja desmarcada e os ativos sejam exibidos.
                 if (mostrarInativosCheck.checked) {
                     mostrarInativosCheck.checked = false;
                     carregarUsuarios(); 
@@ -31,11 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error("Erro ao verificar usuários inativos.", error);
-            mostrarInativosCheck.disabled = true; // Desabilita em caso de erro
+            mostrarInativosCheck.disabled = true;
         }
     };
 
-    // CORREÇÃO 2: Simplificada a lógica de carregamento para mostrar ATIVOS OU INATIVOS, mas não ambos.
     const carregarUsuarios = async () => {
         const showInactive = mostrarInativosCheck.checked;
         tableBody.innerHTML = `<tr><td colspan="5" class="text-center"><div class="spinner-border"></div></td></tr>`;
@@ -56,22 +50,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 const actionButton = isInactive 
                     ? `<button class="btn btn-sm btn-success btn-reactivate" data-id="${u.id}" title="Reativar"><i class="fas fa-undo"></i></button>`
                     : `<button class="btn btn-sm btn-danger btn-delete" data-id="${u.id}" title="Desativar"><i class="fas fa-trash-alt"></i></button>`;
-                // Permissão de Dirigente (bit 1)
                 const isDirigente = (u.permissoes & 1) === 1;
                 const linkButton = isDirigente && u.token_acesso
                     ? `<button class="btn btn-sm btn-info btn-copy-link" data-token="${u.token_acesso}" title="Copiar Link Público"><i class="fas fa-link"></i></button>`
                     : '';
 
+                // ▼▼▼ CORREÇÃO AQUI: Voltamos a ter uma <td> para cada coluna, garantindo que o desktop funcione. ▼▼▼
                 const row = `<tr class="${rowClass}">
-                        <td>${u.nome}</td>
-                        <td>${u.login}</td>
-                        <td><span class="badge bg-secondary">Permissões: ${u.permissoes}</span></td>
-                        <td>${statusBadge}</td>
-                        <td>
+                        <td data-label="Nome">${u.nome}</td>
+                        <td data-label="Login">${u.login}</td>
+                        <td data-label="Cargo"><span class="badge bg-secondary">Permissões: ${u.permissoes}</span></td>
+                        <td data-label="Status">${statusBadge}</td>
+                        <td data-label="Ações">
                             ${linkButton}
                             <button class="btn btn-sm btn-warning btn-edit" data-id="${u.id}" title="Editar" ${isInactive ? 'disabled' : ''}><i class="fas fa-edit"></i></button>
                             ${actionButton}
-                        </td></tr>`;
+                        </td>
+                    </tr>`;
+                // ▲▲▲ FIM DA CORREÇÃO ▲▲▲
                 tableBody.innerHTML += row;
             });
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
@@ -79,13 +75,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar usuários.</td></tr>`; }
     };
 
+    // ... (o resto do arquivo JS permanece igual) ...
+
     const prepararEdicao = async (id) => {
         try {
             const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`);
             const user = await response.json();
             document.getElementById('user_nome').value = user.nome;
             document.getElementById("user_login").value = user.login;
-            // user.permissoes é o valor do bitmask. Marcar as checkboxes correspondentes.
             const permissoesContainer = document.getElementById('user_permissoes_container');
             permissoesContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
                 const bit = parseInt(checkbox.value);
@@ -93,10 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             document.getElementById("user_senha").value = '';
             
-            
-
             const linkSection = document.getElementById('link-publico-section');
-            // Permissão de Dirigente (bit 1)
             if ((user.permissoes & 1) === 1) {
                 const linkInput = document.getElementById('user_public_link');
                 const publicUrl = `${window.location.origin}${window.location.pathname.replace(/\/pages\/.*$/, '')}/backend/vista_publica.php?token=${user.token_acesso}`;
@@ -134,8 +128,6 @@ document.addEventListener('DOMContentLoaded', () => {
             login: document.getElementById('user_login').value,
             permissoes: getPermissoesBitmask(),
             senha: document.getElementById("user_senha").value,
-            
-            
         };
         if (!data.nome || !data.login) { alert('Nome e Login são obrigatórios.'); return; }
         if (!editMode && !data.senha) { alert('A senha é obrigatória ao criar um novo usuário.'); return; }
@@ -194,24 +186,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         body: JSON.stringify({ action: 'delete_user' })
                     }); 
                     carregarUsuarios(); 
-                    verificarExistenciaDeInativos(); // Re-verifica após desativar
+                    verificarExistenciaDeInativos();
                 } 
                 catch (error) { alert('Não foi possível desativar.'); }
             }
         } else if (target.classList.contains('btn-reactivate')) {
-            // CORREÇÃO 1: Botão de reativar agora envia um POST direto, sem abrir o modal.
             if (confirm('Reativar este usuário?')) {
                  try {
                     await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        // OBS: Confirme se 'reactivate' é a ação esperada pela sua API
                         body: JSON.stringify({ action: 'reactivate' }) 
                     });
-                    // Mostra a lista de inativos após reativar um (para que ele suma da lista de inativos)
                     if(!mostrarInativosCheck.checked) mostrarInativosCheck.checked = true;
                     carregarUsuarios();
-                    verificarExistenciaDeInativos(); // Re-verifica após reativar
+                    verificarExistenciaDeInativos();
                 } catch (error) {
                     alert('Não foi possível reativar o usuário.');
                 }
@@ -232,7 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     userModalElement.addEventListener('hidden.bs.modal', resetarModal);
     
-    // Carregamento inicial
     carregarUsuarios();
     verificarExistenciaDeInativos();
 });

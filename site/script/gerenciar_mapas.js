@@ -83,13 +83,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (filtroDirigenteId) mapas = mapas.filter(mapa => mapa.dirigente_id == filtroDirigenteId);
             if (filtroRegiao) mapas = mapas.filter(mapa => mapa.regiao === filtroRegiao);
             
-            // ▼▼▼ CORREÇÃO AQUI: Chamadas .toggle() separadas ▼▼▼
             filtroDirigenteBtnIcon.classList.toggle("text-primary", !!filtroDirigenteId);
             filtroDirigenteBtnIcon.classList.toggle("text-secondary", !filtroDirigenteId);
 
             filtroRegiaoBtnIcon.classList.toggle("text-primary", !!filtroRegiao);
             filtroRegiaoBtnIcon.classList.toggle("text-secondary", !filtroRegiao);
-            // ▲▲▲ FIM DA CORREÇÃO ▲▲▲
             
             if (sortOrder === 'asc') {
                 mapas.sort((a, b) => a.identificador.localeCompare(b.identificador, undefined, {numeric: true}));
@@ -99,10 +97,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 mapas.sort((a, b) => a.id - b.id);
             }
 
-            // ▼▼▼ CORREÇÃO AQUI: Chamadas .toggle() separadas ▼▼▼
             filtroOrdenacaoBtnIcon.classList.toggle("text-primary", sortOrder !== 'id');
             filtroOrdenacaoBtnIcon.classList.toggle("text-secondary", sortOrder === 'id');
-            // ▲▲▲ FIM DA CORREÇÃO ▲▲▲
 
             tableBody.innerHTML = '';
             if (mapas.length === 0) {
@@ -126,21 +122,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     diasComDirigenteBadge = `<span class="badge bg-secondary">---</span>`;
                 }
                 const quadraRange = mapa.quadra_inicio && mapa.quadra_fim ? `${mapa.quadra_inicio} - ${mapa.quadra_fim}` : 'N/D';
+                
+                // ▼▼▼ CORREÇÃO AQUI: Separamos "Identificador" e "Status" e adicionamos a classe "card-title-cell" ▼▼▼
                 const row = `<tr>
-                        <td>${mapa.id}</td>
-                        <td>${mapa.identificador}</td>
-                        <td>${mapa.regiao || 'N/D'}</td>
-                        <td>${mapa.tipo || 'N/D'}</td>
-                        <td>${quadraRange}</td>
-                        <td>${status}</td>
-                        <td>${mapa.dirigente_nome || '---'}</td>
-                        <td class="text-center">${diasComDirigenteBadge}</td>
-                        <td>
+                        <td data-label="ID">${mapa.id}</td>
+                        <td data-label="Identificador" class="card-title-cell">${mapa.identificador}</td>
+                        <td data-label="Região">${mapa.regiao || 'N/D'}</td>
+                        <td data-label="Tipo">${mapa.tipo || 'N/D'}</td>
+                        <td data-label="Quadras">${quadraRange}</td>
+                        <td data-label="Status">${status}</td>
+                        <td data-label="Dirigente">${mapa.dirigente_nome || '---'}</td>
+                        <td data-label="Tempo (dias)" class="text-center">${diasComDirigenteBadge}</td>
+                        <td data-label="Ações">
                             ${acaoEntregarResgatar}
                             <button class="btn btn-sm btn-warning btn-edit" data-id="${mapa.id}" title="Editar"><i class="fas fa-pencil-alt"></i></button>
                             <button class="btn btn-sm btn-secondary btn-history" data-id="${mapa.id}" data-identificador="${mapa.identificador}" title="Ver Histórico"><i class="fas fa-history"></i></button>
                             <button class="btn btn-sm btn-danger btn-delete" data-id="${mapa.id}" title="Excluir"><i class="fas fa-trash"></i></button>
-                        </td></tr>`;
+                        </td>
+                    </tr>`;
+                // ▲▲▲ FIM DA CORREÇÃO ▲▲▲
                 tableBody.innerHTML += row;
             });
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
@@ -151,6 +151,8 @@ document.addEventListener('DOMContentLoaded', () => {
             tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger"><b>Erro ao carregar mapas.</b><br><small>Verifique o console (F12) para detalhes técnicos.</small></td></tr>`; 
         }
     };
+    
+    // ... (o resto do arquivo JS permanece igual) ...
     
     const prepararEdicao = async (id) => {
         try {

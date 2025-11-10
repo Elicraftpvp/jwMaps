@@ -449,3 +449,101 @@ body.iframe-page { display: flex; flex-direction: column; }
     gap: 10px;
     padding: 1rem;
 }
+
+/* ================================================================== */
+/* === NOVOS ESTILOS PARA VISUALIZAÇÃO MOBILE === */
+/* ================================================================== */
+
+@media (max-width: 767.98px) {
+    /* Esconde o cabeçalho da tabela em telas pequenas */
+    .table-responsive-cards thead {
+        display: none;
+    }
+
+    /* Transforma a tabela em um layout de cards */
+    .table-responsive-cards,
+    .table-responsive-cards tbody,
+    .table-responsive-cards tr,
+    .table-responsive-cards td {
+        display: block;
+        width: 100%;
+    }
+
+    .table-responsive-cards tr {
+        margin-bottom: 1rem;
+        border: 1px solid #dee2e6;
+        border-radius: .375rem;
+        background-color: #fff;
+    }
+    
+    .table-responsive-cards td {
+        padding: 0.75rem 1rem;
+        border: none;
+        border-bottom: 1px solid #e9ecef;
+        text-align: right; /* Alinha o conteúdo à direita */
+        position: relative;
+        min-height: 45px; /* Altura mínima para melhor toque */
+    }
+
+    .table-responsive-cards tr td:last-child {
+        border-bottom: 0;
+    }
+    
+    /* Adiciona o label (título da coluna) antes do conteúdo da célula */
+    .table-responsive-cards td:before {
+        content: attr(data-label); /* Pega o texto do atributo data-label */
+        position: absolute;
+        left: 1rem;
+        font-weight: bold;
+        text-align: left;
+        color: #495057;
+    }
+
+    /* Célula de ações com botões maiores e centralizados */
+    .table-responsive-cards td[data-label="Ações"] {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        gap: 10px;
+    }
+    .table-responsive-cards td[data-label="Ações"]::before {
+        display: none; /* Esconde o label "Ações:" */
+    }
+    .table-responsive-cards td[data-label="Ações"] .btn {
+        flex-grow: 1; /* Faz os botões ocuparem o espaço */
+        font-size: 1.1rem; /* Ícones maiores */
+    }
+
+    /* Ajustes específicos para as páginas */
+    .card-header-icon {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .card-header-icon .d-flex {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    /* Estilos para o card principal do mapa */
+    .mapa-card-header, .user-card-header {
+      padding-bottom: 0.5rem !important;
+      border-bottom: 0 !important;
+      text-align: left !important;
+    }
+    
+    .mapa-card-header strong, .user-card-header strong {
+      font-size: 1.2rem;
+      color: var(--dark-gray);
+    }
+    
+    .mapa-card-header .badge, .user-card-header .badge {
+      font-size: 0.9rem;
+      position: absolute;
+      top: 0.75rem;
+      right: 1rem;
+    }
+}

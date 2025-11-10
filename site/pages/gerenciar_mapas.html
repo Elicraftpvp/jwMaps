@@ -13,11 +13,15 @@
         <div class="card shadow-sm">
             <div class="card-header card-header-icon">
                 <h4 class="mb-0"><i class="fas fa-map card-title-icon"></i> Gerenciar Mapas</h4>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#mapaModal"><i class="fas fa-plus-circle me-2"></i> Adicionar Mapa</button>
+                <div class="d-flex align-items-center gap-2">
+                    <!-- Filtros aqui se necessário no futuro -->
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#mapaModal"><i class="fas fa-plus-circle me-2"></i> Adicionar Mapa</button>
+                </div>
             </div>
             <div class="card-body">
+                <!-- ▼▼▼ MUDANÇA: Adicionada classe "table-responsive-cards" ▼▼▼ -->
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle">
+                    <table class="table table-hover align-middle table-responsive-cards">
                         <thead class="table-light">
                             <tr>
                                 <th>ID</th>
@@ -177,10 +181,8 @@
         </div>
     </div>
 
-    <!-- ▼▼▼ MUDANÇA AQUI: Adicionado o atributo 'defer' ▼▼▼ -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
     <script src="../script/common.js" defer></script>
     <script src="../script/gerenciar_mapas.js" defer></script>
-    <!-- ▲▲▲ FIM DA MUDANÇA ▲▲▲ -->
 </body>
 </html>
