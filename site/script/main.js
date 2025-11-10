@@ -29,16 +29,26 @@ document.addEventListener('DOMContentLoaded', () => {
             { href: 'pages/dashboard.html', icon: 'fas fa-tachometer-alt', text: 'Dashboard', active: true },
             { href: 'pages/gerenciar_mapas.html', icon: 'fas fa-map', text: 'Gerenciar Mapas' },
             { href: 'pages/dirigentes.html', icon: 'fas fa-users', text: 'Gerenciar Dirigentes' },
+            // MODIFICAÇÃO: Adicionado "Meus Mapas" para o Admin
             { href: 'backend/vista_dirigente.php', icon: 'fas fa-id-card', text: 'Meus Mapas' },
             { href: 'pages/controle.html', icon: 'fas fa-history', text: 'Controle' }
         ];
-    } 
+    }
     // Para todos os outros usuários, construímos o menu adicionando os itens de cada permissão
     else {
         // PERMISSÃO MÍNIMA: Dirigente (1)
         if ((userPermissoes & PERM_DIRIGENTE) === PERM_DIRIGENTE) {
             hasAccess = true;
             menuItems.push({ href: 'backend/vista_dirigente.php', icon: 'fas fa-id-card', text: 'Meus Mapas' });
+        }
+
+        // MODIFICAÇÃO: Nova permissão para Publicador ver "Meus Mapas"
+        if ((userPermissoes & PERM_PUBLICADOR) === PERM_PUBLICADOR) {
+            hasAccess = true;
+            // Adiciona "Meus Mapas" apenas se ainda não existir (evita duplicar com a permissão de Dirigente)
+            if (!menuItems.some(item => item.href.includes('vista_dirigente'))) {
+                menuItems.push({ href: 'backend/vista_dirigente.php', icon: 'fas fa-id-card', text: 'Meus Mapas' });
+            }
         }
 
         // PERMISSÃO MÉDIA: Campanha (16)
@@ -59,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 4. Bloqueia acesso se nenhuma permissão válida foi encontrada (Carrinho/Publicador)
+    // 4. Bloqueia acesso se nenhuma permissão válida foi encontrada (apenas Carrinho, por exemplo)
     if (!hasAccess) {
         alert('Você não tem permissão para acessar o sistema.');
         sessionStorage.removeItem('user');
