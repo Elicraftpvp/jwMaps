@@ -1,15 +1,19 @@
 <?php
 // site/backend/vista_dirigente.php
+session_start(); // INICIA A SESSÃO para saber quem está logado
+
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 require_once 'conexao.php';
 
-// 1. Pega o ID diretamente da URL.
-$dirigente_id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-if (!$dirigente_id) {
-    die("<h1>ERRO</h1><p>É necessário especificar o ID de um dirigente na URL. Exemplo: <code>vista_dirigente.php?id=1</code></p>");
+// 1. Pega o ID do dirigente da SESSÃO. Agora ele sabe quem está logado.
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(401);
+    die("<h1>Acesso Negado</h1><p>Você precisa estar logado para ver esta página.</p>");
 }
+$dirigente_id = $_SESSION['user_id'];
+
 
 try {
     // 2. Busca o nome do dirigente para mostrar no título.
@@ -21,17 +25,17 @@ try {
         die("<h1>Dirigente com ID $dirigente_id não encontrado.</h1>");
     }
     
-    // 3. Busca os mapas, INCLUINDO o gdrive_file_id.
+    // 3. Busca os mapas do dirigente logado
     $stmt_mapas = $pdo->prepare(
         "SELECT id, identificador, data_entrega, gdrive_file_id 
          FROM mapas 
-         WHERE dirigente_id = ? AND data_devolucao IS NULL 
+         WHERE dirigente_id = ? 
          ORDER BY identificador ASC"
     );
     $stmt_mapas->execute([$dirigente_id]);
     $mapas = $stmt_mapas->fetchAll(PDO::FETCH_ASSOC);
 
-    // 4. Busca todas as quadras para os mapas encontrados.
+    // 4. Busca todas as quadras para os mapas encontrados (lógica inalterada)
     $quadras_por_mapa = [];
     if (!empty($mapas)) {
         $mapa_ids = array_column($mapas, 'id');

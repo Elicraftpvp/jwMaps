@@ -52,8 +52,12 @@ try {
 function handle_get($pdo, $id, $recurso) {
     try {
         if ($recurso === 'dirigentes') {
-            $stmt = $pdo->query("SELECT id, nome FROM users WHERE cargo = 'dirigente' AND status = 'ativo' ORDER BY nome");
-            echo json_encode($stmt->fetchAll());
+            // ▼▼▼ CORREÇÃO AQUI ▼▼▼
+            // Trocamos a verificação de 'cargo' pela verificação de 'permissoes'.
+            // A operação (permissoes & 1) = 1 checa se o primeiro bit (que representa o "dirigente") está ativo.
+            $stmt = $pdo->query("SELECT id, nome FROM users WHERE (permissoes & 1) = 1 AND status = 'ativo' ORDER BY nome");
+            // ▲▲▲ FIM DA CORREÇÃO ▲▲▲
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
             return;
         }
 
@@ -65,20 +69,20 @@ function handle_get($pdo, $id, $recurso) {
                     ORDER BY h.data_devolucao DESC, h.id DESC";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$id]);
-            echo json_encode($stmt->fetchAll());
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
             return;
         }
 
         if ($id) {
             $stmt = $pdo->prepare("SELECT id, identificador, quadra_inicio, quadra_fim, regiao, tipo FROM mapas WHERE id = ?");
             $stmt->execute([$id]);
-            echo json_encode($stmt->fetch());
+            echo json_encode($stmt->fetch(PDO::FETCH_ASSOC));
         } else {
             $sql = "SELECT m.id, m.identificador, m.quadra_inicio, m.quadra_fim, m.regiao, m.tipo, m.dirigente_id, m.data_entrega, u.nome as dirigente_nome,
                     DATEDIFF(CURDATE(), m.data_entrega) as dias_com_dirigente
                     FROM mapas m LEFT JOIN users u ON m.dirigente_id = u.id ORDER BY m.id";
             $stmt = $pdo->query($sql);
-            echo json_encode($stmt->fetchAll());
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
         }
     } catch (PDOException $e) {
         throw new Exception('Erro no Banco de Dados: ' . $e->getMessage(), 500);
@@ -152,7 +156,6 @@ function handle_post_unified($pdo) {
                 echo json_encode(['message' => 'Mapa resgatado e disponível novamente.']);
                 break;
 
-            // ▼▼▼ AÇÃO RESTAURADA: Devolve um mapa (usado pela vista_publica.php) ▼▼▼
             case 'devolver':
                 if (empty($data['mapa_id']) || empty($data['data_devolucao'])) throw new Exception('Dados insuficientes para devolução.', 400);
                 $pdo->beginTransaction();
@@ -175,7 +178,6 @@ function handle_post_unified($pdo) {
                 echo json_encode(['message' => 'Mapa devolvido e registrado no histórico com sucesso!']);
                 break;
             
-            // ▼▼▼ AÇÃO RESTAURADA: Atualiza o contador de uma única quadra (usado pela vista_publica.php) ▼▼▼
             case 'update_quadra':
                 if (!isset($data['quadra_id']) || !isset($data['pessoas_faladas'])) throw new Exception('Dados insuficientes para atualizar quadra.', 400);
                 $sql = "UPDATE quadras SET pessoas_faladas = ? WHERE id = ?";

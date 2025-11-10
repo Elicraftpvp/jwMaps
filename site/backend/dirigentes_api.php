@@ -18,7 +18,6 @@ function gerarTokenUnico($pdo) {
 
 switch ($method) {
     case 'GET':
-        // ... (nenhuma mudança necessária aqui, mantive para contexto)
         $show_inactive = $_GET['show_inactive'] ?? 'false';
         $whereClause = ($show_inactive === 'true') ? '' : "WHERE status = 'ativo'";
         if ($id) {
@@ -55,7 +54,6 @@ switch ($method) {
                 echo json_encode(['message' => 'Usuário desativado com sucesso!']);
             
             } elseif ($action === 'update') {
-                // ... (verificações iniciais sem mudança)
                 $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE login = ? AND id != ?");
                 $stmt->execute([$data['login'], $id]);
                 if ($stmt->fetchColumn() > 0) {
@@ -64,7 +62,6 @@ switch ($method) {
                     exit;
                 }
                 
-                // --- INÍCIO DA CORREÇÃO ---
                 $is_dirigente = ($data["permissoes"] & 1) === 1;
                 $token_update_sql = '';
                 $params_token = [];
@@ -74,7 +71,7 @@ switch ($method) {
                     $stmt_check->execute([$id]);
                     if (empty($stmt_check->fetchColumn())) {
                         $token_update_sql = ", token_acesso = ?";
-                        $params_token[] = gerarTokenUnico($pdo); // Adiciona o novo token ao array de parâmetros do token
+                        $params_token[] = gerarTokenUnico($pdo);
                     }
                 } else {
                     $token_update_sql = ", token_acesso = NULL";
@@ -89,12 +86,10 @@ switch ($method) {
                     $params_base = [$data["nome"], $data["login"], $data["permissoes"], $data["telefone"] ?? null, $data["email_contato"] ?? null];
                 }
                 
-                // Junta os parâmetros base, os parâmetros do token (se houver) e o ID final
                 $params = array_merge($params_base, $params_token, [$id]);
                 
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute($params);
-                // --- FIM DA CORREÇÃO ---
                 
                 echo json_encode(['message' => 'Usuário atualizado com sucesso!']);
             
@@ -102,20 +97,21 @@ switch ($method) {
                 http_response_code(400);
                 echo json_encode(['message' => 'Ação de processamento inválida.']);
             }
-        } else {
-            // ... (lógica de CREATE sem mudanças)
+        } else { // LÓGICA DE CREATE
             if (empty($data['senha'])) { http_response_code(400); echo json_encode(['message' => 'Senha é obrigatória para novos usuários.']); exit; }
             $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE login = ?");
             $stmt->execute([$data['login']]);
             if ($stmt->fetchColumn() > 0) { http_response_code(409); echo json_encode(['message' => 'Este login já está em uso.']); exit; }
             
             $hash = password_hash($data['senha'], PASSWORD_DEFAULT);
+            // Gera token apenas se a permissão de dirigente (bit 1) estiver ativa
             $token_to_save = (($data["permissoes"] & 1) === 1) ? gerarTokenUnico($pdo) : null;
             
-            $sql = "INSERT INTO users (nome, login, senha, permissoes, status, token_acesso, telefone, email_contato) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            // Query de inserção sem a coluna 'cargo'
+            $sql = "INSERT INTO users (nome, login, senha, permissoes, status, token_acesso, telefone, email_contato) VALUES (?, ?, ?, ?, 'ativo', ?, ?, ?)";
             $stmt = $pdo->prepare($sql);
             
-            $params = [$data["nome"], $data["login"], $hash, $data["permissoes"], 'ativo', $token_to_save, $data["telefone"] ?? null, $data["email_contato"] ?? null];
+            $params = [$data["nome"], $data["login"], $hash, $data["permissoes"], $token_to_save, $data["telefone"] ?? null, $data["email_contato"] ?? null];
             
             $stmt->execute($params);
             
