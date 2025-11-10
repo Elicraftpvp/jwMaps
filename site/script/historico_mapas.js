@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tableBody.innerHTML = `<tr><td colspan="5" class="text-center"><div class="spinner-border"></div> Carregando...</td></tr>`;
         
         try {
-            const response = await fetch(`${API_BASE_URL}/historico_api.php?periodo=${periodo}`);
+            const response = await fetch(`${API_BASE_URL_CONTROLE}/historico_mapas_api.php?periodo=${periodo}`);
             
             if (!response.ok) {
                 throw new Error(`Erro ${response.status}: ${response.statusText}`);
