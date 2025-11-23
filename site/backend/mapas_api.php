@@ -1,7 +1,7 @@
 <?php
 // site/backend/mapas_api.php
 
-// MODO DE DEPURAÇÃO: Garante que qualquer erro no PHP seja reportado.
+// MODO DE DEPURAÇÃO
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -23,7 +23,6 @@ if ($method == 'OPTIONS') {
 $id = $_GET['id'] ?? null;
 $recurso = $_GET['recurso'] ?? null;
 
-// Roteador principal
 try {
     switch ($method) {
         case 'GET':
@@ -48,15 +47,11 @@ try {
     ]);
 }
 
-
 function handle_get($pdo, $id, $recurso) {
     try {
         if ($recurso === 'dirigentes') {
-            // ▼▼▼ CORREÇÃO AQUI ▼▼▼
-            // Trocamos a verificação de 'cargo' pela verificação de 'permissoes'.
-            // A operação (permissoes & 1) = 1 checa se o primeiro bit (que representa o "dirigente") está ativo.
+            // Lista apenas usuários com permissão de dirigente (bit 1 ativo)
             $stmt = $pdo->query("SELECT id, nome FROM users WHERE (permissoes & 1) = 1 AND status = 'ativo' ORDER BY nome");
-            // ▲▲▲ FIM DA CORREÇÃO ▲▲▲
             echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
             return;
         }
@@ -126,50 +121,115 @@ function handle_post_unified($pdo) {
                 echo json_encode(['message' => 'Mapa atualizado com sucesso!']);
                 break;
 
+            // =======================================================
+            // CORREÇÃO PRINCIPAL: LOGICA DE TRANSFERÊNCIA DE MAPAS
+            // =======================================================
             case 'entregar':
-                if (empty($data['mapa_id']) || empty($data['dirigente_id']) || empty($data['data_entrega'])) throw new Exception('Dados insuficientes para entregar.', 400);
-                $sql = "UPDATE mapas SET dirigente_id = ?, data_entrega = ?, data_devolucao = NULL WHERE id = ?";
-                $pdo->prepare($sql)->execute([$data['dirigente_id'], $data['data_entrega'], $data['mapa_id']]);
-                echo json_encode(['message' => 'Mapa entregue com sucesso!']);
+                if (empty($data['mapa_id']) || empty($data['dirigente_id']) || empty($data['data_entrega'])) {
+                    throw new Exception('Dados insuficientes para entregar.', 400);
+                }
+
+                $pdo->beginTransaction();
+
+                // 1. Verificar se alguém JÁ tem esse mapa (Dirigente Anterior)
+                $stmt_check = $pdo->prepare("SELECT dirigente_id, data_entrega FROM mapas WHERE id = ?");
+                $stmt_check->execute([$data['mapa_id']]);
+                $mapa_atual = $stmt_check->fetch(PDO::FETCH_ASSOC);
+
+                // Se existe dirigente anterior e é diferente do novo (Transferência)
+                if ($mapa_atual && !empty($mapa_atual['dirigente_id']) && $mapa_atual['dirigente_id'] != $data['dirigente_id']) {
+                    
+                    // a) Pega o progresso atual das quadras (Snapshot)
+                    $stmt_quadras = $pdo->prepare("SELECT numero, pessoas_faladas FROM quadras WHERE mapa_id = ?");
+                    $stmt_quadras->execute([$data['mapa_id']]);
+                    $quadras_data = $stmt_quadras->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    $total_faladas = array_sum(array_column($quadras_data, 'pessoas_faladas'));
+                    $dados_quadras_json = json_encode($quadras_data);
+                    
+                    // b) Data de devolução para o histórico é HOJE (data da transferência)
+                    $data_devolucao_hist = date('Y-m-d');
+
+                    // c) Salva no histórico que o dirigente anterior "devolveu" hoje
+                    $sql_hist = "INSERT INTO historico_mapas 
+                                (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_quadras) 
+                                VALUES (?, ?, ?, ?, ?, ?)";
+                    
+                    $pdo->prepare($sql_hist)->execute([
+                        $data['mapa_id'], 
+                        $mapa_atual['dirigente_id'], // O antigo dono
+                        $mapa_atual['data_entrega'], // Quando ele pegou
+                        $data_devolucao_hist,        // Quando ele largou (hoje)
+                        $total_faladas, 
+                        $dados_quadras_json
+                    ]);
+                    
+                    // OBS: NÂO zeramos as quadras na transferência direta entre dirigentes.
+                }
+
+                // 2. Atualiza o mapa para o NOVO dirigente
+                $sql_update = "UPDATE mapas SET dirigente_id = ?, data_entrega = ?, data_devolucao = NULL WHERE id = ?";
+                $pdo->prepare($sql_update)->execute([$data['dirigente_id'], $data['data_entrega'], $data['mapa_id']]);
+                
+                $pdo->commit();
+                echo json_encode(['message' => 'Mapa entregue/transferido com sucesso!']);
                 break;
 
             case 'resgatar':
+                // Dirigente -> Disponível
                 if (empty($data['mapa_id'])) throw new Exception('ID do mapa não fornecido para resgatar.', 400);
+                
                 $pdo->beginTransaction();
+                
                 $stmt_mapa = $pdo->prepare("SELECT dirigente_id, data_entrega FROM mapas WHERE id = ?");
                 $stmt_mapa->execute([$data['mapa_id']]);
-                $mapa_atual = $stmt_mapa->fetch();
-                if (!$mapa_atual || empty($mapa_atual['dirigente_id'])) throw new Exception("Mapa não encontrado ou não está em uso.", 404);
-                $stmt_quadras = $pdo->prepare("SELECT numero, pessoas_faladas FROM quadras WHERE mapa_id = ?");
-                $stmt_quadras->execute([$data['mapa_id']]);
-                $quadras_data = $stmt_quadras->fetchAll();
-                $total_faladas = array_sum(array_column($quadras_data, 'pessoas_faladas'));
-                $dados_quadras_json = json_encode($quadras_data);
-                $data_devolucao_hoje = date('Y-m-d');
-                $sql_hist = "INSERT INTO historico_mapas (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_quadras) VALUES (?, ?, ?, ?, ?, ?)";
-                $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['data_entrega'], $data_devolucao_hoje, $total_faladas, $dados_quadras_json]);
+                $mapa_atual = $stmt_mapa->fetch(PDO::FETCH_ASSOC);
+
+                // Só cria histórico se realmente estava com alguém
+                if ($mapa_atual && !empty($mapa_atual['dirigente_id'])) {
+                    $stmt_quadras = $pdo->prepare("SELECT numero, pessoas_faladas FROM quadras WHERE mapa_id = ?");
+                    $stmt_quadras->execute([$data['mapa_id']]);
+                    $quadras_data = $stmt_quadras->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    $total_faladas = array_sum(array_column($quadras_data, 'pessoas_faladas'));
+                    $dados_quadras_json = json_encode($quadras_data);
+                    
+                    $data_devolucao_hoje = date('Y-m-d');
+                    
+                    $sql_hist = "INSERT INTO historico_mapas (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_quadras) VALUES (?, ?, ?, ?, ?, ?)";
+                    $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['data_entrega'], $data_devolucao_hoje, $total_faladas, $dados_quadras_json]);
+                }
+
+                // Reseta mapa e quadras (Regra: ao voltar para disponíveis, zera tudo)
                 $sql_reset = "UPDATE mapas SET dirigente_id = NULL, data_entrega = NULL, data_devolucao = NULL WHERE id = ?";
                 $pdo->prepare($sql_reset)->execute([$data['mapa_id']]);
+                
                 $sql_reset_quadras = "UPDATE quadras SET pessoas_faladas = 0 WHERE mapa_id = ?";
                 $pdo->prepare($sql_reset_quadras)->execute([$data['mapa_id']]);
+                
                 $pdo->commit();
                 echo json_encode(['message' => 'Mapa resgatado e disponível novamente.']);
                 break;
 
             case 'devolver':
+                // Devolução Manual (geralmente usada em modais, similar ao resgatar mas com data customizada)
                 if (empty($data['mapa_id']) || empty($data['data_devolucao'])) throw new Exception('Dados insuficientes para devolução.', 400);
                 $pdo->beginTransaction();
                 $stmt_mapa = $pdo->prepare("SELECT dirigente_id, data_entrega FROM mapas WHERE id = ?");
                 $stmt_mapa->execute([$data['mapa_id']]);
-                $mapa_atual = $stmt_mapa->fetch();
+                $mapa_atual = $stmt_mapa->fetch(PDO::FETCH_ASSOC);
+                
                 if (!$mapa_atual) throw new Exception("Mapa não encontrado.");
+                
                 $stmt_quadras = $pdo->prepare("SELECT numero, pessoas_faladas FROM quadras WHERE mapa_id = ?");
                 $stmt_quadras->execute([$data['mapa_id']]);
-                $quadras_data = $stmt_quadras->fetchAll();
+                $quadras_data = $stmt_quadras->fetchAll(PDO::FETCH_ASSOC);
                 $total_faladas = array_sum(array_column($quadras_data, 'pessoas_faladas'));
                 $dados_quadras_json = json_encode($quadras_data);
+                
                 $sql_hist = "INSERT INTO historico_mapas (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_quadras) VALUES (?, ?, ?, ?, ?, ?)";
                 $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['data_entrega'], $data['data_devolucao'], $total_faladas, $dados_quadras_json]);
+                
                 $sql_reset = "UPDATE mapas SET dirigente_id = NULL, data_entrega = NULL, data_devolucao = NULL WHERE id = ?";
                 $pdo->prepare($sql_reset)->execute([$data['mapa_id']]);
                 $sql_reset_quadras = "UPDATE quadras SET pessoas_faladas = 0 WHERE mapa_id = ?";
