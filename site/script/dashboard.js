@@ -13,10 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const countEmUso = document.getElementById('count-em-uso');
     const countDirigentes = document.getElementById('count-dirigentes');
 
-    // --- INÍCIO DA MODIFICAÇÃO ---
-    // Flag para controlar se algum mapa atrasado foi encontrado durante o loop
-    let foramEncontradosMapasAtrasados = false;
-    // --- FIM DA MODIFICAÇÃO ---
+    // --- VARIÁVEIS GLOBAIS PARA O AGRUPAMENTO (NOVO ESTILO) ---
+    let mapasAgrupadosPorDirigente = {};
+    let totalAtrasados = 0;
 
     // Função principal que inicializa o dashboard
     const initDashboard = () => {
@@ -64,17 +63,18 @@ document.addEventListener('DOMContentLoaded', () => {
         dirigenteView.classList.add('d-none');
         carregarListasAdmin();
 
-        // --- INÍCIO DA MODIFICAÇÃO ---
-        // Reseta o estado e inicia o loop de carregamento automático dos mapas atrasados
-        foramEncontradosMapasAtrasados = false;
+        // --- INÍCIO DA MODIFICAÇÃO: Resetando variáveis do novo estilo ---
+        mapasAgrupadosPorDirigente = {};
+        totalAtrasados = 0;
+        
         const listaMapasEmUso = document.getElementById('lista-mapas-em-uso');
-        listaMapasEmUso.innerHTML = '<li class="list-group-item text-center"><div class="spinner-border spinner-border-sm"></div> Carregando...</li>';
-        carregarMapasAtrasadosAdmin(1); // Inicia o processo na página 1
+        listaMapasEmUso.innerHTML = '<li class="list-group-item text-center"><div class="spinner-border spinner-border-sm"></div> Carregando mapas em uso...</li>';
+        
+        carregarMapasAtrasadosAdmin(1); // Inicia o processo recursivo
         // --- FIM DA MODIFICAÇÃO ---
     };
 
     const carregarListasAdmin = async () => {
-        // (Esta função permanece a mesma, carrega "Entregues Recentemente" e "Devolvidos Recentemente")
         const listaMapasRecentes = document.getElementById('lista-mapas-recentes');
         const listaHistoricoRecente = document.getElementById('lista-historico-recente');
         listaMapasRecentes.innerHTML = '<li class="list-group-item text-center"><div class="spinner-border spinner-border-sm"></div></li>';
@@ -110,56 +110,107 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    // --- INÍCIO DA MODIFICAÇÃO ---
-    // Nova função recursiva que busca TODAS as páginas de mapas em uso e filtra os atrasados
+    // --- INÍCIO DA MODIFICAÇÃO: FUNÇÕES DE AGRUPAMENTO E RENDERIZAÇÃO ---
+    
+    // Função auxiliar para desenhar o HTML agrupado (Estilo Solicitado)
+    const renderizarMapasAgrupados = (elementoLista) => {
+        elementoLista.innerHTML = '';
+        
+        if (Object.keys(mapasAgrupadosPorDirigente).length === 0) {
+            elementoLista.innerHTML = '<li class="list-group-item text-center text-muted p-3">Nenhum mapa em uso há mais de 30 dias.</li>';
+            return;
+        }
+
+        for (const dirigente in mapasAgrupadosPorDirigente) {
+            const mapas = mapasAgrupadosPorDirigente[dirigente];
+            
+            // Gera a sub-lista de mapas
+            const listaDeMapasHtml = mapas.map(mapa => 
+                `<li>
+                    <small>
+                        Mapa ${mapa.identificador}: com o dirigente há <strong class="text-danger">${mapa.dias} dias</strong>
+                    </small>
+                 </li>`
+            ).join('');
+
+            // Gera o item principal do dirigente
+            const itemHtml = `
+                <li class="list-group-item">
+                    <strong>${dirigente}</strong> (${mapas.length} mapa${mapas.length > 1 ? 's' : ''})
+                    <ul class="list-unstyled mt-2 mb-0 pl-3" style="padding-left: 15px; border-left: 2px solid #eee;">
+                        ${listaDeMapasHtml}
+                    </ul>
+                </li>
+            `;
+            elementoLista.innerHTML += itemHtml;
+        }
+    };
+
+    // Função recursiva atualizada com lógica de agrupamento
     const carregarMapasAtrasadosAdmin = async (page = 1) => {
         const listaMapasEmUso = document.getElementById('lista-mapas-em-uso');
         
         try {
-            // Usa a API de mapas em uso, com um limite de 5 por página para não sobrecarregar
             const response = await fetch(`${API_BASE_URL}/mapas_em_uso_api.php?page=${page}&limit=5`);
             if (!response.ok) throw new Error('API de mapas em uso falhou.');
             const result = await response.json();
 
-            // Limpa o spinner na primeira chamada bem-sucedida
+            // Limpa o spinner inicial apenas na primeira página
             if (page === 1) {
                 listaMapasEmUso.innerHTML = '';
             }
 
-            if (result.data && result.data.length > 0) {
-                result.data.forEach(mapa => {
-                    const dias = Math.floor((new Date(result.serverDate) - new Date(mapa.data_entrega)) / (1000 * 60 * 60 * 24));
-                    
-                    // Apenas adiciona à lista se o mapa tiver 30 dias ou mais
-                    if (dias >= 30) {
-                        foramEncontradosMapasAtrasados = true; // Marca que encontramos pelo menos um
-                        listaMapasEmUso.innerHTML += `
-                            <li class="list-group-item">
-                                <strong>${mapa.identificador}</strong> com ${mapa.dirigente_nome}
-                                <br>
-                                <small class="text-danger"><strong>Em uso há ${dias} dias</strong></small>
-                            </li>`;
-                    }
-                });
+            const mapasDaPagina = result.data || [];
+            
+            // Data do servidor para cálculo preciso
+            const dataServidor = new Date(result.serverDate + 'T00:00:00');
+            const umDiaEmMs = 24 * 60 * 60 * 1000;
+            let encontrouAtrasadoNestaPagina = false;
 
-                // Se a página atual for menor que o total de páginas, chama a próxima página
-                if (result.page < result.totalPages) {
-                    carregarMapasAtrasadosAdmin(result.page + 1);
-                } else {
-                    // Chegou na última página, verifica se algum mapa foi adicionado
-                    if (!foramEncontradosMapasAtrasados) {
-                        listaMapasEmUso.innerHTML = '<li class="list-group-item text-muted text-center">Nenhum mapa em uso há mais de 30 dias.</li>';
+            mapasDaPagina.forEach(mapa => {
+                if (!mapa.data_entrega) return;
+
+                const dataEntrega = new Date(mapa.data_entrega + 'T00:00:00');
+                const diferencaEmMs = dataServidor.getTime() - dataEntrega.getTime();
+                const diasDeDiferenca = Math.floor(diferencaEmMs / umDiaEmMs);
+
+                // Filtra apenas 30 dias ou mais
+                if (diasDeDiferenca >= 30) {
+                    encontrouAtrasadoNestaPagina = true;
+                    totalAtrasados++;
+                    const dirigente = mapa.dirigente_nome || 'Desconhecido';
+
+                    if (!mapasAgrupadosPorDirigente[dirigente]) {
+                        mapasAgrupadosPorDirigente[dirigente] = [];
                     }
+
+                    // Adiciona ao objeto de agrupamento
+                    mapasAgrupadosPorDirigente[dirigente].push({
+                        identificador: mapa.identificador,
+                        dias: diasDeDiferenca 
+                    });
                 }
+            });
+
+            // Renderiza o que temos até agora se encontrou algo novo ou se for a primeira página vazia
+            if (encontrouAtrasadoNestaPagina || (page === 1 && totalAtrasados === 0)) {
+                renderizarMapasAgrupados(listaMapasEmUso);
+            }
+
+            // Verifica se há próxima página
+            if (result.page < result.totalPages) {
+                // Pequeno delay para não travar a UI
+                setTimeout(() => carregarMapasAtrasadosAdmin(result.page + 1), 100);
             } else {
-                 // Se a primeira página já veio vazia
-                if (page === 1) {
-                    listaMapasEmUso.innerHTML = '<li class="list-group-item text-muted text-center">Nenhum mapa em uso no momento.</li>';
+                // Fim da recursão: garante renderização final
+                if (totalAtrasados === 0) {
+                    renderizarMapasAgrupados(listaMapasEmUso);
                 }
             }
+
         } catch (error) {
             console.error("Erro ao carregar mapas atrasados:", error);
-            listaMapasEmUso.innerHTML = '<li class="list-group-item text-danger text-center">Erro ao carregar.</li>';
+            listaMapasEmUso.innerHTML = '<li class="list-group-item text-danger text-center">Erro ao carregar mapas em uso.</li>';
         }
     };
     // --- FIM DA MODIFICAÇÃO ---
@@ -172,7 +223,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const carregarMapasDirigente = async () => {
-        // (Esta função permanece a mesma)
         const listaMeusMapas = document.getElementById('lista-meus-mapas');
         listaMeusMapas.innerHTML = '<li class="list-group-item text-center"><div class="spinner-border spinner-border-sm"></div></li>';
         
