@@ -15,15 +15,27 @@
             <div class="card-header card-header-icon">
                 <h4 class="mb-0"><i class="fas fa-users-cog card-title-icon"></i> Gerenciar Usuários</h4>
                 <div class="d-flex align-items-center">
-                    <div class="form-check form-switch me-3"><input class="form-check-input" type="checkbox" role="switch" id="mostrar-inativos-check"><label class="form-check-label" for="mostrar-inativos-check">Mostrar desativados</label></div>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal"><i class="fas fa-plus-circle me-2"></i> Adicionar Usuário</button>
+                    <div class="form-check form-switch me-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="mostrar-inativos-check">
+                        <label class="form-check-label" for="mostrar-inativos-check">Mostrar desativados</label>
+                    </div>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal">
+                        <i class="fas fa-plus-circle me-2"></i> Adicionar Usuário
+                    </button>
                 </div>
             </div>
             <div class="card-body">
-                <!-- ▼▼▼ MUDANÇA: Adicionada classe "table-responsive-cards" ▼▼▼ -->
                 <div class="table-responsive">
                     <table class="table table-hover align-middle table-responsive-cards">
-                        <thead class="table-light"><tr><th>Nome</th><th>Login</th><th>Cargo</th><th>Status</th><th>Ações</th></tr></thead>
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nome</th>
+                                <th>Login</th>
+                                <th>Cargo</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
                         <tbody id="users-table-body"></tbody>
                     </table>
                 </div>
@@ -35,13 +47,39 @@
     <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title" id="userModalLabel">Adicionar Usuário</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userModalLabel">Adicionar Usuário</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
                 <div class="modal-body">
                     <form id="form-user">
-                        <div class="mb-3"><label for="user_nome" class="form-label">Nome Completo</label><input type="text" class="form-control" id="user_nome" required></div>
-                        <div class="mb-3"><label for="user_login" class="form-label">Login</label><input type="text" class="form-control" id="user_login" required></div>
-                        <div class="mb-3"><label class="form-label">Permissões</label><div class="row" id="user_permissoes_container"><div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" value="1" id="perm_dirigente"><label class="form-check-label" for="perm_dirigente">Dirigente</label></div><div class="form-check"><input class="form-check-input" type="checkbox" value="2" id="perm_servo"><label class="form-check-label" for="perm_servo">Servo</label></div><div class="form-check"><input class="form-check-input" type="checkbox" value="4" id="perm_carrinho"><label class="form-check-label" for="perm_carrinho">Carrinho</label></div></div><div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" value="8" id="perm_publicador"><label class="form-check-label" for="perm_publicador">Publicador</label></div><div class="form-check"><input class="form-check-input" type="checkbox" value="16" id="perm_campanha"><label class="form-check-label" for="perm_campanha">Campanha</label></div></div></div></div>
-                        <div class="mb-3"><label for="user_senha" class="form-label">Senha</label><input type="password" class="form-control" id="user_senha" aria-describedby="senhaHelp"><div id="senhaHelp" class="form-text">Deixe em branco para não alterar (ao editar).</div></div>
+                        <div class="mb-3">
+                            <label for="user_nome" class="form-label">Nome Completo</label>
+                            <input type="text" class="form-control" id="user_nome" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="user_login" class="form-label">Login</label>
+                            <input type="text" class="form-control" id="user_login" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Permissões</label>
+                            <div class="row" id="user_permissoes_container">
+                                <div class="col-6">
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" value="1" id="perm_dirigente"><label class="form-check-label" for="perm_dirigente">Dirigente</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" value="2" id="perm_servo"><label class="form-check-label" for="perm_servo">Servo</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" value="4" id="perm_carrinho"><label class="form-check-label" for="perm_carrinho">Carrinho</label></div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" value="8" id="perm_publicador"><label class="form-check-label" for="perm_publicador">Publicador</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" value="16" id="perm_campanha"><label class="form-check-label" for="perm_campanha">Campanha</label></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="user_senha" class="form-label">Senha</label>
+                            <input type="password" class="form-control" id="user_senha" aria-describedby="senhaHelp">
+                            <div id="senhaHelp" class="form-text">Deixe em branco para não alterar (ao editar).</div>
+                        </div>
                         
                         <div id="link-publico-section" class="d-none mt-4">
                             <hr>
@@ -53,7 +91,42 @@
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="salvar-user-btn">Salvar</button></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="salvar-user-btn">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modais Gerais (Feedback e Confirmação) -->
+    <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="feedbackModalTitle">Aviso</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="feedbackModalBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmacaoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmacaoModalTitle">Confirmação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="confirmacaoModalBody">Tem certeza?</div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnConfirmarAcao">Confirmar</button>
+                </div>
             </div>
         </div>
     </div>

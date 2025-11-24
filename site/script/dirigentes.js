@@ -1,12 +1,67 @@
 // site/script/dirigentes.js
 document.addEventListener('DOMContentLoaded', () => {
+    // Referências DOM Principais
     const tableBody = document.getElementById('users-table-body');
     const userModalElement = document.getElementById('userModal');
     const modal = new bootstrap.Modal(userModalElement);
     const modalTitle = document.getElementById('userModalLabel');
     const mostrarInativosCheck = document.getElementById('mostrar-inativos-check');
+    
+    // Referências DOM Modais de Feedback
+    const feedbackModalElement = document.getElementById('feedbackModal');
+    const feedbackModal = new bootstrap.Modal(feedbackModalElement);
+    const feedbackTitle = document.getElementById('feedbackModalTitle');
+    const feedbackBody = document.getElementById('feedbackModalBody');
+    const confirmacaoModalElement = document.getElementById('confirmacaoModal');
+    const confirmacaoModal = new bootstrap.Modal(confirmacaoModalElement);
+    const confirmacaoTitle = document.getElementById('confirmacaoModalTitle');
+    const confirmacaoBody = document.getElementById('confirmacaoModalBody');
+    const btnConfirmarAcao = document.getElementById('btnConfirmarAcao');
+
     let editMode = false;
     let editId = null;
+
+    // --- FUNÇÕES AUXILIARES DE MODAL (Igual ao Gerenciar Mapas) ---
+
+    const mostrarFeedback = (titulo, mensagem, tipo = 'primary') => {
+        feedbackTitle.textContent = titulo;
+        feedbackBody.innerHTML = mensagem;
+        const header = feedbackModalElement.querySelector('.modal-header');
+        header.className = 'modal-header';
+        header.classList.add(`bg-${tipo}`, 'text-white');
+        const btnClose = header.querySelector('.btn-close');
+        if (tipo !== 'light' && tipo !== 'warning') {
+            btnClose.classList.add('btn-close-white');
+        } else {
+            btnClose.classList.remove('btn-close-white');
+        }
+        feedbackModal.show();
+    };
+
+    const mostrarConfirmacao = (titulo, mensagem, callbackConfirmacao) => {
+        confirmacaoTitle.textContent = titulo;
+        confirmacaoBody.innerHTML = mensagem;
+        // Remove event listeners antigos para evitar múltiplas execuções
+        const novoBtn = btnConfirmarAcao.cloneNode(true);
+        btnConfirmarAcao.parentNode.replaceChild(novoBtn, btnConfirmarAcao);
+        
+        novoBtn.onclick = () => {
+            confirmacaoModal.hide();
+            callbackConfirmacao();
+        };
+        confirmacaoModal.show();
+    };
+
+    const handleApiError = async (response) => {
+        let errorData;
+        try { errorData = await response.json(); } catch (e) { errorData = await response.text(); }
+        console.error("====== ERRO DA API ======");
+        console.error("Status:", response.status);
+        console.error("Msg:", errorData);
+        return errorData?.message || `Erro ${response.status}.`;
+    };
+
+    // --- LÓGICA PRINCIPAL ---
 
     const verificarExistenciaDeInativos = async () => {
         try {
@@ -32,11 +87,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const carregarUsuarios = async () => {
         const showInactive = mostrarInativosCheck.checked;
-        tableBody.innerHTML = `<tr><td colspan="5" class="text-center"><div class="spinner-border"></div></td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="5" class="text-center"><div class="spinner-border text-primary"></div></td></tr>`;
         try {
             const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?show_inactive=${showInactive}`);
+            if (!response.ok) throw new Error(await handleApiError(response));
+            
             const users = await response.json();
             tableBody.innerHTML = '';
+            
             if (users.length === 0) { 
                 const message = showInactive ? "Nenhum usuário inativo." : "Nenhum usuário ativo.";
                 tableBody.innerHTML = `<tr><td colspan="5" class="text-center">${message}</td></tr>`; 
@@ -55,7 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     ? `<button class="btn btn-sm btn-info btn-copy-link" data-token="${u.token_acesso}" title="Copiar Link Público"><i class="fas fa-link"></i></button>`
                     : '';
 
-                // ▼▼▼ CORREÇÃO AQUI: Voltamos a ter uma <td> para cada coluna, garantindo que o desktop funcione. ▼▼▼
                 const row = `<tr class="${rowClass}">
                         <td data-label="Nome">${u.nome}</td>
                         <td data-label="Login">${u.login}</td>
@@ -67,20 +124,21 @@ document.addEventListener('DOMContentLoaded', () => {
                             ${actionButton}
                         </td>
                     </tr>`;
-                // ▲▲▲ FIM DA CORREÇÃO ▲▲▲
                 tableBody.innerHTML += row;
             });
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
             tooltipTriggerList.map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-        } catch (error) { tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar usuários.</td></tr>`; }
+        } catch (error) { 
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar usuários: ${error.message}</td></tr>`; 
+        }
     };
-
-    // ... (o resto do arquivo JS permanece igual) ...
 
     const prepararEdicao = async (id) => {
         try {
             const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`);
+            if (!response.ok) throw new Error(await handleApiError(response));
             const user = await response.json();
+            
             document.getElementById('user_nome').value = user.nome;
             document.getElementById("user_login").value = user.login;
             const permissoesContainer = document.getElementById('user_permissoes_container');
@@ -97,11 +155,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 linkInput.value = publicUrl;
                 linkSection.classList.remove('d-none');
             } else { linkSection.classList.add('d-none'); }
+            
             editMode = true;
             editId = id;
             modalTitle.textContent = 'Editar Usuário';
             modal.show();
-        } catch (error) { alert('Não foi possível carregar os dados do usuário.'); }
+        } catch (error) { 
+            mostrarFeedback('Erro', 'Não foi possível carregar os dados do usuário: ' + error.message, 'danger');
+        }
     };
 
     const resetarModal = () => {
@@ -129,8 +190,15 @@ document.addEventListener('DOMContentLoaded', () => {
             permissoes: getPermissoesBitmask(),
             senha: document.getElementById("user_senha").value,
         };
-        if (!data.nome || !data.login) { alert('Nome e Login são obrigatórios.'); return; }
-        if (!editMode && !data.senha) { alert('A senha é obrigatória ao criar um novo usuário.'); return; }
+        
+        if (!data.nome || !data.login) { 
+            mostrarFeedback('Atenção', 'Nome e Login são obrigatórios.', 'warning'); 
+            return; 
+        }
+        if (!editMode && !data.senha) { 
+            mostrarFeedback('Atenção', 'A senha é obrigatória ao criar um novo usuário.', 'warning'); 
+            return; 
+        }
         
         const url = editMode ? `${API_BASE_URL}/dirigentes_api.php?id=${editId}` : `${API_BASE_URL}/dirigentes_api.php`;
         const method = 'POST'; 
@@ -146,28 +214,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(data) 
             });
             
-            if (!response.ok) { const err = await response.json(); throw new Error(err.message); }
+            if (!response.ok) throw new Error(await handleApiError(response));
+            
             modal.hide();
             carregarUsuarios();
-        } catch (error) { alert(`Falha ao salvar: ${error.message}`); }
+            verificarExistenciaDeInativos();
+            mostrarFeedback('Sucesso', `Usuário <b>${data.nome}</b> salvo com sucesso!`, 'success');
+        } catch (error) { 
+            mostrarFeedback('Erro ao Salvar', error.message, 'danger'); 
+        }
     });
 
-    document.getElementById('regenerar-token-btn').addEventListener('click', async () => {
-        if (!editId || !confirm('O link antigo deixará de funcionar. Deseja continuar?')) return;
-        try {
-            const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${editId}`, { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ action: 'regenerate_token' }) 
-            });
-            
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.message);
-            const newUrl = `${window.location.origin}${window.location.pathname.replace(/\/pages\/.*$/, '')}/backend/vista_publica.php?token=${result.novoToken}`;
-            document.getElementById('user_public_link').value = newUrl;
-            carregarUsuarios();
-            alert('Novo link gerado!');
-        } catch (error) { alert(`Erro: ${error.message}`); }
+    document.getElementById('regenerar-token-btn').addEventListener('click', () => {
+        if (!editId) return;
+        
+        mostrarConfirmacao('Regenerar Link', 'O link antigo deixará de funcionar imediatamente. Deseja continuar?', async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${editId}`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ action: 'regenerate_token' }) 
+                });
+                
+                if (!response.ok) throw new Error(await handleApiError(response));
+                
+                const result = await response.json();
+                const newUrl = `${window.location.origin}${window.location.pathname.replace(/\/pages\/.*$/, '')}/backend/vista_publica.php?token=${result.novoToken}`;
+                document.getElementById('user_public_link').value = newUrl;
+                carregarUsuarios(); // Atualiza a tabela no fundo
+                mostrarFeedback('Sucesso', 'Novo link gerado!', 'success');
+            } catch (error) { 
+                mostrarFeedback('Erro', error.message, 'danger'); 
+            }
+        });
     });
     
     mostrarInativosCheck.addEventListener('change', carregarUsuarios);
@@ -178,33 +257,41 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = target.dataset.id;
 
         if (target.classList.contains('btn-delete')) {
-            if (confirm('Desativar este usuário?')) {
+            mostrarConfirmacao('Desativar Usuário', 'Tem certeza que deseja desativar este usuário?', async () => {
                 try { 
-                    await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`, { 
+                    const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`, { 
                         method: 'POST', 
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ action: 'delete_user' })
                     }); 
+                    if (!response.ok) throw new Error(await handleApiError(response));
+                    
                     carregarUsuarios(); 
                     verificarExistenciaDeInativos();
+                    mostrarFeedback('Sucesso', 'Usuário desativado.', 'success');
                 } 
-                catch (error) { alert('Não foi possível desativar.'); }
-            }
+                catch (error) { 
+                    mostrarFeedback('Erro', 'Não foi possível desativar: ' + error.message, 'danger'); 
+                }
+            });
         } else if (target.classList.contains('btn-reactivate')) {
-            if (confirm('Reativar este usuário?')) {
+            mostrarConfirmacao('Reativar Usuário', 'Deseja reativar este usuário?', async () => {
                  try {
-                    await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`, {
+                    const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${id}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ action: 'reactivate' }) 
                     });
+                    if (!response.ok) throw new Error(await handleApiError(response));
+
                     if(!mostrarInativosCheck.checked) mostrarInativosCheck.checked = true;
                     carregarUsuarios();
                     verificarExistenciaDeInativos();
+                    mostrarFeedback('Sucesso', 'Usuário reativado!', 'success');
                 } catch (error) {
-                    alert('Não foi possível reativar o usuário.');
+                    mostrarFeedback('Erro', 'Não foi possível reativar: ' + error.message, 'danger');
                 }
-            }
+            });
         } else if (target.classList.contains('btn-edit')) {
             prepararEdicao(id);
         } else if (target.classList.contains('btn-copy-link')) {
