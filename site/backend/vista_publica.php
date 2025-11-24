@@ -12,10 +12,8 @@ if (empty($token)) {
 }
 
 try {
-    // --- INÍCIO DA CORREÇÃO ---
     // Busca o dirigente pelo token e pela permissão de Dirigente (bit 1)
     $stmt_user = $pdo->prepare("SELECT id, nome FROM users WHERE token_acesso = ? AND status = 'ativo' AND (permissoes & 1) = 1");
-    // --- FIM DA CORREÇÃO ---
     
     $stmt_user->execute([$token]);
     $dirigente = $stmt_user->fetch();
@@ -25,7 +23,7 @@ try {
     }
     $dirigente_id = $dirigente['id'];
     
-    // Puxar o novo campo 'gdrive_file_id' do banco de dados
+    // Puxar mapas atribuídos e não devolvidos
     $stmt_mapas = $pdo->prepare("SELECT id, identificador, data_entrega, gdrive_file_id FROM mapas WHERE dirigente_id = ? AND data_devolucao IS NULL");
     $stmt_mapas->execute([$dirigente_id]);
     $mapas = $stmt_mapas->fetchAll();
@@ -59,7 +57,6 @@ try {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../style/css.css">
     <style> 
-        /* SEU CSS AQUI - NENHUMA ALTERAÇÃO NECESSÁRIA */
         body { padding: 15px; background-color: var(--content-bg); } 
         .quadra-item { border-bottom: 1px solid #eee; }
         .quadra-item:last-child { border-bottom: none; }
@@ -98,12 +95,11 @@ try {
     </style>
 </head>
 <body>
-    <!-- SEU HTML AQUI - NENHUMA ALTERAÇÃO NECESSÁRIA -->
     <nav class="navbar navbar-dark bg-dark mb-4 rounded shadow-sm">
         <div class="container-fluid"><span class="navbar-brand"><i class="fas fa-map-marked-alt me-2"></i>Mapas de <?php echo htmlspecialchars($dirigente['nome']); ?></span></div>
     </nav>
     <div class="container-fluid">
-        <div id="alert-container"></div>
+        <!-- O container de alertas antigo foi removido, agora usamos modais -->
         <div class="row">
         <?php if (empty($mapas)): ?>
             <div class="col-12"><div class="alert alert-info text-center">Você não possui nenhum mapa atribuído.</div></div>
@@ -129,7 +125,7 @@ try {
                     <?php endif; ?>
 
                     <div class="card-body">
-                        <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>">
+                        <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
                             <label class="form-label fw-bold">Registro por Quadra:</label>
                             <div class="d-flex justify-content-end px-2 pb-1"> <small class="fw-bold text-muted" style="width: 140px; text-align: center;">Nº Pessoas</small> </div>
                             <div class="list-group list-group-flush mb-3 quadra-list" data-mapa-id="<?php echo $mapa['id']; ?>">
@@ -142,7 +138,7 @@ try {
                                             <input type="number" class="form-control text-center quadra-input no-spinners" value="<?php echo htmlspecialchars($quadra['pessoas_faladas']); ?>" data-quadra-id="<?php echo $quadra['id']; ?>" min="0" aria-label="Pessoas faladas">
                                             <button class="btn btn-outline-secondary btn-increment" type="button">+</button>
                                         </div>
-                                        <small class="text-muted status-save ms-2" style="width: 20px;" id="status_save_q<?php echo $quadra['id']; ?>"></small>
+                                        <div class="ms-2 d-flex justify-content-center align-items-center" style="width: 24px; height: 24px;" id="status_save_q<?php echo $quadra['id']; ?>"></div>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -171,8 +167,38 @@ try {
                     <h5 class="modal-title" id="pdfModalLabel">Visualizador de Mapa</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body" id="pdf-modal-body">
-                    <!-- O Iframe será inserido aqui pelo JavaScript -->
+                <div class="modal-body" id="pdf-modal-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modais Gerais (Feedback e Confirmação) - IGUAL AO GERENCIAR MAPAS -->
+    <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="feedbackModalTitle">Aviso</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="feedbackModalBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmacaoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmacaoModalTitle">Confirmação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="confirmacaoModalBody">Tem certeza?</div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnConfirmarAcao">Confirmar</button>
                 </div>
             </div>
         </div>
@@ -181,12 +207,60 @@ try {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../script/common.js"></script>
     <script>
-        // SEU JAVASCRIPT AQUI - NENHUMA ALTERAÇÃO NECESSÁRIA
         document.addEventListener('DOMContentLoaded', () => {
             const API_BASE_URL = '.'; 
-            
+            const saveTimeouts = {};
+
+            // Inicialização dos Modais
+            const feedbackModalElement = document.getElementById('feedbackModal');
+            const feedbackModal = new bootstrap.Modal(feedbackModalElement);
+            const feedbackTitle = document.getElementById('feedbackModalTitle');
+            const feedbackBody = document.getElementById('feedbackModalBody');
+
+            const confirmacaoModalElement = document.getElementById('confirmacaoModal');
+            const confirmacaoModal = new bootstrap.Modal(confirmacaoModalElement);
+            const confirmacaoTitle = document.getElementById('confirmacaoModalTitle');
+            const confirmacaoBody = document.getElementById('confirmacaoModalBody');
+            const btnConfirmarAcao = document.getElementById('btnConfirmarAcao');
+
+            // --- FUNÇÕES AUXILIARES VISUAIS (IGUAIS AO GERENCIAR_MAPAS.JS) ---
+
+            const mostrarFeedback = (titulo, mensagem, tipo = 'primary') => {
+                feedbackTitle.textContent = titulo;
+                feedbackBody.innerHTML = mensagem;
+                const header = feedbackModalElement.querySelector('.modal-header');
+                
+                // Limpa classes antigas de bg
+                header.className = 'modal-header';
+                // Adiciona novas
+                header.classList.add(`bg-${tipo}`, 'text-white');
+                
+                const btnClose = header.querySelector('.btn-close');
+                if (tipo !== 'light' && tipo !== 'warning') {
+                    btnClose.classList.add('btn-close-white');
+                } else {
+                    btnClose.classList.remove('btn-close-white');
+                }
+                feedbackModal.show();
+            };
+
+            const mostrarConfirmacao = (titulo, mensagem, callbackConfirmacao) => {
+                confirmacaoTitle.textContent = titulo;
+                confirmacaoBody.innerHTML = mensagem;
+                
+                // Define a ação do botão confirmar
+                btnConfirmarAcao.onclick = () => {
+                    confirmacaoModal.hide();
+                    callbackConfirmacao();
+                };
+                
+                confirmacaoModal.show();
+            };
+
+            // --- LÓGICA DA PÁGINA ---
+
             const saveQuadra = async (quadraId, valor, statusDiv) => {
-                statusDiv.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                statusDiv.innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span>';
                 try {
                     const response = await fetch(`${API_BASE_URL}/mapas_api.php`, {
                         method: 'POST',
@@ -202,26 +276,37 @@ try {
                     
                     if (result.status === 'success') {
                         statusDiv.innerHTML = '<i class="fas fa-check text-success"></i>';
-                        setTimeout(() => { statusDiv.innerHTML = ''; }, 2000);
+                        setTimeout(() => { 
+                            if (statusDiv.innerHTML.includes('fa-check')) {
+                                statusDiv.innerHTML = ''; 
+                            }
+                        }, 2000);
                     } else { 
-                        throw new Error(result.message || 'A API retornou um erro inesperado.'); 
+                        throw new Error(result.message || 'Erro inesperado.'); 
                     }
                 } catch (error) {
                     console.error('Erro ao salvar:', error);
-                    showAlert(`Erro ao salvar: ${error.message}`, 'danger');
+                    // Usa o novo modal de feedback para erros de salvamento se for crítico, 
+                    // ou apenas visual no input para não ser intrusivo demais durante digitação
                     statusDiv.innerHTML = '<i class="fas fa-times text-danger"></i>';
-                    setTimeout(() => { statusDiv.innerHTML = ''; }, 3000);
+                    // Opcional: mostrarFeedback('Erro ao Salvar', error.message, 'danger');
                 }
             };
 
-            const debounce = (func, wait) => { let timeout; return (...args) => { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), wait); }; };
-            const debouncedSave = debounce(saveQuadra, 800);
-            
             document.querySelectorAll('.quadra-input').forEach(input => {
                 input.addEventListener('input', (e) => {
                     const quadraId = e.target.dataset.quadraId;
                     const statusDiv = document.getElementById(`status_save_q${quadraId}`);
-                    debouncedSave(quadraId, e.target.value, statusDiv);
+                    const valor = e.target.value;
+                    
+                    if (saveTimeouts[quadraId]) clearTimeout(saveTimeouts[quadraId]);
+                    
+                    statusDiv.innerHTML = '<small class="text-muted">...</small>';
+
+                    saveTimeouts[quadraId] = setTimeout(() => {
+                        saveQuadra(quadraId, valor, statusDiv);
+                    }, 800);
+
                     updateTotal(e.target.closest('.quadra-list'));
                 });
             });
@@ -239,42 +324,65 @@ try {
             document.querySelectorAll('.quadra-list').forEach(list => updateTotal(list));
             
             document.querySelectorAll('.form-devolver').forEach(form => {
-                form.addEventListener('submit', async (e) => {
-                    e.preventDefault();
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault(); // Impede envio imediato
+                    
                     const mapaId = e.target.dataset.mapaId;
+                    const mapaNome = e.target.dataset.mapaNome;
                     const dataDevolucao = document.getElementById(`data_devolucao_${mapaId}`).value;
-                    if (!dataDevolucao) { showAlert('Por favor, selecione a data de devolução.', 'warning'); return; }
-                    const btn = e.target.querySelector('button[type="submit"]');
-                    const originalText = btn.innerHTML;
-                    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
-                    btn.disabled = true;
-                    try {
-                        const response = await fetch(`${API_BASE_URL}/mapas_api.php`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'devolver', mapa_id: mapaId, data_devolucao: dataDevolucao })
-                        });
-                        
-                        if (!response.ok) {
-                            const errorData = await response.json().catch(() => null);
-                            throw new Error(errorData?.message || `Erro na rede: ${response.statusText}`);
-                        }
-
-                        const result = await response.json();
-
-                        if (result.message) { 
-                            showAlert('Mapa devolvido com sucesso!', 'success'); 
-                            document.getElementById(`mapa-card-${mapaId}`).remove(); 
-                        } else { 
-                            throw new Error(result.message || 'A API retornou uma resposta inesperada.'); 
-                        }
-                    } catch (error) { 
-                        console.error('Erro ao devolver mapa:', error); 
-                        showAlert('Erro ao devolver o mapa: ' + error.message, 'danger'); 
-                    } finally { 
-                        btn.innerHTML = originalText; 
-                        btn.disabled = false; 
+                    
+                    if (!dataDevolucao) { 
+                        mostrarFeedback('Atenção', 'Por favor, selecione a data de devolução.', 'warning'); 
+                        return; 
                     }
+
+                    // Usa o novo modal de confirmação
+                    mostrarConfirmacao(
+                        'Confirmar Devolução',
+                        `Tem certeza que deseja devolver o mapa <strong>${mapaNome}</strong>?<br><br>Esta ação removerá o mapa da sua lista.`,
+                        async () => {
+                            // Callback executado ao clicar em "Confirmar" no modal
+                            const btn = e.target.querySelector('button[type="submit"]');
+                            const originalText = btn.innerHTML;
+                            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
+                            btn.disabled = true;
+
+                            try {
+                                const response = await fetch(`${API_BASE_URL}/mapas_api.php`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ action: 'devolver', mapa_id: mapaId, data_devolucao: dataDevolucao })
+                                });
+                                
+                                if (!response.ok) {
+                                    const errorData = await response.json().catch(() => null);
+                                    throw new Error(errorData?.message || `Erro na rede: ${response.statusText}`);
+                                }
+
+                                const result = await response.json();
+
+                                if (result.message) { 
+                                    mostrarFeedback('Sucesso', 'Mapa devolvido com sucesso!', 'success');
+                                    
+                                    const card = document.getElementById(`mapa-card-${mapaId}`);
+                                    card.style.transition = 'opacity 0.5s';
+                                    card.style.opacity = '0';
+                                    setTimeout(() => card.remove(), 500);
+                                    
+                                    setTimeout(() => {
+                                        if(document.querySelectorAll('.card').length === 0) location.reload();
+                                    }, 600);
+                                } else { 
+                                    throw new Error(result.message || 'Resposta inesperada.'); 
+                                }
+                            } catch (error) { 
+                                console.error('Erro ao devolver:', error); 
+                                mostrarFeedback('Erro', 'Erro ao devolver o mapa: ' + error.message, 'danger');
+                                btn.innerHTML = originalText; 
+                                btn.disabled = false; 
+                            }
+                        }
+                    );
                 });
             });
 
@@ -298,15 +406,6 @@ try {
                     }
                 });
             }
-            
-            const showAlert = (message, type) => {
-                const alertContainer = document.getElementById('alert-container');
-                const alert = document.createElement('div');
-                alert.className = `alert alert-${type} alert-dismissible fade show`;
-                alert.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-                alertContainer.appendChild(alert);
-                setTimeout(() => { alert.remove(); }, 5000);
-            };
         });
     </script>
 </body>
