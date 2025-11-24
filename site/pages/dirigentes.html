@@ -100,7 +100,8 @@
     </div>
 
     <!-- Modais Gerais (Feedback e Confirmação) -->
-    <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
+    <!-- z-index alto para garantir que apareçam acima do userModal -->
+    <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
@@ -115,7 +116,7 @@
         </div>
     </div>
 
-    <div class="modal fade" id="confirmacaoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="confirmacaoModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">

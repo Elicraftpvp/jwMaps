@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Referências DOM Principais
     const tableBody = document.getElementById('users-table-body');
     const userModalElement = document.getElementById('userModal');
-    const modal = new bootstrap.Modal(userModalElement);
+    const userModal = new bootstrap.Modal(userModalElement);
     const modalTitle = document.getElementById('userModalLabel');
     const mostrarInativosCheck = document.getElementById('mostrar-inativos-check');
     
@@ -12,43 +12,51 @@ document.addEventListener('DOMContentLoaded', () => {
     const feedbackModal = new bootstrap.Modal(feedbackModalElement);
     const feedbackTitle = document.getElementById('feedbackModalTitle');
     const feedbackBody = document.getElementById('feedbackModalBody');
+    
     const confirmacaoModalElement = document.getElementById('confirmacaoModal');
     const confirmacaoModal = new bootstrap.Modal(confirmacaoModalElement);
     const confirmacaoTitle = document.getElementById('confirmacaoModalTitle');
     const confirmacaoBody = document.getElementById('confirmacaoModalBody');
+    // IMPORTANTE: Pegamos a referência uma vez e não destruímos o elemento depois
     const btnConfirmarAcao = document.getElementById('btnConfirmarAcao');
 
     let editMode = false;
     let editId = null;
 
-    // --- FUNÇÕES AUXILIARES DE MODAL (Igual ao Gerenciar Mapas) ---
+    // --- FUNÇÕES AUXILIARES DE MODAL ---
 
     const mostrarFeedback = (titulo, mensagem, tipo = 'primary') => {
         feedbackTitle.textContent = titulo;
         feedbackBody.innerHTML = mensagem;
         const header = feedbackModalElement.querySelector('.modal-header');
-        header.className = 'modal-header';
+        header.className = 'modal-header'; // Reseta classes
         header.classList.add(`bg-${tipo}`, 'text-white');
+        
         const btnClose = header.querySelector('.btn-close');
         if (tipo !== 'light' && tipo !== 'warning') {
             btnClose.classList.add('btn-close-white');
         } else {
             btnClose.classList.remove('btn-close-white');
         }
+        
         feedbackModal.show();
     };
 
     const mostrarConfirmacao = (titulo, mensagem, callbackConfirmacao) => {
         confirmacaoTitle.textContent = titulo;
         confirmacaoBody.innerHTML = mensagem;
-        // Remove event listeners antigos para evitar múltiplas execuções
-        const novoBtn = btnConfirmarAcao.cloneNode(true);
-        btnConfirmarAcao.parentNode.replaceChild(novoBtn, btnConfirmarAcao);
         
-        novoBtn.onclick = () => {
+        // CORREÇÃO: Em vez de clonar/substituir o nó (que quebrava a referência),
+        // apenas sobrescrevemos a função onclick.
+        btnConfirmarAcao.onclick = () => {
             confirmacaoModal.hide();
-            callbackConfirmacao();
+            // Pequeno delay para garantir que o modal feche antes de executar a ação
+            // (especialmente útil se a ação abrir outro modal)
+            setTimeout(() => {
+                callbackConfirmacao();
+            }, 200);
         };
+        
         confirmacaoModal.show();
     };
 
@@ -159,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
             editMode = true;
             editId = id;
             modalTitle.textContent = 'Editar Usuário';
-            modal.show();
+            userModal.show();
         } catch (error) { 
             mostrarFeedback('Erro', 'Não foi possível carregar os dados do usuário: ' + error.message, 'danger');
         }
@@ -216,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (!response.ok) throw new Error(await handleApiError(response));
             
-            modal.hide();
+            userModal.hide();
             carregarUsuarios();
             verificarExistenciaDeInativos();
             mostrarFeedback('Sucesso', `Usuário <b>${data.nome}</b> salvo com sucesso!`, 'success');
@@ -225,11 +233,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- REGENERAÇÃO DE TOKEN (Com lógica específica de Cópia) ---
     document.getElementById('regenerar-token-btn').addEventListener('click', () => {
         if (!editId) return;
         
+        // 1. Confirmação
         mostrarConfirmacao('Regenerar Link', 'O link antigo deixará de funcionar imediatamente. Deseja continuar?', async () => {
             try {
+                // 2. Ação
                 const response = await fetch(`${API_BASE_URL}/dirigentes_api.php?id=${editId}`, { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' }, 
@@ -240,9 +251,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const result = await response.json();
                 const newUrl = `${window.location.origin}${window.location.pathname.replace(/\/pages\/.*$/, '')}/backend/vista_publica.php?token=${result.novoToken}`;
+                
+                // Atualiza o input no modal que está embaixo
                 document.getElementById('user_public_link').value = newUrl;
-                carregarUsuarios(); // Atualiza a tabela no fundo
-                mostrarFeedback('Sucesso', 'Novo link gerado!', 'success');
+                
+                // Atualiza a tabela
+                carregarUsuarios(); 
+                
+                // 3. Feedback com botão de Cópia Personalizado
+                const msg = `
+                    <div class="text-center">
+                        <p>Novo link gerado com sucesso!</p>
+                        <button id="btn-copiar-feedback" class="btn btn-light border shadow-sm">
+                            <i class="fas fa-copy"></i> Copiar Link
+                        </button>
+                    </div>
+                `;
+                
+                mostrarFeedback('Sucesso', msg, 'success');
+
+                // Adiciona evento ao botão criado dinamicamente dentro do modal de feedback
+                // Pequeno delay para garantir que o elemento existe no DOM do modal
+                setTimeout(() => {
+                    const btnCopy = document.getElementById('btn-copiar-feedback');
+                    if(btnCopy) {
+                        btnCopy.onclick = () => {
+                            navigator.clipboard.writeText(newUrl).then(() => {
+                                btnCopy.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+                                btnCopy.classList.remove('btn-light');
+                                btnCopy.classList.add('btn-success', 'text-white');
+                            });
+                        };
+                    }
+                }, 100);
+
             } catch (error) { 
                 mostrarFeedback('Erro', error.message, 'danger'); 
             }
