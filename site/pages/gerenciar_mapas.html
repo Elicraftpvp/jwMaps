@@ -7,6 +7,29 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../style/css.css">
+    <style>
+        /* CSS Específico para corrigir o corte dos Dropdowns */
+        .table-responsive-visible {
+            overflow-x: auto;
+            overflow-y: visible !important; /* Permite que o dropdown saia da tabela */
+            min-height: 300px; /* Garante altura mínima para dropdown abrir se tabela estiver vazia */
+        }
+        
+        /* Ajuste fino para os checkboxes dentro do dropdown */
+        .dropdown-item-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 0.25rem 1rem;
+            cursor: pointer;
+        }
+        .dropdown-item-checkbox:hover {
+            background-color: #f8f9fa;
+        }
+        .dropdown-item-checkbox input {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body class="iframe-page">
     <div class="container-fluid">
@@ -14,64 +37,82 @@
             <div class="card-header card-header-icon">
                 <h4 class="mb-0"><i class="fas fa-map card-title-icon"></i> Gerenciar Mapas</h4>
                 <div class="d-flex align-items-center gap-2">
-                    <!-- Filtros aqui se necessário no futuro -->
                     <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#mapaModal" disabled>
                         <i class="fas fa-plus-circle me-2"></i> Adicionar Mapa
                     </button>
                 </div>
             </div>
             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle table-responsive-cards">
+                <!-- Alterado classe para permitir overflow vertical dos menus -->
+                <div class="table-responsive table-responsive-visible">
+                    <table class="table table-hover align-middle">
                         <thead class="table-light">
                             <tr>
-                                <th>ID</th>
+                                <!-- Coluna ID removida visualmente -->
                                 <th>
-                                    <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>Identificador</span>
                                         <div class="dropdown">
                                             <a href="#" role="button" id="filtroOrdenacaoBtn" data-bs-toggle="dropdown" aria-expanded="false">
                                                 <i class="fas fa-filter text-secondary" title="Ordenar por Identificador"></i>
                                             </a>
-                                            <ul class="dropdown-menu" aria-labelledby="filtroOrdenacaoBtn">
-                                                <li><a class="dropdown-item" href="#" data-sort="id"><strong>Padrão (ID)</strong></a></li>
+                                            <ul class="dropdown-menu shadow" aria-labelledby="filtroOrdenacaoBtn">
+                                                <li><a class="dropdown-item" href="#" data-sort="id"><strong>Padrão (Criação)</strong></a></li>
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li><a class="dropdown-item" href="#" data-sort="asc">Ordenar A-Z / 0-9</a></li>
                                                 <li><a class="dropdown-item" href="#" data-sort="desc">Ordenar Z-A / 9-0</a></li>
                                             </ul>
                                         </div>
-                                        <span>Identificador</span>
                                     </div>
                                 </th>
                                 <th>
-                                    <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>Região</span>
                                         <div class="dropdown">
                                             <a href="#" role="button" id="filtroRegiaoBtn" data-bs-toggle="dropdown" aria-expanded="false">
                                                 <i class="fas fa-filter text-secondary" title="Filtrar por Região"></i>
                                             </a>
-                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="filtroRegiaoBtn" id="filtroRegiaoMenu">
+                                            <ul class="dropdown-menu shadow" aria-labelledby="filtroRegiaoBtn" id="filtroRegiaoMenu">
                                                 <!-- Opções carregadas pelo JS -->
                                             </ul>
                                         </div>
-                                        <span>Região</span>
                                     </div>
                                 </th>
-                                <th>Tipo</th>
+                                <th>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>Tipo</span>
+                                        <div class="dropdown">
+                                            <a href="#" role="button" id="filtroTipoBtn" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                                                <i class="fas fa-filter text-secondary" title="Filtrar e Ordenar por Tipo"></i>
+                                            </a>
+                                            <ul class="dropdown-menu shadow" aria-labelledby="filtroTipoBtn" id="filtroTipoMenu" style="min-width: 200px;">
+                                                <!-- Ordenação do Tipo -->
+                                                <li><a class="dropdown-item" href="#" data-sort-type="tipo_asc"><i class="fas fa-sort-alpha-down me-2"></i>Ordenar A-Z</a></li>
+                                                <li><a class="dropdown-item" href="#" data-sort-type="tipo_desc"><i class="fas fa-sort-alpha-up me-2"></i>Ordenar Z-A</a></li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li><h6 class="dropdown-header">Filtrar Tipos:</h6></li>
+                                                <!-- Checkboxes carregados pelo JS -->
+                                                <div id="listaCheckboxesTipos" style="max-height: 200px; overflow-y: auto;"></div>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </th>
                                 <th>Quadras</th>
                                 <th>Status</th>
                                 <th>
-                                    <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>Dirigente</span>
                                         <div class="dropdown">
                                             <a href="#" role="button" id="filtroDirigenteBtn" data-bs-toggle="dropdown" aria-expanded="false">
                                                 <i class="fas fa-filter text-secondary" title="Filtrar por Dirigente"></i>
                                             </a>
-                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="filtroDirigenteBtn" id="filtroDirigenteMenu">
+                                            <ul class="dropdown-menu shadow" aria-labelledby="filtroDirigenteBtn" id="filtroDirigenteMenu">
                                                 <!-- Opções carregadas pelo JS -->
                                             </ul>
                                         </div>
-                                        <span>Dirigente</span>
                                     </div>
                                 </th>
-                                <th class="text-center">Tempo (dias)</th>
+                                <th class="text-center">Tempo</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -182,9 +223,7 @@
         </div>
     </div>
 
-    <!-- ▼▼▼ NOVOS MODAIS GERAIS ▼▼▼ -->
-    
-    <!-- Modal de Feedback (Aviso, Sucesso, Erro) -->
+    <!-- Modais Gerais (Feedback e Confirmação) -->
     <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -192,9 +231,7 @@
                     <h5 class="modal-title" id="feedbackModalTitle">Aviso</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body" id="feedbackModalBody">
-                    <!-- Mensagem injetada via JS -->
-                </div>
+                <div class="modal-body" id="feedbackModalBody"></div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                 </div>
@@ -202,7 +239,6 @@
         </div>
     </div>
 
-    <!-- Modal de Confirmação (Sim/Não) -->
     <div class="modal fade" id="confirmacaoModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -210,9 +246,7 @@
                     <h5 class="modal-title" id="confirmacaoModalTitle">Confirmação</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body" id="confirmacaoModalBody">
-                    Tem certeza?
-                </div>
+                <div class="modal-body" id="confirmacaoModalBody">Tem certeza?</div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-primary" id="btnConfirmarAcao">Confirmar</button>
