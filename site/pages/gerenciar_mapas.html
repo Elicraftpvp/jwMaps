@@ -21,7 +21,6 @@
                 </div>
             </div>
             <div class="card-body">
-                <!-- ▼▼▼ MUDANÇA: Adicionada classe "table-responsive-cards" ▼▼▼ -->
                 <div class="table-responsive">
                     <table class="table table-hover align-middle table-responsive-cards">
                         <thead class="table-light">
@@ -178,6 +177,45 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ▼▼▼ NOVOS MODAIS GERAIS ▼▼▼ -->
+    
+    <!-- Modal de Feedback (Aviso, Sucesso, Erro) -->
+    <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="feedbackModalTitle">Aviso</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="feedbackModalBody">
+                    <!-- Mensagem injetada via JS -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação (Sim/Não) -->
+    <div class="modal fade" id="confirmacaoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmacaoModalTitle">Confirmação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="confirmacaoModalBody">
+                    Tem certeza?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnConfirmarAcao">Confirmar</button>
                 </div>
             </div>
         </div>

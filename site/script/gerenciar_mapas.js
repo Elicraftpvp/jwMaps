@@ -19,11 +19,73 @@ document.addEventListener('DOMContentLoaded', () => {
     const filtroRegiaoMenu = document.getElementById("filtroRegiaoMenu");
     const filtroRegiaoBtnIcon = document.querySelector("#filtroRegiaoBtn i");
 
+    // Elementos dos Modais Genéricos
+    const feedbackModalElement = document.getElementById('feedbackModal');
+    const feedbackModal = new bootstrap.Modal(feedbackModalElement);
+    const feedbackTitle = document.getElementById('feedbackModalTitle');
+    const feedbackBody = document.getElementById('feedbackModalBody');
+
+    const confirmacaoModalElement = document.getElementById('confirmacaoModal');
+    const confirmacaoModal = new bootstrap.Modal(confirmacaoModalElement);
+    const confirmacaoTitle = document.getElementById('confirmacaoModalTitle');
+    const confirmacaoBody = document.getElementById('confirmacaoModalBody');
+    const btnConfirmarAcao = document.getElementById('btnConfirmarAcao');
+
     let filtroDirigenteId = null;
     let filtroRegiao = null;
     let sortOrder = 'id';
     let editMode = false;
     let editId = null;
+
+    // --- FUNÇÕES AUXILIARES DE MODAL ---
+
+    /**
+     * Exibe um modal de feedback (Substituto para alert)
+     * @param {string} titulo - Título do modal
+     * @param {string} mensagem - Corpo da mensagem
+     * @param {string} tipo - 'success', 'danger' (erro), 'warning' (aviso)
+     */
+    const mostrarFeedback = (titulo, mensagem, tipo = 'primary') => {
+        feedbackTitle.textContent = titulo;
+        feedbackBody.innerHTML = mensagem; // Permite HTML simples
+        
+        // Remove classes de cor anteriores do header e adiciona a nova
+        const header = feedbackModalElement.querySelector('.modal-header');
+        header.className = 'modal-header'; // Reseta
+        header.classList.add(`bg-${tipo}`, 'text-white');
+        
+        // Ajusta o botão de fechar para ficar branco se o fundo for escuro
+        const btnClose = header.querySelector('.btn-close');
+        if (tipo !== 'light' && tipo !== 'warning') {
+            btnClose.classList.add('btn-close-white');
+        } else {
+            btnClose.classList.remove('btn-close-white');
+        }
+
+        feedbackModal.show();
+    };
+
+    /**
+     * Exibe um modal de confirmação (Substituto para confirm)
+     * @param {string} titulo - Título do modal
+     * @param {string} mensagem - Pergunta
+     * @param {function} callbackConfirmacao - Função a ser executada ao clicar em Confirmar
+     */
+    const mostrarConfirmacao = (titulo, mensagem, callbackConfirmacao) => {
+        confirmacaoTitle.textContent = titulo;
+        confirmacaoBody.innerHTML = mensagem;
+        
+        // CORREÇÃO: Usamos .onclick direto para substituir qualquer listener anterior.
+        // Isso evita o erro de referência perdida ao tentar clonar/substituir o elemento no DOM.
+        btnConfirmarAcao.onclick = () => {
+            confirmacaoModal.hide();
+            callbackConfirmacao();
+        };
+
+        confirmacaoModal.show();
+    };
+
+    // --- FIM FUNÇÕES AUXILIARES ---
 
     const handleApiError = async (response) => {
         let errorData;
@@ -64,15 +126,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    /**
-     * Carrega os mapas da API.
-     * @param {boolean} manterVisual - Se true, não mostra o spinner e tenta manter o scroll.
-     */
     const carregarMapas = async (manterVisual = false) => {
-        // Salva a posição do scroll antes de qualquer alteração
         const scrollPos = window.scrollY;
 
-        // Só limpa a tabela e mostra spinner se NÃO for para manter o visual (ex: carga inicial ou troca drástica de filtro)
         if (!manterVisual) {
             tableBody.innerHTML = `<tr><td colspan="9" class="text-center"><div class="spinner-border spinner-border-sm"></div> Carregando...</td></tr>`;
         }
@@ -88,21 +144,18 @@ document.addEventListener('DOMContentLoaded', () => {
             let mapas = await response.json();
             let mapasOriginais = [...mapas];
 
-            // Atualiza filtros apenas se não for uma atualização silenciosa (opcional, mas bom para manter consistência)
             popularFiltroDirigentes(mapasOriginais);
             popularFiltroRegioes(mapasOriginais);
 
-            // Aplica Filtros
             if (filtroDirigenteId) mapas = mapas.filter(mapa => mapa.dirigente_id == filtroDirigenteId);
             if (filtroRegiao) mapas = mapas.filter(mapa => mapa.regiao === filtroRegiao);
             
-            // Atualiza ícones dos botões de filtro
             filtroDirigenteBtnIcon.classList.toggle("text-primary", !!filtroDirigenteId);
             filtroDirigenteBtnIcon.classList.toggle("text-secondary", !filtroDirigenteId);
+
             filtroRegiaoBtnIcon.classList.toggle("text-primary", !!filtroRegiao);
             filtroRegiaoBtnIcon.classList.toggle("text-secondary", !filtroRegiao);
             
-            // Ordenação
             if (sortOrder === 'asc') {
                 mapas.sort((a, b) => a.identificador.localeCompare(b.identificador, undefined, {numeric: true}));
             } else if (sortOrder === 'desc') {
@@ -114,7 +167,6 @@ document.addEventListener('DOMContentLoaded', () => {
             filtroOrdenacaoBtnIcon.classList.toggle("text-primary", sortOrder !== 'id');
             filtroOrdenacaoBtnIcon.classList.toggle("text-secondary", sortOrder === 'id');
 
-            // Renderização
             let newHtml = '';
             if (mapas.length === 0) {
                 newHtml = `<tr><td colspan="9" class="text-center">Nenhum mapa encontrado com os filtros aplicados.</td></tr>`; 
@@ -149,21 +201,19 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ${acaoEntregarResgatar}
                                 <button class="btn btn-sm btn-warning btn-edit" data-id="${mapa.id}" title="Editar"><i class="fas fa-pencil-alt"></i></button>
                                 <button class="btn btn-sm btn-secondary btn-history" data-id="${mapa.id}" data-identificador="${mapa.identificador}" title="Ver Histórico"><i class="fas fa-history"></i></button>
-                                <button class="btn btn-sm btn-danger btn-delete" data-id="${mapa.id}" title="Excluir"><i class="fas fa-trash"></i></button>
+                                
                             </td>
                         </tr>`;
+                        // esse botão pertence ali a cima, mas esta desativado temporariamente <button class="btn btn-sm btn-danger btn-delete" data-id="${mapa.id}" title="Excluir"><i class="fas fa-trash"></i></button>
                     newHtml += row;
                 });
             }
 
-            // Substitui o HTML de uma vez
             tableBody.innerHTML = newHtml;
 
-            // Inicializa Tooltips
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
             tooltipTriggerList.map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
-            // Restaura o scroll se solicitado
             if (manterVisual) {
                 window.scrollTo(0, scrollPos);
             }
@@ -188,7 +238,9 @@ document.addEventListener('DOMContentLoaded', () => {
             editId = id;
             mapaModalLabel.textContent = 'Editar Mapa';
             mapaModal.show();
-        } catch (error) { alert('Não foi possível carregar os dados do mapa: ' + error.message); }
+        } catch (error) { 
+            mostrarFeedback('Erro', 'Não foi possível carregar os dados do mapa: ' + error.message, 'danger'); 
+        }
     };
 
     const resetarModal = () => {
@@ -215,9 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dataEntrega = new Date(item.data_entrega + 'T00:00:00').toLocaleDateString();
                 const dataDevolucao = item.data_devolucao ? new Date(item.data_devolucao + 'T00:00:00').toLocaleDateString() : "Em Uso";
                 const dadosQuadras = JSON.parse(item.dados_quadras || "[]");
-                let detalhesQuadrasHtml = dadosQuadras.length > 0
-                    ? `<ul class="list-unstyled mb-0">${dadosQuadras.map(q => `<li>Q.${q.numero}: ${q.pessoas_faladas}</li>`).join('')}</ul>`
-                    : "N/D";
+                
                 const row = `<tr><td>${item.dirigente_nome}</td><td>${dataEntrega}</td><td>${dataDevolucao}</td><td class="text-center" colspan="2">${item.pessoas_faladas_total}</td></tr>`;
                 historicoTableBody.innerHTML += row;
             });
@@ -236,8 +286,16 @@ document.addEventListener('DOMContentLoaded', () => {
             regiao: document.getElementById("mapa_regiao").value,
             tipo: document.getElementById("mapa_tipo").value,
         };
-        if (!data.identificador || !data.quadra_inicio || !data.quadra_fim) { alert('Identificador e Quadras são obrigatórios.'); return; }
-        if (parseInt(data.quadra_fim) < parseInt(data.quadra_inicio)) { alert('A quadra final deve ser maior ou igual à inicial.'); return; }
+        
+        if (!data.identificador || !data.quadra_inicio || !data.quadra_fim) { 
+            mostrarFeedback('Campos Obrigatórios', 'Identificador e Quadras são obrigatórios.', 'warning'); 
+            return; 
+        }
+        if (parseInt(data.quadra_fim) < parseInt(data.quadra_inicio)) { 
+            mostrarFeedback('Erro nas Quadras', 'A quadra final deve ser maior ou igual à inicial.', 'warning'); 
+            return; 
+        }
+        
         const url = `${API_BASE_URL}/mapas_api.php`;
         if (editMode) {
             data.action = 'edit_details';
@@ -247,9 +305,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error(await handleApiError(response));
             mapaModal.hide();
-            // ATENÇÃO: Agora passamos 'true' para manter o visual (scroll)
             carregarMapas(true);
-        } catch (error) { alert('Erro ao salvar o mapa: ' + error.message); }
+            mostrarFeedback('Sucesso', `Mapa <b>${data.identificador}</b> salvo com sucesso!`, 'success');
+        } catch (error) { 
+            mostrarFeedback('Erro ao Salvar', 'Não foi possível salvar o mapa: ' + error.message, 'danger'); 
+        }
     });
 
     const carregarDirigentesNoModal = async () => {
@@ -259,19 +319,34 @@ document.addEventListener('DOMContentLoaded', () => {
             const dirigentes = await response.json();
             selectDirigentes.innerHTML = '<option value="">Selecione...</option>';
             dirigentes.forEach(d => selectDirigentes.innerHTML += `<option value="${d.id}">${d.nome}</option>`);
-        } catch (error) { selectDirigentes.innerHTML = '<option value="">Erro ao carregar</option>'; alert(error.message); }
+        } catch (error) { 
+            selectDirigentes.innerHTML = '<option value="">Erro ao carregar</option>'; 
+            mostrarFeedback('Erro', error.message, 'danger'); 
+        }
     };
 
     document.getElementById('confirmar-entrega-btn').addEventListener('click', async () => {
-        const data = { action: 'entregar', mapa_id: document.getElementById('entregar_mapa_id').value, dirigente_id: document.getElementById('entregar_dirigente_id').value, data_entrega: document.getElementById('entregar_data').value, };
-        if (!data.dirigente_id || !data.data_entrega) { alert('Selecione um dirigente e uma data.'); return; }
+        const data = { 
+            action: 'entregar', 
+            mapa_id: document.getElementById('entregar_mapa_id').value, 
+            dirigente_id: document.getElementById('entregar_dirigente_id').value, 
+            data_entrega: document.getElementById('entregar_data').value, 
+        };
+        
+        if (!data.dirigente_id || !data.data_entrega) { 
+            mostrarFeedback('Atenção', 'Selecione um dirigente e uma data.', 'warning'); 
+            return; 
+        }
+        
         try {
             const response = await fetch(`${API_BASE_URL}/mapas_api.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error(await handleApiError(response));
             entregarModal.hide();
-            // ATENÇÃO: Mantém o visual/scroll
             carregarMapas(true);
-        } catch (error) { alert('Erro ao entregar o mapa: ' + error.message); }
+            mostrarFeedback('Entrega Realizada', 'Mapa entregue com sucesso!', 'success');
+        } catch (error) { 
+            mostrarFeedback('Erro ao Entregar', 'Erro ao entregar o mapa: ' + error.message, 'danger'); 
+        }
     });
 
     tableBody.addEventListener('click', async (e) => {
@@ -280,12 +355,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = target.dataset.id;
         try {
             if (target.classList.contains('btn-delete')) {
-                if (confirm('Deseja realmente excluir este mapa? O histórico e dados associados serão PERDIDOS permanentemente.')) {
-                    const response = await fetch(`${API_BASE_URL}/mapas_api.php?id=${id}`, { method: 'DELETE' });
-                    if (!response.ok) throw new Error(await handleApiError(response));
-                    // ATENÇÃO: Mantém o visual/scroll
-                    carregarMapas(true);
-                }
+                mostrarConfirmacao(
+                    'Excluir Mapa',
+                    'Deseja realmente excluir este mapa? O histórico e dados associados serão <b>PERDIDOS permanentemente</b>.',
+                    async () => {
+                        try {
+                            const response = await fetch(`${API_BASE_URL}/mapas_api.php?id=${id}`, { method: 'DELETE' });
+                            if (!response.ok) throw new Error(await handleApiError(response));
+                            carregarMapas(true);
+                            mostrarFeedback('Excluído', 'Mapa removido com sucesso.', 'success');
+                        } catch (err) {
+                            mostrarFeedback('Erro', 'Não foi possível excluir: ' + err.message, 'danger');
+                        }
+                    }
+                );
             } else if (target.classList.contains('btn-entregar')) {
                 entregarModalLabel.textContent = `Entregar Mapa: ${target.dataset.identificador}`;
                 document.getElementById('entregar_mapa_id').value = id;
@@ -293,13 +376,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 await carregarDirigentesNoModal();
                 entregarModal.show();
             } else if (target.classList.contains('btn-resgatar')) {
-                if (confirm('Deseja resgatar este mapa? Ele ficará disponível para ser entregue a outro dirigente.')) {
-                    const data = { action: 'resgatar', mapa_id: id };
-                    const response = await fetch(`${API_BASE_URL}/mapas_api.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-                    if (!response.ok) throw new Error(await handleApiError(response));
-                    // ATENÇÃO: Mantém o visual/scroll
-                    carregarMapas(true);
-                }
+                mostrarConfirmacao(
+                    'Resgatar Mapa',
+                    'Deseja resgatar este mapa? Ele ficará disponível para ser entregue a outro dirigente.',
+                    async () => {
+                        try {
+                            const data = { action: 'resgatar', mapa_id: id };
+                            const response = await fetch(`${API_BASE_URL}/mapas_api.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                            if (!response.ok) throw new Error(await handleApiError(response));
+                            carregarMapas(true);
+                            mostrarFeedback('Resgatado', 'Mapa resgatado com sucesso!', 'success');
+                        } catch (err) {
+                            mostrarFeedback('Erro', 'Erro ao resgatar: ' + err.message, 'danger');
+                        }
+                    }
+                );
             } else if (target.classList.contains("btn-edit")) {
                 prepararEdicao(id);
             } else if (target.classList.contains("btn-history")) {
@@ -307,7 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await carregarHistoricoMapa(id, identificador);
             }
         } catch (error) {
-            alert(`Ocorreu um erro na ação: ${error.message}`);
+            mostrarFeedback('Erro Inesperado', `Ocorreu um erro na ação: ${error.message}`, 'danger');
         }
     });
 
@@ -315,6 +406,5 @@ document.addEventListener('DOMContentLoaded', () => {
     filtroDirigenteMenu.addEventListener("click", (e) => { e.preventDefault(); const target = e.target.closest("a.dropdown-item"); if (target) { filtroDirigenteId = target.dataset.id ? parseInt(target.dataset.id, 10) : null; carregarMapas(); } });
     filtroRegiaoMenu.addEventListener("click", (e) => { e.preventDefault(); const target = e.target.closest("a.dropdown-item"); if (target) { filtroRegiao = target.dataset.regiao || null; carregarMapas(); } });
     
-    // Carga inicial (aqui pode mostrar o spinner, então sem argumento ou false)
     carregarMapas();
 });
