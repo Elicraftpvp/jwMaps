@@ -64,8 +64,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const carregarMapas = async () => {
-        tableBody.innerHTML = `<tr><td colspan="9" class="text-center"><div class="spinner-border spinner-border-sm"></div></td></tr>`;
+    /**
+     * Carrega os mapas da API.
+     * @param {boolean} manterVisual - Se true, não mostra o spinner e tenta manter o scroll.
+     */
+    const carregarMapas = async (manterVisual = false) => {
+        // Salva a posição do scroll antes de qualquer alteração
+        const scrollPos = window.scrollY;
+
+        // Só limpa a tabela e mostra spinner se NÃO for para manter o visual (ex: carga inicial ou troca drástica de filtro)
+        if (!manterVisual) {
+            tableBody.innerHTML = `<tr><td colspan="9" class="text-center"><div class="spinner-border spinner-border-sm"></div> Carregando...</td></tr>`;
+        }
+
         try {
             const response = await fetch(`${API_BASE_URL}/mapas_api.php`);
             
@@ -77,18 +88,21 @@ document.addEventListener('DOMContentLoaded', () => {
             let mapas = await response.json();
             let mapasOriginais = [...mapas];
 
+            // Atualiza filtros apenas se não for uma atualização silenciosa (opcional, mas bom para manter consistência)
             popularFiltroDirigentes(mapasOriginais);
             popularFiltroRegioes(mapasOriginais);
 
+            // Aplica Filtros
             if (filtroDirigenteId) mapas = mapas.filter(mapa => mapa.dirigente_id == filtroDirigenteId);
             if (filtroRegiao) mapas = mapas.filter(mapa => mapa.regiao === filtroRegiao);
             
+            // Atualiza ícones dos botões de filtro
             filtroDirigenteBtnIcon.classList.toggle("text-primary", !!filtroDirigenteId);
             filtroDirigenteBtnIcon.classList.toggle("text-secondary", !filtroDirigenteId);
-
             filtroRegiaoBtnIcon.classList.toggle("text-primary", !!filtroRegiao);
             filtroRegiaoBtnIcon.classList.toggle("text-secondary", !filtroRegiao);
             
+            // Ordenação
             if (sortOrder === 'asc') {
                 mapas.sort((a, b) => a.identificador.localeCompare(b.identificador, undefined, {numeric: true}));
             } else if (sortOrder === 'desc') {
@@ -100,59 +114,65 @@ document.addEventListener('DOMContentLoaded', () => {
             filtroOrdenacaoBtnIcon.classList.toggle("text-primary", sortOrder !== 'id');
             filtroOrdenacaoBtnIcon.classList.toggle("text-secondary", sortOrder === 'id');
 
-            tableBody.innerHTML = '';
+            // Renderização
+            let newHtml = '';
             if (mapas.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="9" class="text-center">Nenhum mapa encontrado com os filtros aplicados.</td></tr>`; 
-                return;
+                newHtml = `<tr><td colspan="9" class="text-center">Nenhum mapa encontrado com os filtros aplicados.</td></tr>`; 
+            } else {
+                mapas.forEach(mapa => {
+                    let status, acaoEntregarResgatar, diasComDirigenteBadge;
+                    if (mapa.dirigente_id) {
+                        status = `<span class="badge bg-warning">Em Uso</span>`;
+                        acaoEntregarResgatar = `<button class="btn btn-sm btn-info btn-resgatar" data-id="${mapa.id}" title="Resgatar Mapa"><i class="fas fa-undo-alt"></i></button>`;
+                        const dias = mapa.dias_com_dirigente;
+                        let corBadge = 'success';
+                        if (dias > 30) corBadge = 'warning';
+                        if (dias > 60) corBadge = 'danger';
+                        diasComDirigenteBadge = `<span class="badge bg-${corBadge}">${dias !== null ? dias : '0'}</span>`;
+                    } else {
+                        status = `<span class="badge bg-success">Disponível</span>`;
+                        acaoEntregarResgatar = `<button class="btn btn-sm btn-primary btn-entregar" data-id="${mapa.id}" data-identificador="${mapa.identificador}" title="Entregar Mapa"><i class="fas fa-hand-holding-heart"></i></button>`;
+                        diasComDirigenteBadge = `<span class="badge bg-secondary">---</span>`;
+                    }
+                    const quadraRange = mapa.quadra_inicio && mapa.quadra_fim ? `${mapa.quadra_inicio} - ${mapa.quadra_fim}` : 'N/D';
+                    
+                    const row = `<tr>
+                            <td data-label="ID">${mapa.id}</td>
+                            <td data-label="Identificador" class="card-title-cell">${mapa.identificador}</td>
+                            <td data-label="Região">${mapa.regiao || 'N/D'}</td>
+                            <td data-label="Tipo">${mapa.tipo || 'N/D'}</td>
+                            <td data-label="Quadras">${quadraRange}</td>
+                            <td data-label="Status">${status}</td>
+                            <td data-label="Dirigente">${mapa.dirigente_nome || '---'}</td>
+                            <td data-label="Tempo (dias)" class="text-center">${diasComDirigenteBadge}</td>
+                            <td data-label="Ações">
+                                ${acaoEntregarResgatar}
+                                <button class="btn btn-sm btn-warning btn-edit" data-id="${mapa.id}" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+                                <button class="btn btn-sm btn-secondary btn-history" data-id="${mapa.id}" data-identificador="${mapa.identificador}" title="Ver Histórico"><i class="fas fa-history"></i></button>
+                                <button class="btn btn-sm btn-danger btn-delete" data-id="${mapa.id}" title="Excluir"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>`;
+                    newHtml += row;
+                });
             }
 
-            mapas.forEach(mapa => {
-                let status, acaoEntregarResgatar, diasComDirigenteBadge;
-                if (mapa.dirigente_id) {
-                    status = `<span class="badge bg-warning">Em Uso</span>`;
-                    acaoEntregarResgatar = `<button class="btn btn-sm btn-info btn-resgatar" data-id="${mapa.id}" title="Resgatar Mapa"><i class="fas fa-undo-alt"></i></button>`;
-                    const dias = mapa.dias_com_dirigente;
-                    let corBadge = 'success';
-                    if (dias > 30) corBadge = 'warning';
-                    if (dias > 60) corBadge = 'danger';
-                    diasComDirigenteBadge = `<span class="badge bg-${corBadge}">${dias !== null ? dias : '0'}</span>`;
-                } else {
-                    status = `<span class="badge bg-success">Disponível</span>`;
-                    acaoEntregarResgatar = `<button class="btn btn-sm btn-primary btn-entregar" data-id="${mapa.id}" data-identificador="${mapa.identificador}" title="Entregar Mapa"><i class="fas fa-hand-holding-heart"></i></button>`;
-                    diasComDirigenteBadge = `<span class="badge bg-secondary">---</span>`;
-                }
-                const quadraRange = mapa.quadra_inicio && mapa.quadra_fim ? `${mapa.quadra_inicio} - ${mapa.quadra_fim}` : 'N/D';
-                
-                // ▼▼▼ CORREÇÃO AQUI: Separamos "Identificador" e "Status" e adicionamos a classe "card-title-cell" ▼▼▼
-                const row = `<tr>
-                        <td data-label="ID">${mapa.id}</td>
-                        <td data-label="Identificador" class="card-title-cell">${mapa.identificador}</td>
-                        <td data-label="Região">${mapa.regiao || 'N/D'}</td>
-                        <td data-label="Tipo">${mapa.tipo || 'N/D'}</td>
-                        <td data-label="Quadras">${quadraRange}</td>
-                        <td data-label="Status">${status}</td>
-                        <td data-label="Dirigente">${mapa.dirigente_nome || '---'}</td>
-                        <td data-label="Tempo (dias)" class="text-center">${diasComDirigenteBadge}</td>
-                        <td data-label="Ações">
-                            ${acaoEntregarResgatar}
-                            <button class="btn btn-sm btn-warning btn-edit" data-id="${mapa.id}" title="Editar"><i class="fas fa-pencil-alt"></i></button>
-                            <button class="btn btn-sm btn-secondary btn-history" data-id="${mapa.id}" data-identificador="${mapa.identificador}" title="Ver Histórico"><i class="fas fa-history"></i></button>
-                            <button class="btn btn-sm btn-danger btn-delete" data-id="${mapa.id}" title="Excluir"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>`;
-                // ▲▲▲ FIM DA CORREÇÃO ▲▲▲
-                tableBody.innerHTML += row;
-            });
+            // Substitui o HTML de uma vez
+            tableBody.innerHTML = newHtml;
+
+            // Inicializa Tooltips
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
             tooltipTriggerList.map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
+            // Restaura o scroll se solicitado
+            if (manterVisual) {
+                window.scrollTo(0, scrollPos);
+            }
 
         } catch (error) { 
             console.error("Falha ao carregar mapas:", error.message);
             tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger"><b>Erro ao carregar mapas.</b><br><small>Verifique o console (F12) para detalhes técnicos.</small></td></tr>`; 
         }
     };
-    
-    // ... (o resto do arquivo JS permanece igual) ...
     
     const prepararEdicao = async (id) => {
         try {
@@ -170,12 +190,14 @@ document.addEventListener('DOMContentLoaded', () => {
             mapaModal.show();
         } catch (error) { alert('Não foi possível carregar os dados do mapa: ' + error.message); }
     };
+
     const resetarModal = () => {
         document.getElementById("form-mapa").reset();
         editMode = false;
         editId = null;
         mapaModalLabel.textContent = "Adicionar Novo Mapa";
     };
+
     const carregarHistoricoMapa = async (mapaId, identificador) => {
         historicoMapaIdentificadorSpan.textContent = identificador;
         historicoTableBody.innerHTML = `<tr><td colspan="5" class="text-center"><div class="spinner-border spinner-border-sm"></div> Carregando...</div></td></tr>`;
@@ -203,7 +225,9 @@ document.addEventListener('DOMContentLoaded', () => {
             historicoTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar histórico: ${error.message}</td></tr>`;
         }
     };
+
     mapaModalElement.addEventListener('hidden.bs.modal', resetarModal);
+
     document.getElementById('salvar-mapa-btn').addEventListener('click', async () => {
         const data = {
             identificador: document.getElementById('mapa_identificador').value,
@@ -223,9 +247,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error(await handleApiError(response));
             mapaModal.hide();
-            carregarMapas();
+            // ATENÇÃO: Agora passamos 'true' para manter o visual (scroll)
+            carregarMapas(true);
         } catch (error) { alert('Erro ao salvar o mapa: ' + error.message); }
     });
+
     const carregarDirigentesNoModal = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/mapas_api.php?recurso=dirigentes`);
@@ -235,6 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dirigentes.forEach(d => selectDirigentes.innerHTML += `<option value="${d.id}">${d.nome}</option>`);
         } catch (error) { selectDirigentes.innerHTML = '<option value="">Erro ao carregar</option>'; alert(error.message); }
     };
+
     document.getElementById('confirmar-entrega-btn').addEventListener('click', async () => {
         const data = { action: 'entregar', mapa_id: document.getElementById('entregar_mapa_id').value, dirigente_id: document.getElementById('entregar_dirigente_id').value, data_entrega: document.getElementById('entregar_data').value, };
         if (!data.dirigente_id || !data.data_entrega) { alert('Selecione um dirigente e uma data.'); return; }
@@ -242,9 +269,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`${API_BASE_URL}/mapas_api.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error(await handleApiError(response));
             entregarModal.hide();
-            carregarMapas();
+            // ATENÇÃO: Mantém o visual/scroll
+            carregarMapas(true);
         } catch (error) { alert('Erro ao entregar o mapa: ' + error.message); }
     });
+
     tableBody.addEventListener('click', async (e) => {
         const target = e.target.closest('button');
         if (!target) return;
@@ -254,7 +283,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (confirm('Deseja realmente excluir este mapa? O histórico e dados associados serão PERDIDOS permanentemente.')) {
                     const response = await fetch(`${API_BASE_URL}/mapas_api.php?id=${id}`, { method: 'DELETE' });
                     if (!response.ok) throw new Error(await handleApiError(response));
-                    carregarMapas();
+                    // ATENÇÃO: Mantém o visual/scroll
+                    carregarMapas(true);
                 }
             } else if (target.classList.contains('btn-entregar')) {
                 entregarModalLabel.textContent = `Entregar Mapa: ${target.dataset.identificador}`;
@@ -267,7 +297,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const data = { action: 'resgatar', mapa_id: id };
                     const response = await fetch(`${API_BASE_URL}/mapas_api.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
                     if (!response.ok) throw new Error(await handleApiError(response));
-                    carregarMapas();
+                    // ATENÇÃO: Mantém o visual/scroll
+                    carregarMapas(true);
                 }
             } else if (target.classList.contains("btn-edit")) {
                 prepararEdicao(id);
@@ -279,8 +310,11 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`Ocorreu um erro na ação: ${error.message}`);
         }
     });
+
     filtroOrdenacaoMenu.addEventListener("click", (e) => { e.preventDefault(); const target = e.target.closest("a.dropdown-item"); if (target && target.dataset.sort) { sortOrder = target.dataset.sort; carregarMapas(); } });
     filtroDirigenteMenu.addEventListener("click", (e) => { e.preventDefault(); const target = e.target.closest("a.dropdown-item"); if (target) { filtroDirigenteId = target.dataset.id ? parseInt(target.dataset.id, 10) : null; carregarMapas(); } });
     filtroRegiaoMenu.addEventListener("click", (e) => { e.preventDefault(); const target = e.target.closest("a.dropdown-item"); if (target) { filtroRegiao = target.dataset.regiao || null; carregarMapas(); } });
+    
+    // Carga inicial (aqui pode mostrar o spinner, então sem argumento ou false)
     carregarMapas();
 });
