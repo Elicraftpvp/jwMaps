@@ -41,9 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Estado da Aplicação
     let filtroDirigenteId = null;
     let filtroRegiao = null;
-    let filtrosTipoSelecionados = new Set(); // Armazena os tipos marcados (checkbox)
+    let filtrosTipoSelecionados = new Set();
     
-    let sortOrder = 'id'; // id, asc, desc, tipo_asc, tipo_desc
+    let sortOrder = 'id';
     let editMode = false;
     let editId = null;
 
@@ -111,18 +111,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const popularFiltroTipos = (mapas) => {
-        // Extrair tipos únicos
         const tiposUnicos = [...new Set(mapas.filter(m => m.tipo).map(m => m.tipo))].sort();
-        
-        // Limpar lista atual
         listaCheckboxesTipos.innerHTML = "";
-
         if (tiposUnicos.length === 0) {
             listaCheckboxesTipos.innerHTML = '<span class="dropdown-item-text text-muted">Nenhum tipo</span>';
             return;
         }
-
-        // Criar checkboxes
         tiposUnicos.forEach(tipo => {
             const isChecked = filtrosTipoSelecionados.has(tipo) ? 'checked' : '';
             const div = document.createElement('div');
@@ -131,39 +125,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input class="form-check-input mt-0" type="checkbox" value="${tipo}" ${isChecked}>
                 <span class="ms-2">${tipo}</span>
             `;
-            
-            // Event Listener para clicar na div ou no checkbox
             div.addEventListener('click', (e) => {
-                e.stopPropagation(); // Impede o fechamento do dropdown
-                // Se clicou na div mas não no input, inverte o input
+                e.stopPropagation();
                 let checkbox = div.querySelector('input');
                 if (e.target !== checkbox) {
                     checkbox.checked = !checkbox.checked;
                 }
-                
-                // Atualiza o Set de filtros
                 if (checkbox.checked) {
                     filtrosTipoSelecionados.add(tipo);
                 } else {
                     filtrosTipoSelecionados.delete(tipo);
                 }
-                
-                // Recarrega a tabela (modo visual apenas, sem fetch novo)
                 carregarMapas(true, false); 
             });
-
             listaCheckboxesTipos.appendChild(div);
         });
     };
 
     // --- CARREGAMENTO PRINCIPAL ---
 
-    let cacheMapas = null; // Armazena dados brutos para filtragem local rápida
+    let cacheMapas = null; 
 
-    /**
-     * @param {boolean} manterVisual - Se true, não mostra "Carregando" na tabela.
-     * @param {boolean} fetchNovo - Se true, busca do servidor. Se false, usa cacheMapas e aplica filtros locais.
-     */
     const carregarMapas = async (manterVisual = false, fetchNovo = true) => {
         const scrollPos = window.scrollY;
 
@@ -178,8 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch(`${API_BASE_URL}/mapas_api.php`);
                 if (!response.ok) throw new Error(await handleApiError(response));
                 cacheMapas = await response.json();
-                
-                // Popula os menus apenas quando busca dados novos
                 popularFiltroDirigentes(cacheMapas);
                 popularFiltroRegioes(cacheMapas);
                 popularFiltroTipos(cacheMapas); 
@@ -187,59 +167,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
             mapas = [...cacheMapas];
 
-            // 1. Aplicar Filtro Região
-            if (filtroRegiao) {
-                mapas = mapas.filter(mapa => mapa.regiao === filtroRegiao);
-            }
+            if (filtroRegiao) mapas = mapas.filter(mapa => mapa.regiao === filtroRegiao);
+            if (filtroDirigenteId) mapas = mapas.filter(mapa => mapa.dirigente_id == filtroDirigenteId);
+            if (filtrosTipoSelecionados.size > 0) mapas = mapas.filter(mapa => filtrosTipoSelecionados.has(mapa.tipo));
 
-            // 2. Aplicar Filtro Dirigente
-            if (filtroDirigenteId) {
-                mapas = mapas.filter(mapa => mapa.dirigente_id == filtroDirigenteId);
-            }
-
-            // 3. Aplicar Filtro Tipo (Multi-seleção)
-            if (filtrosTipoSelecionados.size > 0) {
-                mapas = mapas.filter(mapa => filtrosTipoSelecionados.has(mapa.tipo));
-            }
-
-            // Atualizar Ícones de Filtro
             filtroDirigenteBtnIcon.classList.toggle("text-primary", !!filtroDirigenteId);
             filtroDirigenteBtnIcon.classList.toggle("text-secondary", !filtroDirigenteId);
-
             filtroRegiaoBtnIcon.classList.toggle("text-primary", !!filtroRegiao);
             filtroRegiaoBtnIcon.classList.toggle("text-secondary", !filtroRegiao);
-
             filtroTipoBtnIcon.classList.toggle("text-primary", filtrosTipoSelecionados.size > 0 || sortOrder.includes('tipo'));
             filtroTipoBtnIcon.classList.toggle("text-secondary", filtrosTipoSelecionados.size === 0 && !sortOrder.includes('tipo'));
-
             filtroOrdenacaoBtnIcon.classList.toggle("text-primary", sortOrder !== 'id' && !sortOrder.includes('tipo'));
             filtroOrdenacaoBtnIcon.classList.toggle("text-secondary", sortOrder === 'id' || sortOrder.includes('tipo'));
 
-            // 4. Ordenação
             if (sortOrder === 'asc') {
                 mapas.sort((a, b) => a.identificador.localeCompare(b.identificador, undefined, {numeric: true}));
             } else if (sortOrder === 'desc') {
                 mapas.sort((a, b) => b.identificador.localeCompare(a.identificador, undefined, {numeric: true}));
             } else if (sortOrder === 'tipo_asc') {
-                // Ordena por Tipo A-Z, depois por Identificador
                 mapas.sort((a, b) => {
                     const tipoA = a.tipo || "";
                     const tipoB = b.tipo || "";
                     return tipoA.localeCompare(tipoB) || a.identificador.localeCompare(b.identificador, undefined, {numeric: true});
                 });
             } else if (sortOrder === 'tipo_desc') {
-                // Ordena por Tipo Z-A, depois por Identificador
                 mapas.sort((a, b) => {
                     const tipoA = a.tipo || "";
                     const tipoB = b.tipo || "";
                     return tipoB.localeCompare(tipoA) || a.identificador.localeCompare(b.identificador, undefined, {numeric: true});
                 });
             } else {
-                // ID (Padrão)
                 mapas.sort((a, b) => a.id - b.id);
             }
 
-            // Renderização
             let newHtml = '';
             if (mapas.length === 0) {
                 newHtml = `<tr><td colspan="8" class="text-center">Nenhum mapa encontrado com os filtros aplicados.</td></tr>`; 
@@ -247,9 +207,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 mapas.forEach(mapa => {
                     let status, acaoEntregarResgatar, diasComDirigenteBadge;
                     
+                    // IMPORTANTE: Adicionada classe 'flex-fill' aos botões para eles esticarem
+                    const baseBtnClass = "btn btn-sm flex-fill";
+
                     if (mapa.dirigente_id) {
                         status = `<span class="badge bg-warning">Em Uso</span>`;
-                        acaoEntregarResgatar = `<button class="btn btn-sm btn-info btn-resgatar" data-id="${mapa.id}" title="Resgatar Mapa"><i class="fas fa-undo-alt"></i></button>`;
+                        acaoEntregarResgatar = `<button class="${baseBtnClass} btn-info btn-resgatar" data-id="${mapa.id}" title="Resgatar Mapa"><i class="fas fa-undo-alt"></i></button>`;
                         
                         const dias = mapa.dias_com_dirigente;
                         let corBadge = 'success';
@@ -258,13 +221,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         diasComDirigenteBadge = `<span class="badge bg-${corBadge}">${dias !== null ? dias : '0'}</span>`;
                     } else {
                         status = `<span class="badge bg-success">Disponível</span>`;
-                        acaoEntregarResgatar = `<button class="btn btn-sm btn-primary btn-entregar" data-id="${mapa.id}" data-identificador="${mapa.identificador}" title="Entregar Mapa"><i class="fas fa-hand-holding-heart"></i></button>`;
+                        acaoEntregarResgatar = `<button class="${baseBtnClass} btn-primary btn-entregar" data-id="${mapa.id}" data-identificador="${mapa.identificador}" title="Entregar Mapa"><i class="fas fa-hand-holding-heart"></i></button>`;
                         diasComDirigenteBadge = `<span class="badge bg-secondary">---</span>`;
                     }
                     
                     const quadraRange = mapa.quadra_inicio && mapa.quadra_fim ? `${mapa.quadra_inicio} - ${mapa.quadra_fim}` : 'N/D';
                     
-                    // Nota: Removemos a coluna ID. Total 8 colunas agora.
                     const row = `<tr>
                             <td data-label="Identificador" class="card-title-cell fw-bold">${mapa.identificador}</td>
                             <td data-label="Região">${mapa.regiao || 'N/D'}</td>
@@ -274,9 +236,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             <td data-label="Dirigente">${mapa.dirigente_nome || '---'}</td>
                             <td data-label="Tempo" class="text-center">${diasComDirigenteBadge}</td>
                             <td data-label="Ações">
-                                ${acaoEntregarResgatar}
-                                <button class="btn btn-sm btn-warning btn-edit" data-id="${mapa.id}" title="Editar"><i class="fas fa-pencil-alt"></i></button>
-                                <button class="btn btn-sm btn-secondary btn-history" data-id="${mapa.id}" data-identificador="${mapa.identificador}" title="Ver Histórico"><i class="fas fa-history"></i></button>
+                                <div class="d-flex gap-2 w-100"> <!-- w-100 e sem justify-content-end para preencher -->
+                                    ${acaoEntregarResgatar}
+                                    <button class="${baseBtnClass} btn-warning btn-edit" data-id="${mapa.id}" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+                                    <button class="${baseBtnClass} btn-secondary btn-history" data-id="${mapa.id}" data-identificador="${mapa.identificador}" title="Ver Histórico"><i class="fas fa-history"></i></button>
+                                </div>
                             </td>
                         </tr>`;
                     newHtml += row;
@@ -328,14 +292,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     filtroTipoMenu.addEventListener("click", (e) => {
-        // Verifica se clicou num botão de ordenação dentro do menu de Tipo
         const targetSort = e.target.closest("a.dropdown-item");
         if (targetSort && targetSort.dataset.sortType) {
             e.preventDefault();
             sortOrder = targetSort.dataset.sortType;
             carregarMapas(true, false);
         }
-        // Checkboxes são tratados na criação do elemento (popularFiltroTipos) para stopPropagation
     });
 
     // --- AÇÕES DO CRUD ---
@@ -419,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error(await handleApiError(response));
             mapaModal.hide();
-            carregarMapas(true); // Recarrega do servidor
+            carregarMapas(true); 
             mostrarFeedback('Sucesso', `Mapa <b>${data.identificador}</b> salvo!`, 'success');
         } catch (error) { 
             mostrarFeedback('Erro', error.message, 'danger'); 
@@ -462,10 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!target) return;
         const id = target.dataset.id;
         try {
-            // Nota: Botão excluir removido do HTML mas mantido a lógica caso precise reativar
-            if (target.classList.contains('btn-delete')) {
-                // Lógica de exclusão (oculta no layout atual)
-            } else if (target.classList.contains('btn-entregar')) {
+            if (target.classList.contains('btn-entregar')) {
                 entregarModalLabel.textContent = `Entregar Mapa: ${target.dataset.identificador}`;
                 document.getElementById('entregar_mapa_id').value = id;
                 document.getElementById('entregar_data').valueAsDate = new Date();
@@ -490,6 +449,5 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { mostrarFeedback('Erro', error.message, 'danger'); }
     });
 
-    // Iniciar
     carregarMapas();
 });

@@ -45,13 +45,14 @@
             <div class="card-body">
                 <!-- Alterado classe para permitir overflow vertical dos menus -->
                 <div class="table-responsive table-responsive-visible">
-                    <table class="table table-hover align-middle">
+                    <!-- ADICIONADO: table-responsive-cards para o modo mobile funcionar -->
+                    <table class="table table-hover align-middle table-responsive-cards">
                         <thead class="table-light">
                             <tr>
                                 <!-- Coluna ID removida visualmente -->
                                 <th>
                                     <div class="d-flex align-items-center gap-2">
-                                        <span>Identificador</span>
+                                        <span>Nome do Território</span>
                                         <div class="dropdown">
                                             <a href="#" role="button" id="filtroOrdenacaoBtn" data-bs-toggle="dropdown" aria-expanded="false">
                                                 <i class="fas fa-filter text-secondary" title="Ordenar por Identificador"></i>
@@ -134,7 +135,7 @@
                 <div class="modal-body">
                     <form id="form-mapa">
                         <div class="mb-3">
-                            <label for="mapa_identificador" class="form-label">Identificador</label>
+                            <label for="mapa_identificador" class="form-label">Nome do Território</label>
                             <input type="text" class="form-control" id="mapa_identificador" placeholder="Ex: Mapa 01 - Centro" required>
                         </div>
                         <div class="row">
