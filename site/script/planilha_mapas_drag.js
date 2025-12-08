@@ -8,8 +8,17 @@ function inicializarDragAndDrop() {
         group: 'mapas_sistema', 
         animation: 150,
         draggable: '.mapa-item',
-        ghostClass: 'bg-secondary', 
+        ghostClass: 'bg-secondary',
         
+        // --- OTIMIZAÇÃO DE PERFORMANCE E SCROLL ---
+        forceFallback: true,      // Usa simulação de drag (mais fluido e evita travar em textos)
+        fallbackTolerance: 3,     // Previne arrastar acidentalmente ao clicar (pixels)
+        scroll: true,             // Habilita scroll automático
+        scrollSensitivity: 150,   // Distância da borda para começar a rolar (px)
+        scrollSpeed: 40,          // Velocidade da rolagem (px/frame)
+        bubbleScroll: true,       // Garante que o scroll funcione dentro do iframe
+        // ------------------------------------------
+
         onAdd: async function (evt) {
             const item = evt.item;
             const mapaId = item.getAttribute('data-mapa-id');
