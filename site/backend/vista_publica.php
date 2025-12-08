@@ -111,6 +111,7 @@ try {
                     </div>
                     
                     <?php
+                    // Visualização do GDrive (Preview)
                     if (!empty($mapa['gdrive_file_id'])):
                         $pdf_embed_url = "https://drive.google.com/file/d/" . $mapa['gdrive_file_id'] . "/preview";
                     ?>
@@ -124,9 +125,28 @@ try {
                         <div class="text-center p-3 text-muted border-bottom"><i class="fas fa-exclamation-triangle me-2"></i> Mapa não encontrado no Drive.</div>
                     <?php endif; ?>
 
+                    <!-- === BOTÃO DE DOWNLOAD DO PDF === -->
+                    <?php
+                        // Nome do arquivo baseado no identificador + .pdf
+                        $nome_arquivo_pdf = $mapa['identificador'] . ".pdf";
+                        // Caminho físico para verificar se existe
+                        $caminho_local_pdf = __DIR__ . "/pdfs/" . $nome_arquivo_pdf;
+                        // URL para o link (encode para lidar com espaços e acentos)
+                        $url_download_pdf = "pdfs/" . rawurlencode($nome_arquivo_pdf);
+
+                        if (file_exists($caminho_local_pdf)):
+                    ?>
+                        <div class="px-3 pt-3">
+                            <a href="<?php echo $url_download_pdf; ?>" class="btn btn-outline-dark w-100" download="<?php echo htmlspecialchars($nome_arquivo_pdf); ?>">
+                                <i class="fas fa-file-download me-2"></i> Baixar Mapa em PDF
+                            </a>
+                        </div>
+                    <?php endif; ?>
+                    <!-- ============================================== -->
+
                     <div class="card-body">
                         <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
-                            <label class="form-label fw-bold">Registro por Quadra:</label>
+                            <label class="form-label fw-bold mt-2">Registro por Quadra:</label>
                             <div class="d-flex justify-content-end px-2 pb-1"> <small class="fw-bold text-muted" style="width: 140px; text-align: center;">Nº Pessoas</small> </div>
                             <div class="list-group list-group-flush mb-3 quadra-list" data-mapa-id="<?php echo $mapa['id']; ?>">
                             <?php if (isset($quadras_por_mapa[$mapa['id']])): foreach ($quadras_por_mapa[$mapa['id']] as $quadra): ?>
@@ -149,8 +169,8 @@ try {
                             </div>
                             <hr>
                             <p class="mb-2"><strong>Recebido em:</strong> <?php echo date('d/m/Y', strtotime($mapa['data_entrega'])); ?></p>
-                            <div class="mb-3"><label for="data_devolucao_<?php echo $mapa['id']; ?>" class="form-label">Data de Devolução:</label><input type="date" class="form-control" id="data_devolucao_<?php echo $mapa['id']; ?>" value="<?php echo date('Y-m-d'); ?>" required></div>
-                            <div class="d-grid"><button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Devolver Mapa Completo</button></div>
+                            <!-- Esta linha daqui! <div class="mb-3"><label for="data_devolucao_<?php echo $mapa['id']; ?>" class="form-label">Data de Devolução:</label><input type="date" class="form-control" id="data_devolucao_<?php echo $mapa['id']; ?>" value="<?php echo date('Y-m-d'); ?>" required></div> -->
+                            <div class="d-grid"><button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Devolver Mapa</button></div>
                         </form>
                     </div>
                 </div>
@@ -172,7 +192,7 @@ try {
         </div>
     </div>
 
-    <!-- Modais Gerais (Feedback e Confirmação) - IGUAL AO GERENCIAR MAPAS -->
+    <!-- Modais Gerais (Feedback e Confirmação) -->
     <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -223,7 +243,7 @@ try {
             const confirmacaoBody = document.getElementById('confirmacaoModalBody');
             const btnConfirmarAcao = document.getElementById('btnConfirmarAcao');
 
-            // --- FUNÇÕES AUXILIARES VISUAIS (IGUAIS AO GERENCIAR_MAPAS.JS) ---
+            // --- FUNÇÕES AUXILIARES VISUAIS ---
 
             const mostrarFeedback = (titulo, mensagem, tipo = 'primary') => {
                 feedbackTitle.textContent = titulo;
@@ -286,10 +306,7 @@ try {
                     }
                 } catch (error) {
                     console.error('Erro ao salvar:', error);
-                    // Usa o novo modal de feedback para erros de salvamento se for crítico, 
-                    // ou apenas visual no input para não ser intrusivo demais durante digitação
                     statusDiv.innerHTML = '<i class="fas fa-times text-danger"></i>';
-                    // Opcional: mostrarFeedback('Erro ao Salvar', error.message, 'danger');
                 }
             };
 
@@ -329,17 +346,14 @@ try {
                     
                     const mapaId = e.target.dataset.mapaId;
                     const mapaNome = e.target.dataset.mapaNome;
-                    const dataDevolucao = document.getElementById(`data_devolucao_${mapaId}`).value;
                     
-                    if (!dataDevolucao) { 
-                        mostrarFeedback('Atenção', 'Por favor, selecione a data de devolução.', 'warning'); 
-                        return; 
-                    }
+                    // Gera data atual automaticamente (YYYY-MM-DD) pois o input foi removido
+                    const dataDevolucao = new Date().toISOString().split('T')[0];
 
                     // Usa o novo modal de confirmação
                     mostrarConfirmacao(
                         'Confirmar Devolução',
-                        `Tem certeza que deseja devolver o mapa <strong>${mapaNome}</strong>?<br><br>Esta ação removerá o mapa da sua lista.`,
+                        `Tem certeza que deseja devolver o mapa <strong>${mapaNome}</strong> na data de hoje?<br><br>Esta ação removerá o mapa da sua lista.`,
                         async () => {
                             // Callback executado ao clicar em "Confirmar" no modal
                             const btn = e.target.querySelector('button[type="submit"]');
