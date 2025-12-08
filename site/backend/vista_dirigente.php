@@ -102,6 +102,24 @@ try {
         }
         #pdfModal iframe { width: 100%; height: 100%; border: none; }
 
+        /* Estilos de Animação e Colapso */
+        .card-collapsible-content {
+            overflow: hidden;
+            transition: max-height 0.4s ease-in-out, opacity 0.4s ease-in-out;
+            max-height: 2000px; /* Valor alto suficiente para caber o conteúdo */
+            opacity: 1;
+        }
+
+        .card.collapsed .card-collapsible-content {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        .card.card-interativo .card-header { 
+            cursor: pointer; 
+            user-select: none; 
+        }
+
         @media (max-width: 768px) { .iframe-page { zoom: 1.3; } }
     </style>
 </head>
@@ -118,56 +136,95 @@ try {
                         <i class="fas fa-info-circle me-2"></i>Este dirigente não possui nenhum mapa atribuído no momento.
                     </div>
                 </div>
-            <?php else: foreach ($mapas as $mapa): ?>
-                <div class="col-lg-6 mb-4" id="mapa-card-<?php echo $mapa['id']; ?>">
-                    <div class="card shadow-sm h-100">
+            <?php else: 
+                $total_cards = count($mapas);
+                foreach ($mapas as $mapa): 
+                    // Lógica para determinar se deve iniciar colapsado
+                    $soma_pessoas = 0;
+                    if (isset($quadras_por_mapa[$mapa['id']])) {
+                        foreach ($quadras_por_mapa[$mapa['id']] as $q) {
+                            $soma_pessoas += (int)$q['pessoas_faladas'];
+                        }
+                    }
+                    
+                    // Só colapsa se houver mais de 1 mapa E a soma for 0
+                    $classe_inicial = ($total_cards > 1 && $soma_pessoas == 0) ? 'collapsed' : '';
+            ?>
+                <div class="col-lg-6 mb-4 card-container-wrapper" id="mapa-card-<?php echo $mapa['id']; ?>">
+                    <div class="card shadow-sm <?php echo $classe_inicial; ?>">
                         <div class="card-header bg-primary text-white">
                             <h5 class="card-title mb-0"><i class="fas fa-map-pin me-2"></i> <?php echo htmlspecialchars($mapa['identificador']); ?></h5>
                         </div>
 
-                        <?php
-                        if (!empty($mapa['gdrive_file_id'])):
-                            $pdf_embed_url = "https://drive.google.com/file/d/" . $mapa['gdrive_file_id'] . "/preview";
-                        ?>
-                            <div class="pdf-preview-container">
-                                <iframe src="<?php echo $pdf_embed_url; ?>"></iframe>
-                                <button class="btn btn-primary btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-src="<?php echo $pdf_embed_url; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
-                                    <i class="fas fa-expand-alt me-1"></i> Expandir
-                                </button>
-                            </div>
-                        <?php else: ?>
-                            <div class="text-center p-3 text-muted border-bottom"><i class="fas fa-exclamation-triangle me-2"></i> Mapa não encontrado no Drive.</div>
-                        <?php endif; ?>
-
-                        <div class="card-body">
-                            <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
-                                <label class="form-label fw-bold">Registro por Quadra:</label>
-                                <div class="d-flex justify-content-end px-2 pb-1"> <small class="fw-bold text-muted" style="width: 140px; text-align: center;">Nº Pessoas</small> </div>
-                                <div class="list-group list-group-flush mb-3 quadra-list" data-mapa-id="<?php echo $mapa['id']; ?>">
-                                <?php if (!empty($quadras_por_mapa[$mapa['id']])): foreach ($quadras_por_mapa[$mapa['id']] as $quadra): ?>
-                                    <div class="list-group-item quadra-item d-flex justify-content-between align-items-center p-2">
-                                        <span>Quadra <strong><?php echo htmlspecialchars($quadra['numero']); ?></strong></span>
-                                        <div class="d-flex align-items-center">
-                                            <div class="input-group input-group-sm" style="width: 120px;">
-                                                <button class="btn btn-outline-secondary btn-decrement" type="button">-</button>
-                                                <input type="number" class="form-control text-center quadra-input no-spinners" value="<?php echo htmlspecialchars($quadra['pessoas_faladas']); ?>" data-quadra-id="<?php echo $quadra['id']; ?>" min="0" aria-label="Pessoas faladas">
-                                                <button class="btn btn-outline-secondary btn-increment" type="button">+</button>
-                                            </div>
-                                            <div class="ms-2 d-flex justify-content-center align-items-center" style="width: 24px; height: 24px;" id="status_save_q<?php echo $quadra['id']; ?>"></div>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                                <div class="list-group-item d-flex justify-content-between align-items-center p-2 border-top fw-bold bg-light"> <span>Total</span> <span class="fs-5" id="total-pessoas-mapa-<?php echo $mapa['id']; ?>">0</span> </div>
-                                <?php else: ?>
-                                    <div class="list-group-item text-muted">Nenhuma quadra encontrada para este mapa.</div>
-                                <?php endif; ?>
+                        <!-- Wrapper para o conteúdo colapsável -->
+                        <div class="card-collapsible-content">
+                            <?php
+                            // Visualização do GDrive
+                            if (!empty($mapa['gdrive_file_id'])):
+                                $pdf_embed_url = "https://drive.google.com/file/d/" . $mapa['gdrive_file_id'] . "/preview";
+                            ?>
+                                <div class="pdf-preview-container">
+                                    <iframe src="<?php echo $pdf_embed_url; ?>"></iframe>
+                                    <button class="btn btn-primary btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-src="<?php echo $pdf_embed_url; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                                        <i class="fas fa-expand-alt me-1"></i> Expandir
+                                    </button>
                                 </div>
-                                <hr>
-                                <p class="mb-2"><strong>Recebido em:</strong> <?php echo date('d/m/Y', strtotime($mapa['data_entrega'])); ?></p>
-                                <div class="mb-3"><label for="data_devolucao_<?php echo $mapa['id']; ?>" class="form-label">Data de Devolução:</label><input type="date" class="form-control" id="data_devolucao_<?php echo $mapa['id']; ?>" value="<?php echo date('Y-m-d'); ?>" required></div>
-                                <div class="d-grid"><button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Devolver Mapa Completo</button></div>
-                            </form>
-                        </div>
+                            <?php else: ?>
+                                <div class="text-center p-3 text-muted border-bottom"><i class="fas fa-exclamation-triangle me-2"></i> Mapa não encontrado no Drive.</div>
+                            <?php endif; ?>
+
+                            <!-- === BOTÃO DE DOWNLOAD DO PDF === -->
+                            <?php
+                                // Nome do arquivo baseado no identificador + .pdf
+                                $nome_arquivo_pdf = $mapa['identificador'] . ".pdf";
+                                // Caminho físico para verificar se existe
+                                $caminho_local_pdf = __DIR__ . "/pdfs/" . $nome_arquivo_pdf;
+                                // URL para o link
+                                $url_download_pdf = "pdfs/" . rawurlencode($nome_arquivo_pdf);
+
+                                if (file_exists($caminho_local_pdf)):
+                            ?>
+                                <div class="px-3 pt-3">
+                                    <a href="<?php echo $url_download_pdf; ?>" class="btn btn-outline-dark w-100" download="<?php echo htmlspecialchars($nome_arquivo_pdf); ?>">
+                                        <i class="fas fa-file-download me-2"></i> Baixar Mapa em PDF
+                                    </a>
+                                </div>
+                            <?php endif; ?>
+                            <!-- ============================================== -->
+
+                            <div class="card-body">
+                                <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                                    <label class="form-label fw-bold mt-2">Registro por Quadra:</label>
+                                    <div class="d-flex justify-content-end px-2 pb-1"> <small class="fw-bold text-muted" style="width: 140px; text-align: center;">Nº Pessoas</small> </div>
+                                    <div class="list-group list-group-flush mb-3 quadra-list" data-mapa-id="<?php echo $mapa['id']; ?>">
+                                    <?php if (!empty($quadras_por_mapa[$mapa['id']])): foreach ($quadras_por_mapa[$mapa['id']] as $quadra): ?>
+                                        <div class="list-group-item quadra-item d-flex justify-content-between align-items-center p-2">
+                                            <span>Quadra <strong><?php echo htmlspecialchars($quadra['numero']); ?></strong></span>
+                                            <div class="d-flex align-items-center">
+                                                <div class="input-group input-group-sm" style="width: 120px;">
+                                                    <button class="btn btn-outline-secondary btn-decrement" type="button">-</button>
+                                                    <input type="number" class="form-control text-center quadra-input no-spinners" value="<?php echo htmlspecialchars($quadra['pessoas_faladas']); ?>" data-quadra-id="<?php echo $quadra['id']; ?>" min="0" aria-label="Pessoas faladas">
+                                                    <button class="btn btn-outline-secondary btn-increment" type="button">+</button>
+                                                </div>
+                                                <div class="ms-2 d-flex justify-content-center align-items-center" style="width: 24px; height: 24px;" id="status_save_q<?php echo $quadra['id']; ?>"></div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center p-2 border-top fw-bold bg-light"> <span>Total</span> <span class="fs-5" id="total-pessoas-mapa-<?php echo $mapa['id']; ?>"><?php echo $soma_pessoas; ?></span> </div>
+                                    <?php else: ?>
+                                        <div class="list-group-item text-muted">Nenhuma quadra encontrada para este mapa.</div>
+                                    <?php endif; ?>
+                                    </div>
+                                    <hr>
+                                    <p class="mb-2"><strong>Recebido em:</strong> <?php echo date('d/m/Y', strtotime($mapa['data_entrega'])); ?></p>
+                                    <div class="mb-3">
+                                        <label for="data_devolucao_<?php echo $mapa['id']; ?>" class="form-label">Data de Devolução:</label>
+                                        <input type="date" class="form-control" id="data_devolucao_<?php echo $mapa['id']; ?>" value="<?php echo date('Y-m-d'); ?>" required>
+                                    </div>
+                                    <div class="d-grid"><button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Devolver Mapa Completo</button></div>
+                                </form>
+                            </div>
+                        </div> <!-- Fim Card Collapsible -->
                     </div>
                 </div>
             <?php endforeach; endif; ?>
@@ -182,14 +239,12 @@ try {
                     <h5 class="modal-title" id="pdfModalLabel">Visualizador de Mapa</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body" id="pdf-modal-body">
-                    <!-- O Iframe será inserido aqui pelo JavaScript -->
-                </div>
+                <div class="modal-body" id="pdf-modal-body"></div>
             </div>
         </div>
     </div>
 
-    <!-- Modais de Feedback e Confirmação (Novo Padrão) -->
+    <!-- Modais Gerais (Feedback e Confirmação) -->
     <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -271,6 +326,34 @@ try {
             confirmacaoModal.show();
         };
 
+        // --- LÓGICA DE COLAPSO DOS CARDS ---
+        const gerenciarColapsoCards = () => {
+            const wrappers = document.querySelectorAll('.card-container-wrapper');
+            const totalMapas = wrappers.length;
+            const podeColapsar = totalMapas > 1;
+
+            wrappers.forEach(wrapper => {
+                const card = wrapper.querySelector('.card');
+                if (podeColapsar) {
+                    card.classList.add('card-interativo');
+                } else {
+                    card.classList.remove('card-interativo');
+                    card.classList.remove('collapsed'); 
+                }
+            });
+        };
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.card-header')) {
+                const card = e.target.closest('.card');
+                if (card && card.classList.contains('card-interativo')) {
+                    card.classList.toggle('collapsed');
+                }
+            }
+        });
+
+        gerenciarColapsoCards();
+
         // --- LÓGICA DA PÁGINA ---
 
         const saveQuadra = async (quadraId, valor, statusDiv) => {
@@ -332,7 +415,7 @@ try {
         
         const updateTotal = (quadraList) => { const mapaId = quadraList.dataset.mapaId; let total = 0; quadraList.querySelectorAll('.quadra-input').forEach(input => { total += parseInt(input.value) || 0; }); document.getElementById(`total-pessoas-mapa-${mapaId}`).textContent = total; };
         
-        document.querySelectorAll('.quadra-list').forEach(list => updateTotal(list));
+        // document.querySelectorAll('.quadra-list').forEach(list => updateTotal(list));
         
         document.querySelectorAll('.form-devolver').forEach(form => {
             form.addEventListener('submit', (e) => {
@@ -345,7 +428,7 @@ try {
 
                 mostrarConfirmacao(
                     'Confirmar Devolução',
-                    `Tem certeza que deseja devolver o mapa <strong>${mapaNome}</strong>?<br><br>Ele será removido da sua lista.`,
+                    `Tem certeza que deseja devolver o mapa <strong>${mapaNome}</strong> na data <strong>${dataDevolucao}</strong>?<br><br>Ele será removido da sua lista.`,
                     async () => {
                         const btn = e.target.querySelector('button[type="submit"]');
                         const originalText = btn.innerHTML;
@@ -367,11 +450,14 @@ try {
 
                             if (result.message) { 
                                 mostrarFeedback('Sucesso', 'Mapa devolvido com sucesso!', 'success'); 
-                                const card = document.getElementById(`mapa-card-${mapaId}`);
-                                card.style.transition = 'opacity 0.5s';
-                                card.style.opacity = '0';
+                                
+                                const cardWrapper = document.getElementById(`mapa-card-${mapaId}`);
+                                cardWrapper.style.transition = 'opacity 0.5s';
+                                cardWrapper.style.opacity = '0';
+                                
                                 setTimeout(() => {
-                                    card.remove();
+                                    cardWrapper.remove();
+                                    gerenciarColapsoCards();
                                     if(document.querySelectorAll('.card').length === 0) location.reload();
                                 }, 500);
                             } else { 
@@ -380,7 +466,6 @@ try {
                         } catch (error) { 
                             console.error('Erro ao devolver mapa:', error); 
                             mostrarFeedback('Erro', 'Erro ao devolver o mapa: ' + error.message, 'danger'); 
-                        } finally { 
                             btn.innerHTML = originalText; 
                             btn.disabled = false; 
                         }
