@@ -55,7 +55,7 @@ function renderizarTabelaDirigentes(todosOsMapas, todosOsDirigentes, tbody) {
             <div class="mapas-dirigente-container d-flex flex-wrap gap-1" data-dirigente-id="${dirigente.id}" style="min-height:40px;">`;
 
         mapasDoDirigente.forEach(mapa => {
-            const label = mapa.regiao ? `${mapa.identificador} - ${mapa.regiao}` : mapa.identificador;
+            const label = mapa.tipo ? `${mapa.identificador} - ${mapa.tipo}` : mapa.identificador;
             // USANDO A CLASSE CORRETA: mapa-atribuido-badge
             html += `<span class="badge mapa-atribuido-badge mapa-item" data-mapa-id="${mapa.id}">${label}</span>`;
         });
@@ -77,7 +77,7 @@ function renderizarMapasDisponiveis(todosOsMapas, container) {
         // USANDO A CLASSE CORRETA: mapa-disponivel-badge
         span.className = 'badge mapa-disponivel-badge mapa-item';
         span.setAttribute('data-mapa-id', mapa.id);
-        span.textContent = mapa.regiao ? `${mapa.identificador} - ${mapa.regiao}` : mapa.identificador;
+        span.textContent = mapa.tipo ? `${mapa.identificador} - ${mapa.tipo}` : mapa.identificador;
         container.appendChild(span);
     });
 }
