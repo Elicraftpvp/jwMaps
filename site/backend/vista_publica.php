@@ -4,17 +4,23 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 require_once 'conexao.php';
 
+// Detecta a URL base do site automaticamente para corrigir links de CSS/JS
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+$domainName = $_SERVER['HTTP_HOST'];
+// Ajuste aqui se sua pasta raiz mudar de nome. Pega o caminho até /jwMaps/
+$path = "/jwMaps/"; 
+$baseUrl = $protocol . $domainName . $path;
+
 // Validação do Token
 $token = htmlspecialchars($_GET['token'] ?? '');
+// ... (resto da lógica de validação continua igual, não mudei nada aqui) ...
 if (empty($token)) {
     http_response_code(400);
     die("<h1>Acesso Inválido</h1>");
 }
 
 try {
-    // Busca o dirigente pelo token e pela permissão de Dirigente (bit 1)
     $stmt_user = $pdo->prepare("SELECT id, nome FROM users WHERE token_acesso = ? AND status = 'ativo' AND (permissoes & 1) = 1");
-    
     $stmt_user->execute([$token]);
     $dirigente = $stmt_user->fetch();
     if (!$dirigente) {
@@ -23,7 +29,6 @@ try {
     }
     $dirigente_id = $dirigente['id'];
     
-    // Puxar mapas atribuídos e não devolvidos
     $stmt_mapas = $pdo->prepare("SELECT id, identificador, data_entrega, gdrive_file_id FROM mapas WHERE dirigente_id = ? AND data_devolucao IS NULL");
     $stmt_mapas->execute([$dirigente_id]);
     $mapas = $stmt_mapas->fetchAll();
@@ -51,12 +56,24 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meus Mapas</title>
+    
+    <!-- Meta tags para preview de link (Open Graph) -->
+    <meta property="og:title" content="Mapas de <?php echo htmlspecialchars($dirigente['nome']); ?>">
+    <meta property="og:description" content="Acesse os mapas designados e informe o progresso das quadras.">
+    <meta property="og:image" content="<?php echo $baseUrl; ?>site/images/link.png">
+    <meta property="og:type" content="website">
+
+    <!-- A tag base define a raiz para todos os links relativos -->
+    <base href="<?php echo $baseUrl; ?>site/backend/">
+    
+    <title>Mapas de <?php echo htmlspecialchars($dirigente['nome']); ?></title>
     <link rel="icon" type="image/png" href="../images/map.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Links corrigidos (removemos o ../ pois o base href já aponta para backend) -->
     <link rel="stylesheet" href="../style/css.css">
     <style> 
+        /* ... (SEU CSS EXISTENTE CONTINUA AQUI IGUAL) ... */
         body { padding: 15px; background-color: var(--content-bg); } 
         .quadra-item { border-bottom: 1px solid #eee; }
         .quadra-item:last-child { border-bottom: none; }
@@ -74,73 +91,28 @@ try {
             align-items: center;
             overflow: hidden;
         }
-        /* contain garante que a imagem apareça inteira sem cortes no card */
         .pdf-preview-container img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: pointer; }
         .pdf-preview-container .btn-expand { position: absolute; top: 8px; right: 8px; z-index: 10; }
 
-        /* Estilo atualizado para o Modal Fullscreen */
-        #pdfModal .modal-dialog {
-            margin: 0;
-            width: 100%;
-            height: 100%;
-            max-width: none; 
-        }
-        #pdfModal .modal-content {
-            height: 100%;
-            border: none;
-            border-radius: 0;
-            background-color: #000; 
-        }
-        #pdfModal .modal-header { 
-            position: absolute; 
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1055;
-            background-color: rgba(0, 0, 0, 0.5); 
-            border-bottom: none; 
-            padding: 10px 15px;
-        }
+        #pdfModal .modal-dialog { margin: 0; width: 100%; height: 100%; max-width: none; }
+        #pdfModal .modal-content { height: 100%; border: none; border-radius: 0; background-color: #000; }
+        #pdfModal .modal-header { position: absolute; top: 0; left: 0; right: 0; z-index: 1055; background-color: rgba(0, 0, 0, 0.5); border-bottom: none; padding: 10px 15px; }
         #pdfModal .modal-title { color: #fff; font-size: 1.1rem; }
         #pdfModal .btn-close { filter: invert(1); }
-        
-        #pdfModal .modal-body {
-            position: relative;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            width: 100%;
-            overflow: auto; 
-        }
-        
-        #pdfModal img { 
-            display: block;
-            max-width: 100%; 
-            max-height: 100%; 
-            object-fit: contain; 
-            margin: auto;
-        }
+        #pdfModal .modal-body { position: relative; padding: 0; display: flex; justify-content: center; align-items: center; height: 100%; width: 100%; overflow: auto; }
+        #pdfModal img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; margin: auto; }
 
-        /* Estilos de Animação e Colapso */
-        .card-collapsible-content {
-            overflow: hidden;
-            transition: max-height 0.4s ease-in-out, opacity 0.4s ease-in-out;
-            max-height: 2000px; 
-            opacity: 1;
-        }
+        .card-collapsible-content { overflow: hidden; transition: max-height 0.4s ease-in-out, opacity 0.4s ease-in-out; max-height: 2000px; opacity: 1; }
+        .card.collapsed .card-collapsible-content { max-height: 0; opacity: 0; }
+        .card.card-interativo .card-header { cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; }
 
-        .card.collapsed .card-collapsible-content {
-            max-height: 0;
-            opacity: 0;
-        }
+        .header-icon { transition: transform 0.3s ease; }
+        .card.collapsed .header-icon { transform: rotate(-90deg); }
 
-        .card.card-interativo .card-header { 
-            cursor: pointer; 
-            user-select: none; 
-        }
-
+        .masonry-layout { column-count: 1; column-gap: 1.5rem; }
+        @media (min-width: 768px) { .masonry-layout { column-count: 2; } }
+        @media (min-width: 1400px) { .masonry-layout { column-count: 3; } }
+        .card-container-wrapper { break-inside: avoid; margin-bottom: 1.5rem; }
         @media (max-width: 768px) { body { zoom: 1.1; } }
     </style>
 </head>
@@ -149,9 +121,10 @@ try {
         <div class="container-fluid"><span class="navbar-brand"><i class="fas fa-map-marked-alt me-2"></i>Mapas de <?php echo htmlspecialchars($dirigente['nome']); ?></span></div>
     </nav>
     <div class="container-fluid">
-        <div class="row" id="container-mapas">
+        <!-- Alterado id="container-mapas" para usar classe masonry-layout em vez de row -->
+        <div class="masonry-layout" id="container-mapas">
         <?php if (empty($mapas)): ?>
-            <div class="col-12"><div class="alert alert-info text-center">Você não possui nenhum mapa atribuído.</div></div>
+            <div class="alert alert-info text-center w-100">Você não possui nenhum mapa atribuído.</div>
         <?php else: 
             $total_cards = count($mapas);
             foreach ($mapas as $mapa): 
@@ -163,10 +136,16 @@ try {
                 }
                 $classe_inicial = ($total_cards > 1 && $soma_pessoas == 0) ? 'collapsed' : '';
         ?>
-            <div class="col-lg-6 mb-4 card-container-wrapper" id="mapa-card-<?php echo $mapa['id']; ?>">
+            <!-- Removido col-lg-6, mantido apenas o wrapper -->
+            <div class="card-container-wrapper" id="mapa-card-<?php echo $mapa['id']; ?>">
                 <div class="card shadow-sm <?php echo $classe_inicial; ?>">
                     <div class="card-header bg-primary text-white">
-                        <h5 class="card-title mb-0"><i class="fas fa-map-pin me-2"></i> <?php echo htmlspecialchars($mapa['identificador']); ?></h5>
+                        <h5 class="card-title mb-0 d-flex align-items-center">
+                            <i class="fas fa-map-pin me-2"></i> <?php echo htmlspecialchars($mapa['identificador']); ?>
+                        </h5>
+                        <?php if ($total_cards > 1): ?>
+                            <i class="fas fa-chevron-down header-icon"></i>
+                        <?php endif; ?>
                     </div>
                     
                     <div class="card-collapsible-content">
@@ -328,6 +307,9 @@ try {
                     } else {
                         card.classList.remove('card-interativo');
                         card.classList.remove('collapsed'); 
+                        // Esconde seta se houver apenas 1 card
+                        const icon = card.querySelector('.header-icon');
+                        if (icon) icon.style.display = 'none';
                     }
                 });
             };

@@ -1,0 +1,5 @@
+RewriteEngine On
+RewriteBase /jwMaps/
+
+# Redireciona acessos a /mapa/TOKEN para o arquivo real
+RewriteRule ^mapa/([a-zA-Z0-9]+)$ site/backend/vista_publica.php?token=$1 [L,QSA]
