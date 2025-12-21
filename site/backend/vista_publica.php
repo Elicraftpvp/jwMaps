@@ -4,11 +4,124 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 require_once 'conexao.php';
 
+// --- LÓGICA DE URL AUTOMÁTICA (Funciona em Localhost e Hospedagem) ---
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+$domainName = $_SERVER['HTTP_HOST'];
+
+// Detecta se está rodando em localhost/jwMaps ou na raiz do site
+// Se o script contiver "jwMaps", assume que é ambiente de teste com subpasta
+if (strpos($_SERVER['REQUEST_URI'], '/jwMaps') !== false) {
+    $path = "/jwMaps/";
+} else {
+    $path = "/"; // Na hospedagem real, a raiz é apenas a barra
+}
+
+$baseUrl = $protocol . $domainName . $path;
+// ---------------------------------------------------------------------
+
+/**
+ * Função auxiliar para renderizar tela de erro estilizada e encerrar a execução.
+ */
+function exibirErroFatal($titulo, $mensagem, $baseUrl) {
+    http_response_code(403);
+    ?>
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Aviso de Território</title>
+        <link rel="icon" type="image/png" href="<?php echo $baseUrl; ?>site/images/map.png">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+        <style>
+            body {
+                background-color: #f0f2f5;
+                height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: system-ui, -apple-system, sans-serif;
+                margin: 0;
+            }
+            .error-card {
+                background: white;
+                border-radius: 16px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+                max-width: 420px;
+                width: 90%;
+                text-align: center;
+                overflow: hidden;
+                animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+                border-top: 5px solid #dc3545;
+            }
+            .error-header {
+                padding: 40px 20px 10px 20px;
+            }
+            .icon-wrapper {
+                width: 80px;
+                height: 80px;
+                background: #fff5f5;
+                color: #dc3545;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 20px auto;
+                font-size: 2.5rem;
+                animation: pulse 2s infinite;
+            }
+            .error-body {
+                padding: 10px 30px 40px 30px;
+            }
+            .error-title {
+                font-weight: 700;
+                color: #212529;
+                margin-bottom: 10px;
+                font-size: 1.5rem;
+            }
+            .error-text {
+                color: #6c757d;
+                font-size: 1rem;
+                line-height: 1.5;
+            }
+            @keyframes fadeUp {
+                from { opacity: 0; transform: translateY(20px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes pulse {
+                0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+                70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="error-card">
+            <div class="error-header">
+                <div class="icon-wrapper">
+                    <i class="fas fa-link-slash"></i>
+                </div>
+                <h1 class="error-title"><?php echo $titulo; ?></h1>
+            </div>
+            <div class="error-body">
+                <p class="error-text"><?php echo $mensagem; ?></p>
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
 // Validação do Token
 $token = htmlspecialchars($_GET['token'] ?? '');
 if (empty($token)) {
-    http_response_code(400);
-    die("<h1>Acesso Inválido</h1>");
+    exibirErroFatal(
+        "Link Inválido", 
+        "O link que você acessou parece estar incompleto ou incorreto. Por favor, solicite um novo link ao servo de Territórios.",
+        $baseUrl
+    );
 }
 
 try {
@@ -18,8 +131,11 @@ try {
     $stmt_user->execute([$token]);
     $dirigente = $stmt_user->fetch();
     if (!$dirigente) {
-        http_response_code(403);
-        die("<h1>Acesso Negado</h1><p>Link inválido ou expirado.</p>");
+        exibirErroFatal(
+            "Acesso Não Encontrado", 
+            "Não foi possível localizar seus mapas. O link pode ter expirado ou seu usuário foi alterado. Contate o servo de Territórios.",
+            $baseUrl
+        );
     }
     $dirigente_id = $dirigente['id'];
     
@@ -42,33 +158,30 @@ try {
         }
     }
 } catch (PDOException $e) {
-    http_response_code(500);
-    die("Erro no banco de dados.");
+    exibirErroFatal(
+        "Erro no Sistema", 
+        "Ocorreu um problema de conexão com o banco de dados. Tente novamente em alguns instantes.",
+        $baseUrl
+    );
 }
-
-// Gera a URL absoluta para a imagem de compartilhamento
-$protocolo = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https://" : "http://";
-$caminho_base = str_replace('\\', '/', dirname(dirname($_SERVER['SCRIPT_NAME']))); // Volta uma pasta (para /site)
-$url_imagem_share = $protocolo . $_SERVER['HTTP_HOST'] . $caminho_base . "/images/link.png";
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- A tag base define a raiz para os links. Aponta para site/backend/ -->
+    <base href="<?php echo $baseUrl; ?>site/backend/">
     
-    <!-- Tags Open Graph para imagem no compartilhamento -->
-    <meta property="og:title" content="Mapas de <?php echo htmlspecialchars($dirigente['nome']); ?>">
-    <meta property="og:description" content="Acesse seus mapas designados.">
-    <meta property="og:image" content="<?php echo $url_imagem_share; ?>">
-    <meta property="og:image:type" content="image/png">
-
-    <title>Meus Mapas</title>
+    <title>Mapas de <?php echo htmlspecialchars($dirigente['nome']); ?></title>
+    <!-- Favicon corrigido -->
     <link rel="icon" type="image/png" href="../images/map.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- O ../ funciona porque o base href joga a gente pra dentro da pasta backend -->
     <link rel="stylesheet" href="../style/css.css">
     <style> 
+        /* ... (SEU CSS EXISTENTE CONTINUA AQUI IGUAL) ... */
         body { padding: 15px; background-color: var(--content-bg); } 
         .quadra-item { border-bottom: 1px solid #eee; }
         .quadra-item:last-child { border-bottom: none; }
@@ -86,110 +199,28 @@ $url_imagem_share = $protocolo . $_SERVER['HTTP_HOST'] . $caminho_base . "/image
             align-items: center;
             overflow: hidden;
         }
-        /* contain garante que a imagem apareça inteira sem cortes no card */
         .pdf-preview-container img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: pointer; }
         .pdf-preview-container .btn-expand { position: absolute; top: 8px; right: 8px; z-index: 10; }
 
-        /* Estilo atualizado para o Modal Fullscreen */
-        #pdfModal .modal-dialog {
-            margin: 0;
-            width: 100%;
-            height: 100%;
-            max-width: none; 
-        }
-        #pdfModal .modal-content {
-            height: 100%;
-            border: none;
-            border-radius: 0;
-            background-color: #000; 
-        }
-        #pdfModal .modal-header { 
-            position: absolute; 
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1055;
-            background-color: rgba(0, 0, 0, 0.5); 
-            border-bottom: none; 
-            padding: 10px 15px;
-        }
+        #pdfModal .modal-dialog { margin: 0; width: 100%; height: 100%; max-width: none; }
+        #pdfModal .modal-content { height: 100%; border: none; border-radius: 0; background-color: #000; }
+        #pdfModal .modal-header { position: absolute; top: 0; left: 0; right: 0; z-index: 1055; background-color: rgba(0, 0, 0, 0.5); border-bottom: none; padding: 10px 15px; }
         #pdfModal .modal-title { color: #fff; font-size: 1.1rem; }
         #pdfModal .btn-close { filter: invert(1); }
-        
-        #pdfModal .modal-body {
-            position: relative;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            width: 100%;
-            overflow: auto; 
-        }
-        
-        #pdfModal img { 
-            display: block;
-            max-width: 100%; 
-            max-height: 100%; 
-            object-fit: contain; 
-            margin: auto;
-        }
+        #pdfModal .modal-body { position: relative; padding: 0; display: flex; justify-content: center; align-items: center; height: 100%; width: 100%; overflow: auto; }
+        #pdfModal img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; margin: auto; }
 
-        /* Estilos de Animação e Colapso */
-        .card-collapsible-content {
-            overflow: hidden;
-            transition: max-height 0.4s ease-in-out, opacity 0.4s ease-in-out;
-            max-height: 2000px; 
-            opacity: 1;
-        }
+        .card-collapsible-content { overflow: hidden; transition: max-height 0.4s ease-in-out, opacity 0.4s ease-in-out; max-height: 2000px; opacity: 1; }
+        .card.collapsed .card-collapsible-content { max-height: 0; opacity: 0; }
+        .card.card-interativo .card-header { cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; }
 
-        .card.collapsed .card-collapsible-content {
-            max-height: 0;
-            opacity: 0;
-        }
+        .header-icon { transition: transform 0.3s ease; }
+        .card.collapsed .header-icon { transform: rotate(-90deg); }
 
-        .card.card-interativo .card-header { 
-            cursor: pointer; 
-            user-select: none; 
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        /* Animação da seta do cabeçalho */
-        .header-icon {
-            transition: transform 0.3s ease;
-        }
-        .card.collapsed .header-icon {
-            transform: rotate(-90deg);
-        }
-
-        /* Masonry Layout via CSS Columns */
-        .masonry-layout {
-            column-count: 1;
-            column-gap: 1.5rem;
-        }
-        
-        /* Ajuste para Tablet e Paisagem Mobile */
-        @media (min-width: 768px) {
-            .masonry-layout {
-                column-count: 2;
-            }
-        }
-
-        /* Ajuste para Monitores PC */
-        @media (min-width: 1400px) {
-            .masonry-layout {
-                column-count: 3;
-            }
-        }
-
-        .card-container-wrapper {
-            break-inside: avoid; /* Evita que o card quebre entre colunas */
-            margin-bottom: 1.5rem; /* Espaço vertical entre cards */
-        }
-
-        /* Ajuste para o zoom no mobile conforme solicitado anteriormente */
+        .masonry-layout { column-count: 1; column-gap: 1.5rem; }
+        @media (min-width: 768px) { .masonry-layout { column-count: 2; } }
+        @media (min-width: 1400px) { .masonry-layout { column-count: 3; } }
+        .card-container-wrapper { break-inside: avoid; margin-bottom: 1.5rem; }
         @media (max-width: 768px) { body { zoom: 1.1; } }
     </style>
 </head>
