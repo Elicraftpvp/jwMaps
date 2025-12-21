@@ -67,35 +67,68 @@ try {
         .pdf-preview-container {
             position: relative;
             height: 300px;
-            background-color: #f0f0f0;
+            background-color: #e9ecef;
             border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
         }
-        .pdf-preview-container iframe { width: 100%; height: 100%; border: none; }
+        /* contain garante que a imagem apareça inteira sem cortes no card */
+        .pdf-preview-container img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: pointer; }
         .pdf-preview-container .btn-expand { position: absolute; top: 8px; right: 8px; z-index: 10; }
 
+        /* Estilo atualizado para o Modal Fullscreen */
         #pdfModal .modal-dialog {
-            max-width: 95%;
-            height: 95vh;
-            margin-top: 2.5vh;
-            margin-bottom: 2.5vh;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            max-width: none; /* Remove limitação de largura do bootstrap */
         }
         #pdfModal .modal-content {
             height: 100%;
-            display: flex;
-            flex-direction: column;
+            border: none;
+            border-radius: 0;
+            background-color: #000; /* Fundo preto para melhor contraste */
         }
+        #pdfModal .modal-header { 
+            position: absolute; /* Header flutuante sobre a imagem */
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1055;
+            background-color: rgba(0, 0, 0, 0.5); /* Semitransparente */
+            border-bottom: none; 
+            padding: 10px 15px;
+        }
+        #pdfModal .modal-title { color: #fff; font-size: 1.1rem; }
+        #pdfModal .btn-close { filter: invert(1); /* Deixa o X branco */ }
+        
         #pdfModal .modal-body {
-            flex-grow: 1;
+            position: relative;
             padding: 0;
-            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            width: 100%;
+            overflow: auto; /* Permite rolar se o zoom aumentar o conteúdo */
         }
-        #pdfModal iframe { width: 100%; height: 100%; border: none; }
+        
+        /* A imagem se ajusta inicialmente, mas permite zoom nativo do navegador */
+        #pdfModal img { 
+            display: block;
+            max-width: 100%; 
+            max-height: 100%; 
+            object-fit: contain; 
+            margin: auto;
+        }
 
         /* Estilos de Animação e Colapso */
         .card-collapsible-content {
             overflow: hidden;
             transition: max-height 0.4s ease-in-out, opacity 0.4s ease-in-out;
-            max-height: 2000px; /* Valor alto suficiente para caber o conteúdo */
+            max-height: 2000px; 
             opacity: 1;
         }
 
@@ -109,7 +142,7 @@ try {
             user-select: none; 
         }
 
-        @media (max-width: 768px) { body { zoom: 1.3; } }
+        @media (max-width: 768px) { body { zoom: 1.1; } }
     </style>
 </head>
 <body>
@@ -117,55 +150,49 @@ try {
         <div class="container-fluid"><span class="navbar-brand"><i class="fas fa-map-marked-alt me-2"></i>Mapas de <?php echo htmlspecialchars($dirigente['nome']); ?></span></div>
     </nav>
     <div class="container-fluid">
-        <!-- O container de alertas antigo foi removido, agora usamos modais -->
         <div class="row" id="container-mapas">
         <?php if (empty($mapas)): ?>
             <div class="col-12"><div class="alert alert-info text-center">Você não possui nenhum mapa atribuído.</div></div>
         <?php else: 
             $total_cards = count($mapas);
             foreach ($mapas as $mapa): 
-                // Lógica para determinar se deve iniciar colapsado
                 $soma_pessoas = 0;
                 if (isset($quadras_por_mapa[$mapa['id']])) {
                     foreach ($quadras_por_mapa[$mapa['id']] as $q) {
                         $soma_pessoas += (int)$q['pessoas_faladas'];
                     }
                 }
-                
-                // Só colapsa se houver mais de 1 mapa E a soma for 0
                 $classe_inicial = ($total_cards > 1 && $soma_pessoas == 0) ? 'collapsed' : '';
         ?>
-            <!-- Removido h-100 para permitir ajuste de altura na animação -->
             <div class="col-lg-6 mb-4 card-container-wrapper" id="mapa-card-<?php echo $mapa['id']; ?>">
                 <div class="card shadow-sm <?php echo $classe_inicial; ?>">
                     <div class="card-header bg-primary text-white">
                         <h5 class="card-title mb-0"><i class="fas fa-map-pin me-2"></i> <?php echo htmlspecialchars($mapa['identificador']); ?></h5>
                     </div>
                     
-                    <!-- Wrapper para o conteúdo colapsável -->
                     <div class="card-collapsible-content">
                         <?php
-                        // Visualização do GDrive (Preview)
-                        if (!empty($mapa['gdrive_file_id'])):
-                            $pdf_embed_url = "https://drive.google.com/file/d/" . $mapa['gdrive_file_id'] . "/preview";
+                        // Caminhos para a imagem JPG baseada no identificador
+                        $nome_limpo = $mapa['identificador'];
+                        $url_jpg = "pdfs/" . rawurlencode($nome_limpo) . ".jpg";
+                        $caminho_local_jpg = __DIR__ . "/pdfs/" . $nome_limpo . ".jpg";
+
+                        if (file_exists($caminho_local_jpg)):
                         ?>
                             <div class="pdf-preview-container">
-                                <iframe src="<?php echo $pdf_embed_url; ?>"></iframe>
-                                <button class="btn btn-primary btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-src="<?php echo $pdf_embed_url; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                                <img src="<?php echo $url_jpg; ?>" alt="Preview Mapa" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                                <button class="btn btn-primary btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
                                     <i class="fas fa-expand-alt me-1"></i> Expandir
                                 </button>
                             </div>
                         <?php else: ?>
-                            <div class="text-center p-3 text-muted border-bottom"><i class="fas fa-exclamation-triangle me-2"></i> Mapa não encontrado no Drive.</div>
+                            <div class="text-center p-3 text-muted border-bottom"><i class="fas fa-image me-2"></i> Imagem do mapa (JPG) não encontrada na pasta.</div>
                         <?php endif; ?>
 
                         <!-- === BOTÃO DE DOWNLOAD DO PDF === -->
                         <?php
-                            // Nome do arquivo baseado no identificador + .pdf
                             $nome_arquivo_pdf = $mapa['identificador'] . ".pdf";
-                            // Caminho físico para verificar se existe
                             $caminho_local_pdf = __DIR__ . "/pdfs/" . $nome_arquivo_pdf;
-                            // URL para o link (encode para lidar com espaços e acentos)
                             $url_download_pdf = "pdfs/" . rawurlencode($nome_arquivo_pdf);
 
                             if (file_exists($caminho_local_pdf)):
@@ -189,7 +216,7 @@ try {
                                         <div class="d-flex align-items-center">
                                             <div class="input-group input-group-sm" style="width: 120px;">
                                                 <button class="btn btn-outline-secondary btn-decrement" type="button">-</button>
-                                                <input type="number" class="form-control text-center quadra-input no-spinners" value="<?php echo htmlspecialchars($quadra['pessoas_faladas']); ?>" data-quadra-id="<?php echo $quadra['id']; ?>" min="0" aria-label="Pessoas faladas">
+                                                <input type="number" class="form-control text-center quadra-input no-spinners" value="<?php echo htmlspecialchars($quadra['pessoas_faladas']); ?>" data-quadra-id="<?php echo $quadra['id']; ?>" min="0">
                                                 <button class="btn btn-outline-secondary btn-increment" type="button">+</button>
                                             </div>
                                             <div class="ms-2 d-flex justify-content-center align-items-center" style="width: 24px; height: 24px;" id="status_save_q<?php echo $quadra['id']; ?>"></div>
@@ -207,27 +234,29 @@ try {
                                 <div class="d-grid"><button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Devolver Mapa</button></div>
                             </form>
                         </div>
-                    </div> <!-- Fim Wrapper Conteúdo -->
+                    </div>
                 </div>
             </div>
         <?php endforeach; endif; ?>
         </div>
     </div>
 
-    <!-- Modal para visualização do PDF -->
-    <div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-fullscreen-lg-down">
+    <!-- Modal para visualização ampliada (JPG) - Modificado para Fullscreen -->
+    <div class="modal fade" id="pdfModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="pdfModalLabel">Visualizador de Mapa</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body" id="pdf-modal-body"></div>
+                <div class="modal-body" id="pdf-modal-body">
+                    <!-- A imagem será injetada via JS aqui -->
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Modais Gerais (Feedback e Confirmação) -->
+    <!-- Modais de Feedback -->
     <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -236,9 +265,7 @@ try {
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" id="feedbackModalBody"></div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button></div>
             </div>
         </div>
     </div>
@@ -266,7 +293,6 @@ try {
             const API_BASE_URL = '.'; 
             const saveTimeouts = {};
 
-            // Inicialização dos Modais
             const feedbackModalElement = document.getElementById('feedbackModal');
             const feedbackModal = new bootstrap.Modal(feedbackModalElement);
             const feedbackTitle = document.getElementById('feedbackModalTitle');
@@ -278,74 +304,47 @@ try {
             const confirmacaoBody = document.getElementById('confirmacaoModalBody');
             const btnConfirmarAcao = document.getElementById('btnConfirmarAcao');
 
-            // --- FUNÇÕES AUXILIARES VISUAIS ---
-
             const mostrarFeedback = (titulo, mensagem, tipo = 'primary') => {
                 feedbackTitle.textContent = titulo;
                 feedbackBody.innerHTML = mensagem;
                 const header = feedbackModalElement.querySelector('.modal-header');
-                
-                // Limpa classes antigas de bg
                 header.className = 'modal-header';
-                // Adiciona novas
                 header.classList.add(`bg-${tipo}`, 'text-white');
-                
-                const btnClose = header.querySelector('.btn-close');
-                if (tipo !== 'light' && tipo !== 'warning') {
-                    btnClose.classList.add('btn-close-white');
-                } else {
-                    btnClose.classList.remove('btn-close-white');
-                }
                 feedbackModal.show();
             };
 
             const mostrarConfirmacao = (titulo, mensagem, callbackConfirmacao) => {
                 confirmacaoTitle.textContent = titulo;
                 confirmacaoBody.innerHTML = mensagem;
-                
-                // Define a ação do botão confirmar
-                btnConfirmarAcao.onclick = () => {
-                    confirmacaoModal.hide();
-                    callbackConfirmacao();
-                };
-                
+                btnConfirmarAcao.onclick = () => { confirmacaoModal.hide(); callbackConfirmacao(); };
                 confirmacaoModal.show();
             };
 
-            // --- LÓGICA DE COLAPSO DOS CARDS ---
             const gerenciarColapsoCards = () => {
                 const wrappers = document.querySelectorAll('.card-container-wrapper');
                 const totalMapas = wrappers.length;
-                const podeColapsar = totalMapas > 1;
-
                 wrappers.forEach(wrapper => {
                     const card = wrapper.querySelector('.card');
-                    if (podeColapsar) {
+                    if (totalMapas > 1) {
                         card.classList.add('card-interativo');
                     } else {
-                        // Se só existe um card, ele NUNCA pode estar fechado
                         card.classList.remove('card-interativo');
                         card.classList.remove('collapsed'); 
                     }
                 });
             };
 
-            // Listener de clique para colapsar/expandir
             document.addEventListener('click', (e) => {
-                // Captura clique no header ou filhos do header
-                if (e.target.closest('.card-header')) {
-                    const card = e.target.closest('.card');
-                    // Verifica se o card tem a classe que permite interação
+                const header = e.target.closest('.card-header');
+                if (header) {
+                    const card = header.closest('.card');
                     if (card && card.classList.contains('card-interativo')) {
                         card.classList.toggle('collapsed');
                     }
                 }
             });
 
-            // Chama a verificação ao iniciar
             gerenciarColapsoCards();
-
-            // --- LÓGICA DA PÁGINA ---
 
             const saveQuadra = async (quadraId, valor, statusDiv) => {
                 statusDiv.innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span>';
@@ -355,25 +354,12 @@ try {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ action: 'update_quadra', quadra_id: quadraId, pessoas_faladas: parseInt(valor) })
                     });
-
-                    if (!response.ok) {
-                        throw new Error(`Erro na rede: ${response.status} ${response.statusText}`);
-                    }
-
                     const result = await response.json();
-                    
                     if (result.status === 'success') {
                         statusDiv.innerHTML = '<i class="fas fa-check text-success"></i>';
-                        setTimeout(() => { 
-                            if (statusDiv.innerHTML.includes('fa-check')) {
-                                statusDiv.innerHTML = ''; 
-                            }
-                        }, 2000);
-                    } else { 
-                        throw new Error(result.message || 'Erro inesperado.'); 
-                    }
+                        setTimeout(() => { if (statusDiv.innerHTML.includes('fa-check')) statusDiv.innerHTML = ''; }, 2000);
+                    } else { throw new Error(result.message); }
                 } catch (error) {
-                    console.error('Erro ao salvar:', error);
                     statusDiv.innerHTML = '<i class="fas fa-times text-danger"></i>';
                 }
             };
@@ -382,16 +368,9 @@ try {
                 input.addEventListener('input', (e) => {
                     const quadraId = e.target.dataset.quadraId;
                     const statusDiv = document.getElementById(`status_save_q${quadraId}`);
-                    const valor = e.target.value;
-                    
                     if (saveTimeouts[quadraId]) clearTimeout(saveTimeouts[quadraId]);
-                    
                     statusDiv.innerHTML = '<small class="text-muted">...</small>';
-
-                    saveTimeouts[quadraId] = setTimeout(() => {
-                        saveQuadra(quadraId, valor, statusDiv);
-                    }, 800);
-
+                    saveTimeouts[quadraId] = setTimeout(() => saveQuadra(quadraId, e.target.value, statusDiv), 800);
                     updateTotal(e.target.closest('.quadra-list'));
                 });
             });
@@ -406,90 +385,51 @@ try {
             
             const updateTotal = (quadraList) => { const mapaId = quadraList.dataset.mapaId; let total = 0; quadraList.querySelectorAll('.quadra-input').forEach(input => { total += parseInt(input.value) || 0; }); document.getElementById(`total-pessoas-mapa-${mapaId}`).textContent = total; };
             
-            // Não precisa chamar updateTotal no load pois o PHP já calcula, mas mantemos para consistência se houver JS dinâmico
-            // document.querySelectorAll('.quadra-list').forEach(list => updateTotal(list));
-            
             document.querySelectorAll('.form-devolver').forEach(form => {
                 form.addEventListener('submit', (e) => {
-                    e.preventDefault(); // Impede envio imediato
-                    
+                    e.preventDefault();
                     const mapaId = e.target.dataset.mapaId;
                     const mapaNome = e.target.dataset.mapaNome;
-                    
-                    // Gera data atual automaticamente (YYYY-MM-DD) pois o input foi removido
                     const dataDevolucao = new Date().toISOString().split('T')[0];
 
-                    // Usa o novo modal de confirmação
-                    mostrarConfirmacao(
-                        'Confirmar Devolução',
-                        `Tem certeza que deseja devolver o mapa <strong>${mapaNome}</strong> na data de hoje?<br><br>Esta ação removerá o mapa da sua lista.`,
-                        async () => {
-                            // Callback executado ao clicar em "Confirmar" no modal
-                            const btn = e.target.querySelector('button[type="submit"]');
-                            const originalText = btn.innerHTML;
-                            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
-                            btn.disabled = true;
-
-                            try {
-                                const response = await fetch(`${API_BASE_URL}/mapas_api.php`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ action: 'devolver', mapa_id: mapaId, data_devolucao: dataDevolucao })
-                                });
-                                
-                                if (!response.ok) {
-                                    const errorData = await response.json().catch(() => null);
-                                    throw new Error(errorData?.message || `Erro na rede: ${response.statusText}`);
-                                }
-
-                                const result = await response.json();
-
-                                if (result.message) { 
-                                    mostrarFeedback('Sucesso', 'Mapa devolvido com sucesso!', 'success');
-                                    
-                                    const cardWrapper = document.getElementById(`mapa-card-${mapaId}`);
-                                    cardWrapper.style.transition = 'opacity 0.5s';
-                                    cardWrapper.style.opacity = '0';
-                                    
-                                    setTimeout(() => {
-                                        cardWrapper.remove();
-                                        // Atualiza o estado de colapso após remover o mapa
-                                        gerenciarColapsoCards();
-                                        
-                                        if(document.querySelectorAll('.card').length === 0) location.reload();
-                                    }, 500);
-                                    
-                                } else { 
-                                    throw new Error(result.message || 'Resposta inesperada.'); 
-                                }
-                            } catch (error) { 
-                                console.error('Erro ao devolver:', error); 
-                                mostrarFeedback('Erro', 'Erro ao devolver o mapa: ' + error.message, 'danger');
-                                btn.innerHTML = originalText; 
-                                btn.disabled = false; 
+                    mostrarConfirmacao('Confirmar Devolução', `Deseja devolver o mapa <strong>${mapaNome}</strong>?`, async () => {
+                        const btn = e.target.querySelector('button[type="submit"]');
+                        btn.disabled = true;
+                        try {
+                            const response = await fetch(`${API_BASE_URL}/mapas_api.php`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ action: 'devolver', mapa_id: mapaId, data_devolucao: dataDevolucao })
+                            });
+                            const result = await response.json();
+                            if (result.message) { 
+                                mostrarFeedback('Sucesso', 'Mapa devolvido!', 'success');
+                                const cardWrapper = document.getElementById(`mapa-card-${mapaId}`);
+                                cardWrapper.style.opacity = '0';
+                                setTimeout(() => { cardWrapper.remove(); gerenciarColapsoCards(); if(document.querySelectorAll('.card').length === 0) location.reload(); }, 500);
                             }
-                        }
-                    );
+                        } catch (error) { mostrarFeedback('Erro', 'Falha na devolução.', 'danger'); btn.disabled = false; }
+                    });
                 });
             });
 
+            // Lógica do Modal de Expansão (JPG centralizado)
             const pdfModal = document.getElementById('pdfModal');
             if (pdfModal) {
                 pdfModal.addEventListener('show.bs.modal', (event) => {
                     const button = event.relatedTarget;
-                    const pdfSrc = button.getAttribute('data-pdf-src');
+                    const imgSrc = button.getAttribute('data-img-src');
                     const pdfTitle = button.getAttribute('data-pdf-title');
                     
                     pdfModal.querySelector('.modal-title').textContent = pdfTitle;
                     const modalBody = pdfModal.querySelector('#pdf-modal-body');
                     modalBody.innerHTML = ''; 
 
-                    if (pdfSrc) {
-                        const iframe = document.createElement('iframe');
-                        iframe.src = pdfSrc;
-                        modalBody.appendChild(iframe);
-                    } else {
-                        modalBody.innerHTML = '<div class="alert alert-danger m-3">URL do PDF não encontrada.</div>';
+                    if (imgSrc) {
+                        const img = document.createElement('img');
+                        img.src = imgSrc;
+                        // O CSS cuida de manter a imagem contida e centralizada, permitindo zoom
+                        modalBody.appendChild(img);
                     }
                 });
             }
