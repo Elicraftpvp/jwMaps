@@ -45,12 +45,24 @@ try {
     http_response_code(500);
     die("Erro no banco de dados.");
 }
+
+// Gera a URL absoluta para a imagem de compartilhamento
+$protocolo = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https://" : "http://";
+$caminho_base = str_replace('\\', '/', dirname(dirname($_SERVER['SCRIPT_NAME']))); // Volta uma pasta (para /site)
+$url_imagem_share = $protocolo . $_SERVER['HTTP_HOST'] . $caminho_base . "/images/link.png";
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Tags Open Graph para imagem no compartilhamento -->
+    <meta property="og:title" content="Mapas de <?php echo htmlspecialchars($dirigente['nome']); ?>">
+    <meta property="og:description" content="Acesse seus mapas designados.">
+    <meta property="og:image" content="<?php echo $url_imagem_share; ?>">
+    <meta property="og:image:type" content="image/png">
+
     <title>Meus Mapas</title>
     <link rel="icon" type="image/png" href="../images/map.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
