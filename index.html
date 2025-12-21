@@ -2,15 +2,21 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="refresh" content="0;url=login.html">
-  <link rel="icon" type="image/png" href="./site/images/map.png">
-  <title>Redirecionando…</title>
+  <title>Carregando...</title>
   <script>
-    // Substitui o histórico para que o botão "voltar" não traga o usuário para esta página branca
-    window.location.replace('login.html');
+    // Verifica a sessão do usuário
+    const user = sessionStorage.getItem('user');
+    
+    // Se estiver logado, envia para a URL LIMPA do painel
+    if (user) {
+        window.location.replace('/dashboard');
+    } else {
+        // Se NÃO estiver logado, envia para a URL LIMPA de login
+        window.location.replace('/login');
+    }
   </script>
 </head>
 <body>
-  <p>Se você não for redirecionado automaticamente, <a href="login.html">clique aqui</a>.</p>
+  <!-- O usuário nunca verá esta página -->
 </body>
 </html>

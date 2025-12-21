@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Verifica o usuário logado (sem alteração)
     const userString = sessionStorage.getItem('user');
     if (!userString) {
-        window.location.href = '../login.html';
+        window.location.href = '/login';
         return;
     }
     const user = JSON.parse(userString);
@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!hasAccess) {
         alert('Você não tem permissão para acessar o sistema.');
         sessionStorage.removeItem('user');
-        window.location.href = '../login.html';
+        window.location.href = '/login';
         return;
     }
 
@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.id === 'logout-btn') {
                 e.preventDefault();
                 sessionStorage.removeItem('user');
-                window.location.href = '../login.html';
+                window.location.href = '/login';
                 return;
             }
             if (this.getAttribute('target') === 'contentFrame') {

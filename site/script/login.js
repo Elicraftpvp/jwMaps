@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionStorage.setItem('user', JSON.stringify(result.user));
 
             // Redireciona para o painel principal dentro da pasta 'site'
-            window.location.href = 'site/index.html';
+            window.location.href = '/dashboard';
 
         } catch (error) {
             alertDiv.textContent = error.message;

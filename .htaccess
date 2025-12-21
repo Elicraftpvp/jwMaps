@@ -1,5 +1,27 @@
+# Ativa o motor de reescrita de URL
 RewriteEngine On
-RewriteBase /jwMaps/
+RewriteBase /
 
-# Redireciona acessos a /mapa/TOKEN para o arquivo real
+# Regra 1: Mantém o link curto para os mapas
 RewriteRule ^mapa/([a-zA-Z0-9]+)$ site/backend/vista_publica.php?token=$1 [L,QSA]
+
+# Regra 2: Mapeia a URL "limpa" /login para o arquivo real login.html
+RewriteRule ^login/?$ login.html [L]
+
+# Regra 3: Mapeia a URL "limpa" /dashboard para o painel principal
+RewriteRule ^dashboard/?$ site/index.html [L]
+
+# Regra 4 (MUITO IMPORTANTE): Corrige os caminhos de CSS, JS e Imagens
+# Se um arquivo (como style.css) não for encontrado na raiz...
+RewriteCond %{REQUEST_FILENAME} !-f
+# ...mas existir dentro da pasta /site/...
+RewriteCond %{DOCUMENT_ROOT}/site%{REQUEST_URI} -f
+# ...sirva o arquivo de dentro da pasta /site.
+RewriteRule . site%{REQUEST_URI} [L]
+
+# Regra 5: Garante que o index.html da raiz (nosso "roteador") seja carregado
+# Se nenhuma das regras acima corresponder e não for um arquivo/diretório real,
+# e a URL não for a raiz, redireciona para o index.html principal para ele decidir.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . index.html [L]

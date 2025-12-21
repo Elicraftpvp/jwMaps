@@ -8,6 +8,12 @@
     <link rel="icon" type="image/png" href="./site/images/map.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="site/style/css.css">
+    <script>
+        // Se o usuário já tem sessão, não deixa ele ver a tela de login, joga pro painel
+        if (sessionStorage.getItem('user')) {
+            window.location.replace('site/index.html');
+        }
+    </script>
 </head>
 <body>
     <div class="login-container">
