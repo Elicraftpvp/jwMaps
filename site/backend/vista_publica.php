@@ -83,26 +83,26 @@ try {
             margin: 0;
             width: 100%;
             height: 100%;
-            max-width: none; /* Remove limitação de largura do bootstrap */
+            max-width: none; 
         }
         #pdfModal .modal-content {
             height: 100%;
             border: none;
             border-radius: 0;
-            background-color: #000; /* Fundo preto para melhor contraste */
+            background-color: #000; 
         }
         #pdfModal .modal-header { 
-            position: absolute; /* Header flutuante sobre a imagem */
+            position: absolute; 
             top: 0;
             left: 0;
             right: 0;
             z-index: 1055;
-            background-color: rgba(0, 0, 0, 0.5); /* Semitransparente */
+            background-color: rgba(0, 0, 0, 0.5); 
             border-bottom: none; 
             padding: 10px 15px;
         }
         #pdfModal .modal-title { color: #fff; font-size: 1.1rem; }
-        #pdfModal .btn-close { filter: invert(1); /* Deixa o X branco */ }
+        #pdfModal .btn-close { filter: invert(1); }
         
         #pdfModal .modal-body {
             position: relative;
@@ -112,10 +112,9 @@ try {
             align-items: center;
             height: 100%;
             width: 100%;
-            overflow: auto; /* Permite rolar se o zoom aumentar o conteúdo */
+            overflow: auto; 
         }
         
-        /* A imagem se ajusta inicialmente, mas permite zoom nativo do navegador */
         #pdfModal img { 
             display: block;
             max-width: 100%; 
@@ -172,7 +171,6 @@ try {
                     
                     <div class="card-collapsible-content">
                         <?php
-                        // Caminhos para a imagem JPG baseada no identificador
                         $nome_limpo = $mapa['identificador'];
                         $url_jpg = "pdfs/" . rawurlencode($nome_limpo) . ".jpg";
                         $caminho_local_jpg = __DIR__ . "/pdfs/" . $nome_limpo . ".jpg";
@@ -189,7 +187,6 @@ try {
                             <div class="text-center p-3 text-muted border-bottom"><i class="fas fa-image me-2"></i> Imagem do mapa (JPG) não encontrada na pasta.</div>
                         <?php endif; ?>
 
-                        <!-- === BOTÃO DE DOWNLOAD DO PDF === -->
                         <?php
                             $nome_arquivo_pdf = $mapa['identificador'] . ".pdf";
                             $caminho_local_pdf = __DIR__ . "/pdfs/" . $nome_arquivo_pdf;
@@ -203,7 +200,6 @@ try {
                                 </a>
                             </div>
                         <?php endif; ?>
-                        <!-- ============================================== -->
 
                         <div class="card-body">
                             <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
@@ -216,7 +212,12 @@ try {
                                         <div class="d-flex align-items-center">
                                             <div class="input-group input-group-sm" style="width: 120px;">
                                                 <button class="btn btn-outline-secondary btn-decrement" type="button">-</button>
-                                                <input type="number" class="form-control text-center quadra-input no-spinners" value="<?php echo htmlspecialchars($quadra['pessoas_faladas']); ?>" data-quadra-id="<?php echo $quadra['id']; ?>" min="0">
+                                                <!-- Adicionado data-previous-value para calcular o Delta -->
+                                                <input type="number" class="form-control text-center quadra-input no-spinners" 
+                                                       value="<?php echo htmlspecialchars($quadra['pessoas_faladas']); ?>" 
+                                                       data-quadra-id="<?php echo $quadra['id']; ?>" 
+                                                       data-previous-value="<?php echo htmlspecialchars($quadra['pessoas_faladas']); ?>"
+                                                       min="0">
                                                 <button class="btn btn-outline-secondary btn-increment" type="button">+</button>
                                             </div>
                                             <div class="ms-2 d-flex justify-content-center align-items-center" style="width: 24px; height: 24px;" id="status_save_q<?php echo $quadra['id']; ?>"></div>
@@ -230,7 +231,6 @@ try {
                                 </div>
                                 <hr>
                                 <p class="mb-2"><strong>Recebido em:</strong> <?php echo date('d/m/Y', strtotime($mapa['data_entrega'])); ?></p>
-                                <!-- Esta linha daqui! <div class="mb-3"><label for="data_devolucao_<?php echo $mapa['id']; ?>" class="form-label">Data de Devolução:</label><input type="date" class="form-control" id="data_devolucao_<?php echo $mapa['id']; ?>" value="<?php echo date('Y-m-d'); ?>" required></div> -->
                                 <div class="d-grid"><button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Devolver Mapa</button></div>
                             </form>
                         </div>
@@ -241,7 +241,7 @@ try {
         </div>
     </div>
 
-    <!-- Modal para visualização ampliada (JPG) - Modificado para Fullscreen -->
+    <!-- Modais (Fullscreen Imagem, Feedback e Confirmação) -->
     <div class="modal fade" id="pdfModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-fullscreen">
             <div class="modal-content">
@@ -249,14 +249,11 @@ try {
                     <h5 class="modal-title" id="pdfModalLabel">Visualizador de Mapa</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body" id="pdf-modal-body">
-                    <!-- A imagem será injetada via JS aqui -->
-                </div>
+                <div class="modal-body" id="pdf-modal-body"></div>
             </div>
         </div>
     </div>
 
-    <!-- Modais de Feedback -->
     <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -292,6 +289,7 @@ try {
         document.addEventListener('DOMContentLoaded', () => {
             const API_BASE_URL = '.'; 
             const saveTimeouts = {};
+            const pendingDeltas = {}; // Objeto para armazenar as mudanças (+1, -1) pendentes
 
             const feedbackModalElement = document.getElementById('feedbackModal');
             const feedbackModal = new bootstrap.Modal(feedbackModalElement);
@@ -346,13 +344,27 @@ try {
 
             gerenciarColapsoCards();
 
-            const saveQuadra = async (quadraId, valor, statusDiv) => {
+            // === Lógica de Salvamento com Delta ===
+            const saveQuadra = async (quadraId, statusDiv) => {
+                // Recupera o delta acumulado e zera o acumulador imediatamente
+                // para que novos cliques durante a requisição comecem um novo pacote
+                const deltaToSend = pendingDeltas[quadraId];
+                if (!deltaToSend || deltaToSend === 0) return;
+                
+                pendingDeltas[quadraId] = 0; 
+                
                 statusDiv.innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span>';
+                
                 try {
+                    // Enviamos 'update_quadra_increment' com o delta
                     const response = await fetch(`${API_BASE_URL}/mapas_api.php`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'update_quadra', quadra_id: quadraId, pessoas_faladas: parseInt(valor) })
+                        body: JSON.stringify({ 
+                            action: 'update_quadra_increment', 
+                            quadra_id: quadraId, 
+                            delta: deltaToSend 
+                        })
                     });
                     const result = await response.json();
                     if (result.status === 'success') {
@@ -360,6 +372,8 @@ try {
                         setTimeout(() => { if (statusDiv.innerHTML.includes('fa-check')) statusDiv.innerHTML = ''; }, 2000);
                     } else { throw new Error(result.message); }
                 } catch (error) {
+                    // Se falhar, devolvemos o delta para o acumulador para tentar na próxima
+                    pendingDeltas[quadraId] = (pendingDeltas[quadraId] || 0) + deltaToSend;
                     statusDiv.innerHTML = '<i class="fas fa-times text-danger"></i>';
                 }
             };
@@ -368,10 +382,27 @@ try {
                 input.addEventListener('input', (e) => {
                     const quadraId = e.target.dataset.quadraId;
                     const statusDiv = document.getElementById(`status_save_q${quadraId}`);
-                    if (saveTimeouts[quadraId]) clearTimeout(saveTimeouts[quadraId]);
-                    statusDiv.innerHTML = '<small class="text-muted">...</small>';
-                    saveTimeouts[quadraId] = setTimeout(() => saveQuadra(quadraId, e.target.value, statusDiv), 800);
-                    updateTotal(e.target.closest('.quadra-list'));
+                    
+                    // Cálculo do Delta
+                    const prevValue = parseInt(e.target.dataset.previousValue) || 0;
+                    const currentValue = parseInt(e.target.value) || 0;
+                    const diff = currentValue - prevValue;
+
+                    if (diff !== 0) {
+                        // Adiciona a diferença ao acumulador pendente
+                        pendingDeltas[quadraId] = (pendingDeltas[quadraId] || 0) + diff;
+                        
+                        // Atualiza o valor anterior para o atual, para o próximo cálculo
+                        e.target.dataset.previousValue = currentValue;
+
+                        if (saveTimeouts[quadraId]) clearTimeout(saveTimeouts[quadraId]);
+                        statusDiv.innerHTML = '<small class="text-muted">...</small>';
+                        
+                        // Espera 800ms antes de enviar o acumulado
+                        saveTimeouts[quadraId] = setTimeout(() => saveQuadra(quadraId, statusDiv), 800);
+                        
+                        updateTotal(e.target.closest('.quadra-list'));
+                    }
                 });
             });
             
@@ -428,7 +459,6 @@ try {
                     if (imgSrc) {
                         const img = document.createElement('img');
                         img.src = imgSrc;
-                        // O CSS cuida de manter a imagem contida e centralizada, permitindo zoom
                         modalBody.appendChild(img);
                     }
                 });

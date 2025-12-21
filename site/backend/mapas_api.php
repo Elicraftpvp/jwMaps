@@ -122,7 +122,7 @@ function handle_post_unified($pdo) {
                 break;
 
             // =======================================================
-            // CASE ENTREGAR (TRANSFERÊNCIA) - Lógica Ajustada
+            // CASE ENTREGAR (TRANSFERÊNCIA)
             // =======================================================
             case 'entregar':
                 if (empty($data['mapa_id']) || empty($data['dirigente_id']) || empty($data['data_entrega'])) {
@@ -145,10 +145,8 @@ function handle_post_unified($pdo) {
                     $quadras_data = $stmt_quadras->fetchAll(PDO::FETCH_ASSOC);
                     $dados_quadras_json = json_encode($quadras_data);
                     
-                    // LÓGICA NOVA: Transferência direta NÃO conta estatística de trabalho.
-                    // O total é gravado como 0. A contagem real só acontece no 'resgatar'.
+                    // Transferência direta NÃO conta estatística de trabalho (Total = 0).
                     $total_faladas_historico = 0;
-                    
                     $data_devolucao_hist = date('Y-m-d');
 
                     // Salva histórico de "Passagem de bastão"
@@ -164,8 +162,6 @@ function handle_post_unified($pdo) {
                         $total_faladas_historico,    // ZERO
                         $dados_quadras_json
                     ]);
-                    
-                    // NÃO zeramos as quadras. O trabalho continua com o próximo.
                 }
 
                 // 3. Atualiza para o novo dono
@@ -177,7 +173,7 @@ function handle_post_unified($pdo) {
                 break;
 
             // =======================================================
-            // CASE RESGATAR (DEVOLUÇÃO FINAL) - Contabiliza tudo
+            // CASE RESGATAR (DEVOLUÇÃO FINAL)
             // =======================================================
             case 'resgatar':
                 if (empty($data['mapa_id'])) throw new Exception('ID do mapa não fornecido.', 400);
@@ -241,10 +237,27 @@ function handle_post_unified($pdo) {
                 echo json_encode(['message' => 'Mapa devolvido e contabilizado com sucesso!']);
                 break;
             
+            // Este caso mantém o comportamento antigo (setar valor exato) caso necessário
             case 'update_quadra':
                 if (!isset($data['quadra_id']) || !isset($data['pessoas_faladas'])) throw new Exception('Dados insuficientes.', 400);
-                $sql = "UPDATE quadras SET pessoas_faladas = ? WHERE id = ?";
+                // Mesmo aqui adicionamos GREATEST para segurança
+                $sql = "UPDATE quadras SET pessoas_faladas = GREATEST(0, ?) WHERE id = ?";
                 $pdo->prepare($sql)->execute([$data['pessoas_faladas'], $data['quadra_id']]);
+                echo json_encode(['status' => 'success']);
+                break;
+
+            // NOVO CASO: Incremento Seguro (+1 ou -1)
+            case 'update_quadra_increment':
+                if (!isset($data['quadra_id']) || !isset($data['delta'])) throw new Exception('Dados insuficientes.', 400);
+                
+                // Atualiza atomicamente somando o delta. 
+                // CAST(... AS SIGNED) evita erro se a coluna for UNSIGNED quando a conta der negativa temporariamente.
+                // GREATEST(0, ...) garante que o resultado final gravado nunca seja menor que zero.
+                $sql = "UPDATE quadras 
+                        SET pessoas_faladas = GREATEST(0, CAST(pessoas_faladas AS SIGNED) + ?) 
+                        WHERE id = ?";
+                
+                $pdo->prepare($sql)->execute([(int)$data['delta'], $data['quadra_id']]);
                 echo json_encode(['status' => 'success']);
                 break;
 
