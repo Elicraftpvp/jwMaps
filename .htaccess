@@ -2,26 +2,24 @@
 RewriteEngine On
 RewriteBase /
 
-# Regra 1: Mantém o link curto para os mapas
+# Regra 1: Link curto para mapas individuais
 RewriteRule ^mapa/([a-zA-Z0-9]+)$ site/backend/vista_publica.php?token=$1 [L,QSA]
 
-# Regra 2: Mapeia a URL "limpa" /login para o arquivo real login.html
+# Regra NOVA: Link curto para mapas de GRUPOS
+RewriteRule ^grupo/([a-zA-Z0-9]+)$ site/backend/vista_grupo.php?token=$1 [L,QSA]
+
+# Regra 2: Login
 RewriteRule ^login/?$ login.html [L]
 
-# Regra 3: Mapeia a URL "limpa" /dashboard para o painel principal
+# Regra 3: Dashboard
 RewriteRule ^dashboard/?$ site/index.html [L]
 
-# Regra 4 (MUITO IMPORTANTE): Corrige os caminhos de CSS, JS e Imagens
-# Se um arquivo (como style.css) não for encontrado na raiz...
+# Regra 4: Correção de caminhos estáticos
 RewriteCond %{REQUEST_FILENAME} !-f
-# ...mas existir dentro da pasta /site/...
 RewriteCond %{DOCUMENT_ROOT}/site%{REQUEST_URI} -f
-# ...sirva o arquivo de dentro da pasta /site.
 RewriteRule . site%{REQUEST_URI} [L]
 
-# Regra 5: Garante que o index.html da raiz (nosso "roteador") seja carregado
-# Se nenhuma das regras acima corresponder e não for um arquivo/diretório real,
-# e a URL não for a raiz, redireciona para o index.html principal para ele decidir.
+# Regra 5: Roteador principal
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . index.html [L]
