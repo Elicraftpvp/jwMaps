@@ -9,6 +9,9 @@ $domainName = $_SERVER['HTTP_HOST'];
 $path = (strpos($_SERVER['REQUEST_URI'], '/jwMaps') !== false) ? "/jwMaps/" : "/";
 $baseUrl = $protocol . $domainName . $path;
 
+/**
+ * Renderiza a tela de erro com a identidade visual completa e animações originais.
+ */
 function exibirErroFatal($titulo, $mensagem, $baseUrl) {
     http_response_code(403);
     ?>
@@ -23,15 +26,23 @@ function exibirErroFatal($titulo, $mensagem, $baseUrl) {
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
         <style>
             body { background-color: #f0f2f5; height: 100vh; display: flex; align-items: center; justify-content: center; font-family: system-ui, sans-serif; margin: 0; }
-            .error-card { background: white; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); max-width: 420px; width: 90%; text-align: center; border-top: 5px solid #dc3545; padding: 40px 20px; }
-            .icon-wrapper { font-size: 3rem; color: #dc3545; margin-bottom: 20px; }
+            .error-card { background: white; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); max-width: 420px; width: 90%; text-align: center; overflow: hidden; animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1); border-top: 5px solid #dc3545; }
+            .error-header { padding: 40px 20px 10px 20px; }
+            .icon-wrapper { width: 80px; height: 80px; background: #fff5f5; color: #dc3545; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; font-size: 2.5rem; animation: pulse 2s infinite; }
+            .error-body { padding: 10px 30px 40px 30px; }
+            .error-title { font-weight: 700; color: #212529; margin-bottom: 10px; font-size: 1.5rem; }
+            .error-text { color: #6c757d; font-size: 1rem; line-height: 1.5; }
+            @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); } }
         </style>
     </head>
     <body>
         <div class="error-card">
-            <div class="icon-wrapper"><i class="fas fa-link-slash"></i></div>
-            <h1 class="h4"><?php echo $titulo; ?></h1>
-            <p class="text-muted"><?php echo $mensagem; ?></p>
+            <div class="error-header">
+                <div class="icon-wrapper"><i class="fas fa-link-slash"></i></div>
+                <h1 class="error-title"><?php echo $titulo; ?></h1>
+            </div>
+            <div class="error-body"><p class="error-text"><?php echo $mensagem; ?></p></div>
         </div>
     </body>
     </html>
@@ -93,19 +104,25 @@ try {
     <style> 
         body { padding: 15px; background-color: var(--content-bg); } 
         .quadra-item { border-bottom: 1px solid #eee; }
+        .quadra-item:last-child { border-bottom: none; }
         .no-spinners::-webkit-outer-spin-button, .no-spinners::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .card-header-group { background-color: #4190be !important; border-color: #4190be !important; }
+        
         .pdf-preview-container { position: relative; height: 300px; background-color: #e9ecef; border-bottom: 1px solid #dee2e6; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         .pdf-preview-container img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: pointer; }
+        .pdf-preview-container .btn-expand { position: absolute; top: 8px; right: 8px; z-index: 10; }
+
         .card-collapsible-content { overflow: hidden; transition: max-height 0.4s ease, opacity 0.4s ease; max-height: 4000px; opacity: 1; }
         .card.collapsed .card-collapsible-content { max-height: 0; opacity: 0; }
-        .card.card-interativo .card-header { cursor: pointer; }
+        .card.card-interativo .card-header { cursor: pointer; user-select: none; }
         .header-icon { transition: transform 0.3s ease; }
         .card.collapsed .header-icon { transform: rotate(-90deg); }
+
         .masonry-layout { column-count: 1; column-gap: 1.5rem; }
         @media (min-width: 768px) { .masonry-layout { column-count: 2; } }
         @media (min-width: 1400px) { .masonry-layout { column-count: 3; } }
         .card-container-wrapper { break-inside: avoid; margin-bottom: 1.5rem; }
+        @media (max-width: 768px) { body { zoom: 1.1; } }
     </style>
 </head>
 <body>
@@ -153,6 +170,9 @@ try {
                         ?>
                             <div class="pdf-preview-container">
                                 <img src="<?php echo $url_jpg; ?>" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                                <button class="btn btn-primary btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                                    <i class="fas fa-expand-alt me-1"></i> Expandir
+                                </button>
                             </div>
                         <?php endif; ?>
 
@@ -189,6 +209,8 @@ try {
                                 </div>
                                 <?php endif; ?>
                                 </div>
+                                <hr>
+                                <p class="mb-2"><strong>Recebido em:</strong> <?php echo date('d/m/Y', strtotime($mapa['data_entrega'])); ?></p>
                                 <div class="d-grid mt-3">
                                     <button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Finalizar e Devolver</button>
                                 </div>
@@ -213,6 +235,7 @@ try {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../script/common.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const API_BASE_URL = '.'; 
@@ -236,10 +259,30 @@ try {
                 confirmacaoModal.show();
             };
 
+            const gerenciarColapsoCards = () => {
+                const wrappers = document.querySelectorAll('.card-container-wrapper');
+                const totalMapas = wrappers.length;
+                wrappers.forEach(wrapper => {
+                    const card = wrapper.querySelector('.card');
+                    if (totalMapas > 1) {
+                        card.classList.add('card-interativo');
+                    } else {
+                        card.classList.remove('card-interativo', 'collapsed');
+                        const icon = card.querySelector('.header-icon');
+                        if (icon) icon.style.display = 'none';
+                    }
+                });
+            };
+
             document.addEventListener('click', (e) => {
                 const header = e.target.closest('.card-header');
-                if (header) header.closest('.card').classList.toggle('collapsed');
+                if (header) {
+                    const card = header.closest('.card');
+                    if (card.classList.contains('card-interativo')) card.classList.toggle('collapsed');
+                }
             });
+
+            gerenciarColapsoCards();
 
             const saveQuadra = async (quadraId, statusDiv) => {
                 const delta = pendingDeltas[quadraId];
@@ -292,7 +335,10 @@ try {
                 };
             });
 
-            document.getElementById('pdfModal').addEventListener('show.bs.modal', (e) => { document.getElementById('modal-img').src = e.relatedTarget.dataset.imgSrc; });
+            document.getElementById('pdfModal').addEventListener('show.bs.modal', (e) => { 
+                const btn = e.relatedTarget;
+                document.getElementById('modal-img').src = btn.dataset.imgSrc; 
+            });
         });
     </script>
 </body>

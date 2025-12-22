@@ -11,7 +11,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 $periodo = $_GET['periodo'] ?? '6meses';
 
-// QUERY CORRIGIDA - Buscando os campos corretos da tabela historico_mapas
+/**
+ * A query permanece focada na tabela historico_mapas.
+ * O fechamento de mapas de grupo via vista_publica.php agora registra
+ * o ID do usuário que estava logado no momento da devolução, 
+ * garantindo que a estatística de "Pessoas Faladas" seja atribuída à pessoa.
+ */
 $sql = "
     SELECT 
         h.data_entrega, 
@@ -35,7 +40,7 @@ if ($periodo === '6meses') {
     exit;
 }
 
-$sql .= " ORDER BY h.data_devolucao DESC, m.identificador ASC";
+$sql .= " ORDER BY h.data_devolucao DESC, h.id DESC";
 
 try {
     $stmt = $pdo->query($sql);

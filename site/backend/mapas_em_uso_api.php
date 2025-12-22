@@ -22,18 +22,28 @@ try {
 
     $offset = ($page - 1) * $limit;
 
-    // Contar o total de registros
-    $total_stmt = $pdo->query("SELECT COUNT(m.id) FROM mapas m WHERE m.dirigente_id IS NOT NULL");
+    // Contar o total de registros (Mapas com Dirigente OU com Grupo)
+    $total_stmt = $pdo->query("SELECT COUNT(m.id) FROM mapas m WHERE m.dirigente_id IS NOT NULL OR m.grupo_id IS NOT NULL");
     $total_results = $total_stmt->fetchColumn();
     $total_pages = ceil($total_results / $limit);
 
-    // Buscar os dados paginados
+    // Buscar os dados paginados com Joins para Usuários e Grupos
     $stmt = $pdo->prepare("
-        SELECT m.identificador, m.data_entrega, u.nome as dirigente_nome
+        SELECT 
+            m.identificador, 
+            m.data_entrega, 
+            u.nome as dirigente_nome,
+            g.nome as grupo_nome,
+            CASE 
+                WHEN m.dirigente_id IS NOT NULL THEN 'Individual'
+                WHEN m.grupo_id IS NOT NULL THEN 'Grupo'
+                ELSE 'Disponível'
+            END as tipo_posse
         FROM mapas m
-        JOIN users u ON m.dirigente_id = u.id
-        WHERE m.dirigente_id IS NOT NULL
-        ORDER BY u.nome ASC, m.data_entrega ASC
+        LEFT JOIN users u ON m.dirigente_id = u.id
+        LEFT JOIN grupos g ON m.grupo_id = g.id
+        WHERE m.dirigente_id IS NOT NULL OR m.grupo_id IS NOT NULL
+        ORDER BY m.data_entrega ASC, m.identificador ASC
         LIMIT :limit OFFSET :offset
     ");
     $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
@@ -42,13 +52,10 @@ try {
     
     $mapas_em_uso = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- INÍCIO DA MODIFICAÇÃO ---
-    // Adicionar a data atual do servidor na resposta
     $current_server_date = date('Y-m-d');
-    // --- FIM DA MODIFICAÇÃO ---
 
     echo json_encode([
-        'serverDate' => $current_server_date, // Novo campo adicionado
+        'serverDate' => $current_server_date,
         'data' => $mapas_em_uso,
         'page' => $page,
         'totalPages' => $total_pages,
