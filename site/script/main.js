@@ -28,7 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Dashboard é o primeiro e ativo por padrão
             { href: 'pages/dashboard.html', icon: 'fas fa-tachometer-alt', text: 'Dashboard', active: true },
             { href: 'pages/gerenciar_mapas.html', icon: 'fas fa-map', text: 'Gerenciar Mapas' },
-            { href: 'pages/dirigentes.html', icon: 'fas fa-users', text: 'Gerenciar Dirigentes' },
+            { href: 'pages/dirigentes.html', icon: 'fas fa-user', text: 'Gerenciar Usuarios' },
+            { href: 'pages/grupos.html', icon: 'fas fa-users', text: 'Gerenciar Grupos' },
             // MODIFICAÇÃO: Adicionado "Meus Mapas" para o Admin
             { href: 'backend/vista_dirigente.php', icon: 'fas fa-id-card', text: 'Meus Mapas' },
             { href: 'pages/controle.html', icon: 'fas fa-history', text: 'Controle' }
