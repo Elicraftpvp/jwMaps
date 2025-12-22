@@ -43,13 +43,10 @@
                 </div>
             </div>
             <div class="card-body">
-                <!-- Alterado classe para permitir overflow vertical dos menus -->
                 <div class="table-responsive table-responsive-visible">
-                    <!-- ADICIONADO: table-responsive-cards para o modo mobile funcionar -->
                     <table class="table table-hover align-middle table-responsive-cards">
                         <thead class="table-light">
                             <tr>
-                                <!-- Coluna ID removida visualmente -->
                                 <th>
                                     <div class="d-flex align-items-center gap-2">
                                         <span>Nome do Território</span>
@@ -102,7 +99,7 @@
                                 <th>Status</th>
                                 <th>
                                     <div class="d-flex align-items-center gap-2">
-                                        <span>Dirigente</span>
+                                        <span>Responsável</span> <!-- Alterado de Dirigente para Responsável -->
                                         <div class="dropdown">
                                             <a href="#" role="button" id="filtroDirigenteBtn" data-bs-toggle="dropdown" aria-expanded="false">
                                                 <i class="fas fa-filter text-secondary" title="Filtrar por Dirigente"></i>
@@ -176,10 +173,23 @@
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="entregar_mapa_id">
+                    
                     <div class="mb-3">
                         <label for="entregar_dirigente_id" class="form-label">Selecione o Dirigente</label>
-                        <select class="form-select" id="entregar_dirigente_id" required></select>
+                        <select class="form-select" id="entregar_dirigente_id">
+                            <!-- Populated by JS -->
+                        </select>
                     </div>
+
+                    <div class="mb-3">
+                        <label for="entregar_grupo_id" class="form-label">Selecione o Grupo</label>
+                        <select class="form-select" id="entregar_grupo_id">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+
+                    <hr>
+
                     <div class="mb-3">
                         <label for="entregar_data" class="form-label">Data de Entrega</label>
                         <input type="date" class="form-control" id="entregar_data" required>

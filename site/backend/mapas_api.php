@@ -72,9 +72,15 @@ function handle_get($pdo, $id, $recurso) {
             $stmt->execute([$id]);
             echo json_encode($stmt->fetch(PDO::FETCH_ASSOC));
         } else {
-            $sql = "SELECT m.id, m.identificador, m.quadra_inicio, m.quadra_fim, m.regiao, m.tipo, m.dirigente_id, m.grupo_id, m.data_entrega, u.nome as dirigente_nome,
+            // Atualizado para buscar também o nome do grupo
+            $sql = "SELECT m.id, m.identificador, m.quadra_inicio, m.quadra_fim, m.regiao, m.tipo, 
+                    m.dirigente_id, m.grupo_id, m.data_entrega, 
+                    u.nome as dirigente_nome, g.nome as grupo_nome,
                     DATEDIFF(CURDATE(), m.data_entrega) as dias_com_dirigente
-                    FROM mapas m LEFT JOIN users u ON m.dirigente_id = u.id ORDER BY m.id";
+                    FROM mapas m 
+                    LEFT JOIN users u ON m.dirigente_id = u.id 
+                    LEFT JOIN grupos g ON m.grupo_id = g.id
+                    ORDER BY m.id";
             $stmt = $pdo->query($sql);
             echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
         }
@@ -121,17 +127,23 @@ function handle_post_unified($pdo) {
                 break;
 
             case 'entregar':
-                if (empty($data['mapa_id']) || empty($data['dirigente_id']) || empty($data['data_entrega'])) {
-                    throw new Exception('Dados insuficientes para entregar.', 400);
+                // Valida se pelo menos um destinatário foi escolhido
+                $temDirigente = !empty($data['dirigente_id']);
+                $temGrupo = !empty($data['grupo_id']);
+                
+                if (empty($data['mapa_id']) || empty($data['data_entrega']) || (!$temDirigente && !$temGrupo)) {
+                    throw new Exception('Selecione um dirigente OU um grupo, e a data de entrega.', 400);
                 }
 
                 $pdo->beginTransaction();
 
-                $stmt_check = $pdo->prepare("SELECT dirigente_id, data_entrega FROM mapas WHERE id = ?");
+                $stmt_check = $pdo->prepare("SELECT dirigente_id, grupo_id, data_entrega FROM mapas WHERE id = ?");
                 $stmt_check->execute([$data['mapa_id']]);
                 $mapa_atual = $stmt_check->fetch(PDO::FETCH_ASSOC);
 
-                if ($mapa_atual && !empty($mapa_atual['dirigente_id']) && $mapa_atual['dirigente_id'] != $data['dirigente_id']) {
+                // Lógica de Histórico: Apenas salva se havia um DIRIGENTE anterior responsável
+                // Se estava com grupo e vai para outro, não gera histórico pessoal
+                if ($mapa_atual && !empty($mapa_atual['dirigente_id']) && $mapa_atual['dirigente_id'] != ($data['dirigente_id'] ?? null)) {
                     $stmt_quadras = $pdo->prepare("SELECT numero, pessoas_faladas FROM quadras WHERE mapa_id = ?");
                     $stmt_quadras->execute([$data['mapa_id']]);
                     $quadras_data = $stmt_quadras->fetchAll(PDO::FETCH_ASSOC);
@@ -154,9 +166,13 @@ function handle_post_unified($pdo) {
                     ]);
                 }
 
-                // Ao entregar para um dirigente, removemos o vínculo de grupo_id
-                $sql_update = "UPDATE mapas SET dirigente_id = ?, grupo_id = NULL, data_entrega = ?, data_devolucao = NULL WHERE id = ?";
-                $pdo->prepare($sql_update)->execute([$data['dirigente_id'], $data['data_entrega'], $data['mapa_id']]);
+                // Prepara os valores finais
+                $novoDirigenteId = $temDirigente ? $data['dirigente_id'] : NULL;
+                $novoGrupoId = $temGrupo ? $data['grupo_id'] : NULL;
+
+                // Atualiza o mapa com o novo dono (Dirigente OU Grupo)
+                $sql_update = "UPDATE mapas SET dirigente_id = ?, grupo_id = ?, data_entrega = ?, data_devolucao = NULL WHERE id = ?";
+                $pdo->prepare($sql_update)->execute([$novoDirigenteId, $novoGrupoId, $data['data_entrega'], $data['mapa_id']]);
                 
                 $pdo->commit();
                 echo json_encode(['message' => 'Mapa transferido com sucesso!']);

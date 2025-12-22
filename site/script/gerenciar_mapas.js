@@ -8,7 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const entregarModalElement = document.getElementById('entregarModal');
     const entregarModal = new bootstrap.Modal(entregarModalElement);
     const entregarModalLabel = document.getElementById('entregarModalLabel');
+    
+    // Selects do Modal de Entrega
     const selectDirigentes = document.getElementById('entregar_dirigente_id');
+    const selectGrupos = document.getElementById('entregar_grupo_id');
+    
     const historicoMapaModalElement = document.getElementById("historicoMapaModal");
     const historicoMapaModal = new bootstrap.Modal(historicoMapaModalElement);
     const historicoMapaIdentificadorSpan = document.getElementById("historico_mapa_identificador");
@@ -205,12 +209,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 newHtml = `<tr><td colspan="8" class="text-center">Nenhum mapa encontrado com os filtros aplicados.</td></tr>`; 
             } else {
                 mapas.forEach(mapa => {
-                    let status, acaoEntregarResgatar, diasComDirigenteBadge;
-                    
-                    // IMPORTANTE: Adicionada classe 'flex-fill' aos botões para eles esticarem
+                    let status, acaoEntregarResgatar, diasComDirigenteBadge, responsavelNome;
                     const baseBtnClass = "btn btn-sm flex-fill";
 
-                    if (mapa.dirigente_id) {
+                    // Determina se está com Dirigente ou Grupo
+                    if (mapa.dirigente_id || mapa.grupo_id) {
                         status = `<span class="badge bg-warning">Em Uso</span>`;
                         acaoEntregarResgatar = `<button class="${baseBtnClass} btn-info btn-resgatar" data-id="${mapa.id}" title="Resgatar Mapa"><i class="fas fa-undo-alt"></i></button>`;
                         
@@ -219,10 +222,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (dias > 30) corBadge = 'warning';
                         if (dias > 60) corBadge = 'danger';
                         diasComDirigenteBadge = `<span class="badge bg-${corBadge}">${dias !== null ? dias : '0'}</span>`;
+
+                        if (mapa.dirigente_id) {
+                            responsavelNome = `<i class="fas fa-user me-1 text-muted"></i> ${mapa.dirigente_nome}`;
+                        } else {
+                            responsavelNome = `<i class="fas fa-users me-1 text-info"></i> ${mapa.grupo_nome}`;
+                        }
+
                     } else {
                         status = `<span class="badge bg-success">Disponível</span>`;
                         acaoEntregarResgatar = `<button class="${baseBtnClass} btn-primary btn-entregar" data-id="${mapa.id}" data-identificador="${mapa.identificador}" title="Entregar Mapa"><i class="fas fa-hand-holding-heart"></i></button>`;
                         diasComDirigenteBadge = `<span class="badge bg-secondary">---</span>`;
+                        responsavelNome = '---';
                     }
                     
                     const quadraRange = mapa.quadra_inicio && mapa.quadra_fim ? `${mapa.quadra_inicio} - ${mapa.quadra_fim}` : 'N/D';
@@ -233,10 +244,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             <td data-label="Tipo">${mapa.tipo || 'N/D'}</td>
                             <td data-label="Quadras">${quadraRange}</td>
                             <td data-label="Status">${status}</td>
-                            <td data-label="Dirigente">${mapa.dirigente_nome || '---'}</td>
+                            <td data-label="Responsável">${responsavelNome}</td>
                             <td data-label="Tempo" class="text-center">${diasComDirigenteBadge}</td>
                             <td data-label="Ações">
-                                <div class="d-flex gap-2 w-100"> <!-- w-100 e sem justify-content-end para preencher -->
+                                <div class="d-flex gap-2 w-100">
                                     ${acaoEntregarResgatar}
                                     <button class="${baseBtnClass} btn-warning btn-edit" data-id="${mapa.id}" title="Editar"><i class="fas fa-pencil-alt"></i></button>
                                     <button class="${baseBtnClass} btn-secondary btn-history" data-id="${mapa.id}" data-identificador="${mapa.identificador}" title="Ver Histórico"><i class="fas fa-history"></i></button>
@@ -401,21 +412,67 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const carregarGruposNoModal = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/grupos_api.php?status=ativo`);
+            if (!response.ok) throw new Error(await handleApiError(response));
+            const grupos = await response.json();
+            selectGrupos.innerHTML = '<option value="">Selecione...</option>';
+            grupos.forEach(g => selectGrupos.innerHTML += `<option value="${g.id}">${g.nome}</option>`);
+        } catch (error) {
+            selectGrupos.innerHTML = '<option value="">Erro ao carregar</option>';
+            console.error(error);
+        }
+    };
+
+    // --- LÓGICA DE EXCLUSIVIDADE MÚTUA (DIRIGENTE OU GRUPO) ---
+    
+    // Se selecionar dirigente, limpa o grupo
+    selectDirigentes.addEventListener('change', () => {
+        if (selectDirigentes.value) {
+            selectGrupos.value = "";
+        }
+    });
+
+    // Se selecionar grupo, limpa o dirigente
+    selectGrupos.addEventListener('change', () => {
+        if (selectGrupos.value) {
+            selectDirigentes.value = "";
+        }
+    });
+
+    // Resetar selects ao fechar modal
+    entregarModalElement.addEventListener('hidden.bs.modal', () => {
+        selectDirigentes.value = "";
+        selectGrupos.value = "";
+    });
+
+
     document.getElementById('confirmar-entrega-btn').addEventListener('click', async () => {
+        const dirigenteId = document.getElementById('entregar_dirigente_id').value;
+        const grupoId = document.getElementById('entregar_grupo_id').value;
+        const dataEntrega = document.getElementById('entregar_data').value;
+        const mapaId = document.getElementById('entregar_mapa_id').value;
+
+        if ((!dirigenteId && !grupoId) || !dataEntrega) { 
+            mostrarFeedback('Atenção', 'Selecione um Dirigente OU um Grupo, e informe a Data.', 'warning'); 
+            return; 
+        }
+
         const data = { 
             action: 'entregar', 
-            mapa_id: document.getElementById('entregar_mapa_id').value, 
-            dirigente_id: document.getElementById('entregar_dirigente_id').value, 
-            data_entrega: document.getElementById('entregar_data').value, 
+            mapa_id: mapaId, 
+            dirigente_id: dirigenteId || null, 
+            grupo_id: grupoId || null,
+            data_entrega: dataEntrega, 
         };
-        if (!data.dirigente_id || !data.data_entrega) { mostrarFeedback('Atenção', 'Preencha todos os campos.', 'warning'); return; }
         
         try {
             const response = await fetch(`${API_BASE_URL}/mapas_api.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error(await handleApiError(response));
             entregarModal.hide();
             carregarMapas(true);
-            mostrarFeedback('Sucesso', 'Mapa entregue!', 'success');
+            mostrarFeedback('Sucesso', 'Mapa entregue com sucesso!', 'success');
         } catch (error) { mostrarFeedback('Erro', error.message, 'danger'); }
     });
 
@@ -428,10 +485,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 entregarModalLabel.textContent = `Entregar Mapa: ${target.dataset.identificador}`;
                 document.getElementById('entregar_mapa_id').value = id;
                 document.getElementById('entregar_data').valueAsDate = new Date();
+                
+                // Carrega ambas as listas
                 await carregarDirigentesNoModal();
+                await carregarGruposNoModal();
+                
                 entregarModal.show();
             } else if (target.classList.contains('btn-resgatar')) {
-                mostrarConfirmacao('Resgatar Mapa', 'Confirmar devolução forçada?', async () => {
+                mostrarConfirmacao('Resgatar Mapa', 'Confirmar devolução forçada? Isso removerá o mapa do usuário ou grupo atual.', async () => {
                     try {
                         const data = { action: 'resgatar', mapa_id: id };
                         const response = await fetch(`${API_BASE_URL}/mapas_api.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
