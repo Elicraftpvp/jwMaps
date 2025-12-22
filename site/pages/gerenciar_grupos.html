@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Grupos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="../style/css.css">
+</head>
+<body class="iframe-page">
+    <div class="container-fluid">
+        <div class="card shadow-sm">
+            <div class="card-header card-header-icon">
+                <h4 class="mb-0"><i class="fas fa-layer-group card-title-icon"></i> Gerenciar Grupos</h4>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#grupoModal">
+                        <i class="fas fa-plus-circle me-2"></i> Adicionar Grupo
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle table-responsive-cards">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nome do Grupo</th>
+                                <th>Membros</th>
+                                <th>Mapas Vinculados</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="grupos-table-body">
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Adicionar/Editar Grupo -->
+    <div class="modal fade" id="grupoModal" tabindex="-1" aria-labelledby="grupoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="grupoModalLabel">Novo Grupo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-grupo">
+                        <div class="mb-3">
+                            <label for="grupo_nome" class="form-label">Nome do Grupo</label>
+                            <input type="text" class="form-control" id="grupo_nome" placeholder="Ex: Grupo Sul" required>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Selecionar Membros (Usuários)</label>
+                                <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;" id="lista_usuarios_grupo">
+                                    <!-- Checkboxes de usuários -->
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Selecionar Mapas</label>
+                                <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;" id="lista_mapas_grupo">
+                                    <!-- Checkboxes de mapas -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="link-grupo-section" class="d-none mt-3">
+                            <hr>
+                            <label for="grupo_public_link" class="form-label text-primary fw-bold">Link de Acesso do Grupo</label>
+                            <div class="input-group">
+                                <input type="text" id="grupo_public_link" class="form-control" readonly>
+                                <button class="btn btn-outline-secondary" type="button" id="regenerar-token-grupo-btn" title="Gerar novo link"><i class="fas fa-sync-alt"></i></button>
+                            </div>
+                            <small class="text-muted">Pessoas com este link verão todos os mapas deste grupo.</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="salvar-grupo-btn">Salvar Grupo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modais de Feedback (Reutilizando padrão) -->
+    <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="feedbackModalTitle">Aviso</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body" id="feedbackModalBody"></div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmacaoModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="confirmacaoModalTitle">Confirmação</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body" id="confirmacaoModalBody">Tem certeza?</div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="btnConfirmarAcao">Confirmar</button></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../script/common.js"></script>
+    <script src="../script/gerenciar_grupos.js"></script>
+</body>
+</html>
