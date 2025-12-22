@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const linkSection = document.getElementById('link-publico-section');
             if ((user.permissoes & 1) === 1) {
                 const linkInput = document.getElementById('user_public_link');
-                const publicUrl = `${window.location.origin}${window.location.pathname.replace(/\/pages\/.*$/, '')}/backend/vista_publica.php?token=${user.token_acesso}`;
+                const publicUrl = `${window.location.origin}/mapa/${user.token_acesso}`;
                 linkInput.value = publicUrl;
                 linkSection.classList.remove('d-none');
             } else { linkSection.classList.add('d-none'); }
@@ -250,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!response.ok) throw new Error(await handleApiError(response));
                 
                 const result = await response.json();
-                const newUrl = `${window.location.origin}${window.location.pathname.replace(/\/pages\/.*$/, '')}/backend/vista_publica.php?token=${result.novoToken}`;
+                const newUrl = `${window.location.origin}/mapa/${result.novoToken}`;
                 
                 // Atualiza o input no modal que está embaixo
                 document.getElementById('user_public_link').value = newUrl;
@@ -338,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
             prepararEdicao(id);
         } else if (target.classList.contains('btn-copy-link')) {
             const token = target.dataset.token;
-            const url = `${window.location.origin}${window.location.pathname.replace(/\/pages\/.*$/, '')}/backend/vista_publica.php?token=${token}`;
+            const url = `${window.location.origin}/mapa/${token}`;
             navigator.clipboard.writeText(url).then(() => {
                 const tooltip = bootstrap.Tooltip.getInstance(target);
                 target.setAttribute('data-bs-original-title', 'Copiado!');
