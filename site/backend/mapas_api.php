@@ -47,7 +47,6 @@ try {
     ]);
 }
 
-
 function handle_get($pdo, $id, $recurso) {
     try {
         if ($recurso === 'dirigentes') {
@@ -69,11 +68,11 @@ function handle_get($pdo, $id, $recurso) {
         }
 
         if ($id) {
-            $stmt = $pdo->prepare("SELECT id, identificador, quadra_inicio, quadra_fim, regiao, tipo FROM mapas WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT id, identificador, quadra_inicio, quadra_fim, regiao, tipo, grupo_id FROM mapas WHERE id = ?");
             $stmt->execute([$id]);
             echo json_encode($stmt->fetch(PDO::FETCH_ASSOC));
         } else {
-            $sql = "SELECT m.id, m.identificador, m.quadra_inicio, m.quadra_fim, m.regiao, m.tipo, m.dirigente_id, m.data_entrega, u.nome as dirigente_nome,
+            $sql = "SELECT m.id, m.identificador, m.quadra_inicio, m.quadra_fim, m.regiao, m.tipo, m.dirigente_id, m.grupo_id, m.data_entrega, u.nome as dirigente_nome,
                     DATEDIFF(CURDATE(), m.data_entrega) as dias_com_dirigente
                     FROM mapas m LEFT JOIN users u ON m.dirigente_id = u.id ORDER BY m.id";
             $stmt = $pdo->query($sql);
@@ -121,9 +120,6 @@ function handle_post_unified($pdo) {
                 echo json_encode(['message' => 'Mapa atualizado com sucesso!']);
                 break;
 
-            // =======================================================
-            // CASE ENTREGAR (TRANSFERÊNCIA)
-            // =======================================================
             case 'entregar':
                 if (empty($data['mapa_id']) || empty($data['dirigente_id']) || empty($data['data_entrega'])) {
                     throw new Exception('Dados insuficientes para entregar.', 400);
@@ -131,50 +127,41 @@ function handle_post_unified($pdo) {
 
                 $pdo->beginTransaction();
 
-                // 1. Verificar quem é o dono atual
                 $stmt_check = $pdo->prepare("SELECT dirigente_id, data_entrega FROM mapas WHERE id = ?");
                 $stmt_check->execute([$data['mapa_id']]);
                 $mapa_atual = $stmt_check->fetch(PDO::FETCH_ASSOC);
 
-                // 2. Se já tem dono e é diferente do novo (Transferência Dirigente A -> Dirigente B)
                 if ($mapa_atual && !empty($mapa_atual['dirigente_id']) && $mapa_atual['dirigente_id'] != $data['dirigente_id']) {
-                    
-                    // Pega snapshot das quadras apenas para registro técnico
                     $stmt_quadras = $pdo->prepare("SELECT numero, pessoas_faladas FROM quadras WHERE mapa_id = ?");
                     $stmt_quadras->execute([$data['mapa_id']]);
                     $quadras_data = $stmt_quadras->fetchAll(PDO::FETCH_ASSOC);
                     $dados_quadras_json = json_encode($quadras_data);
                     
-                    // Transferência direta NÃO conta estatística de trabalho (Total = 0).
                     $total_faladas_historico = 0;
                     $data_devolucao_hist = date('Y-m-d');
 
-                    // Salva histórico de "Passagem de bastão"
                     $sql_hist = "INSERT INTO historico_mapas 
                                 (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_quadras) 
                                 VALUES (?, ?, ?, ?, ?, ?)";
                     
                     $pdo->prepare($sql_hist)->execute([
                         $data['mapa_id'], 
-                        $mapa_atual['dirigente_id'], // Quem está passando o mapa
+                        $mapa_atual['dirigente_id'], 
                         $mapa_atual['data_entrega'], 
                         $data_devolucao_hist,        
-                        $total_faladas_historico,    // ZERO
+                        $total_faladas_historico,    
                         $dados_quadras_json
                     ]);
                 }
 
-                // 3. Atualiza para o novo dono
-                $sql_update = "UPDATE mapas SET dirigente_id = ?, data_entrega = ?, data_devolucao = NULL WHERE id = ?";
+                // Ao entregar para um dirigente, removemos o vínculo de grupo_id
+                $sql_update = "UPDATE mapas SET dirigente_id = ?, grupo_id = NULL, data_entrega = ?, data_devolucao = NULL WHERE id = ?";
                 $pdo->prepare($sql_update)->execute([$data['dirigente_id'], $data['data_entrega'], $data['mapa_id']]);
                 
                 $pdo->commit();
                 echo json_encode(['message' => 'Mapa transferido com sucesso!']);
                 break;
 
-            // =======================================================
-            // CASE RESGATAR (DEVOLUÇÃO FINAL)
-            // =======================================================
             case 'resgatar':
                 if (empty($data['mapa_id'])) throw new Exception('ID do mapa não fornecido.', 400);
                 
@@ -185,12 +172,10 @@ function handle_post_unified($pdo) {
                 $mapa_atual = $stmt_mapa->fetch(PDO::FETCH_ASSOC);
 
                 if ($mapa_atual && !empty($mapa_atual['dirigente_id'])) {
-                    // Busca dados reais para contabilizar
                     $stmt_quadras = $pdo->prepare("SELECT numero, pessoas_faladas FROM quadras WHERE mapa_id = ?");
                     $stmt_quadras->execute([$data['mapa_id']]);
                     $quadras_data = $stmt_quadras->fetchAll(PDO::FETCH_ASSOC);
                     
-                    // AQUI SIM: Calcula a soma real
                     $total_faladas = array_sum(array_column($quadras_data, 'pessoas_faladas'));
                     $dados_quadras_json = json_encode($quadras_data);
                     
@@ -200,8 +185,8 @@ function handle_post_unified($pdo) {
                     $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['data_entrega'], $data_devolucao_hoje, $total_faladas, $dados_quadras_json]);
                 }
 
-                // Reseta tudo (Mapa volta para disponíveis)
-                $pdo->prepare("UPDATE mapas SET dirigente_id = NULL, data_entrega = NULL, data_devolucao = NULL WHERE id = ?")->execute([$data['mapa_id']]);
+                // Reseta dirigente, grupo e quadras
+                $pdo->prepare("UPDATE mapas SET dirigente_id = NULL, grupo_id = NULL, data_entrega = NULL, data_devolucao = NULL WHERE id = ?")->execute([$data['mapa_id']]);
                 $pdo->prepare("UPDATE quadras SET pessoas_faladas = 0 WHERE mapa_id = ?")->execute([$data['mapa_id']]);
                 
                 $pdo->commit();
@@ -209,9 +194,9 @@ function handle_post_unified($pdo) {
                 break;
 
             case 'devolver':
-                // Mesmo comportamento do resgatar, mas com data manual
                 if (empty($data['mapa_id']) || empty($data['data_devolucao'])) throw new Exception('Dados insuficientes.', 400);
                 $pdo->beginTransaction();
+                
                 $stmt_mapa = $pdo->prepare("SELECT dirigente_id, data_entrega FROM mapas WHERE id = ?");
                 $stmt_mapa->execute([$data['mapa_id']]);
                 $mapa_atual = $stmt_mapa->fetch(PDO::FETCH_ASSOC);
@@ -222,41 +207,35 @@ function handle_post_unified($pdo) {
                 $stmt_quadras->execute([$data['mapa_id']]);
                 $quadras_data = $stmt_quadras->fetchAll(PDO::FETCH_ASSOC);
                 
-                // Contabiliza
                 $total_faladas = array_sum(array_column($quadras_data, 'pessoas_faladas'));
                 $dados_quadras_json = json_encode($quadras_data);
                 
-                $sql_hist = "INSERT INTO historico_mapas (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_quadras) VALUES (?, ?, ?, ?, ?, ?)";
-                $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['data_entrega'], $data['data_devolucao'], $total_faladas, $dados_quadras_json]);
+                // Se houver dirigente associado, registra no histórico
+                if (!empty($mapa_atual['dirigente_id'])) {
+                    $sql_hist = "INSERT INTO historico_mapas (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_quadras) VALUES (?, ?, ?, ?, ?, ?)";
+                    $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['data_entrega'], $data['data_devolucao'], $total_faladas, $dados_quadras_json]);
+                }
                 
-                // Reseta
-                $pdo->prepare("UPDATE mapas SET dirigente_id = NULL, data_entrega = NULL, data_devolucao = NULL WHERE id = ?")->execute([$data['mapa_id']]);
+                // Reseta vínculo com dirigente e grupo ao finalizar
+                $pdo->prepare("UPDATE mapas SET dirigente_id = NULL, grupo_id = NULL, data_entrega = NULL, data_devolucao = NULL WHERE id = ?")->execute([$data['mapa_id']]);
                 $pdo->prepare("UPDATE quadras SET pessoas_faladas = 0 WHERE mapa_id = ?")->execute([$data['mapa_id']]);
                 
                 $pdo->commit();
                 echo json_encode(['message' => 'Mapa devolvido e contabilizado com sucesso!']);
                 break;
             
-            // Este caso mantém o comportamento antigo (setar valor exato) caso necessário
             case 'update_quadra':
                 if (!isset($data['quadra_id']) || !isset($data['pessoas_faladas'])) throw new Exception('Dados insuficientes.', 400);
-                // Mesmo aqui adicionamos GREATEST para segurança
                 $sql = "UPDATE quadras SET pessoas_faladas = GREATEST(0, ?) WHERE id = ?";
                 $pdo->prepare($sql)->execute([$data['pessoas_faladas'], $data['quadra_id']]);
                 echo json_encode(['status' => 'success']);
                 break;
 
-            // NOVO CASO: Incremento Seguro (+1 ou -1)
             case 'update_quadra_increment':
                 if (!isset($data['quadra_id']) || !isset($data['delta'])) throw new Exception('Dados insuficientes.', 400);
-                
-                // Atualiza atomicamente somando o delta. 
-                // CAST(... AS SIGNED) evita erro se a coluna for UNSIGNED quando a conta der negativa temporariamente.
-                // GREATEST(0, ...) garante que o resultado final gravado nunca seja menor que zero.
                 $sql = "UPDATE quadras 
                         SET pessoas_faladas = GREATEST(0, CAST(pessoas_faladas AS SIGNED) + ?) 
                         WHERE id = ?";
-                
                 $pdo->prepare($sql)->execute([(int)$data['delta'], $data['quadra_id']]);
                 echo json_encode(['status' => 'success']);
                 break;
