@@ -253,10 +253,19 @@ try {
                         <div class="card-body">
                             <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
                                 <label class="form-label fw-bold mt-2">Pessoas Encontradas no Território:</label>
-                                <div class="d-flex justify-content-end px-2 pb-1"> <small class="fw-bold text-muted" style="width: 140px; text-align: center;">Nº Pessoas</small> </div>
+                                
+                                <!-- CORREÇÃO DE ALINHAMENTO DO CABEÇALHO -->
+                                <div class="d-flex justify-content-end px-2 pb-1"> 
+                                    <div class="d-flex align-items-center">
+                                        <!-- Width deve coincidir com o input-group (150px) -->
+                                        <small class="fw-bold text-muted text-center" style="width: 150px;">Nº Pessoas</small>
+                                        <!-- Espaçador para compensar ícone de status (24px) + margin (ms-2 approx 8px) -->
+                                        <div style="width: 32px;"></div>
+                                    </div>
+                                </div>
+
                                 <div class="list-group list-group-flush mb-3 quadra-list" data-mapa-id="<?php echo $mapa['id']; ?>">
                                 <?php if (isset($quadras_por_mapa[$mapa['id']])): foreach ($quadras_por_mapa[$mapa['id']] as $quadra): ?>
-                                    <!-- INICIO DA MODIFICACAO DE ESTILO -->
                                     <div class="list-group-item quadra-item d-flex justify-content-between align-items-center py-3 px-2">
                                         <span class="fs-5">Quadra <strong><?php echo $quadra['numero']; ?></strong></span>
                                         <div class="d-flex align-items-center">
@@ -269,14 +278,21 @@ try {
                                                        data-previous-value="<?php echo $quadra['pessoas_faladas']; ?>" min="0" readonly>
                                                 <button class="btn btn-outline-secondary btn-increment px-3 fw-bold" type="button" style="font-size: 1.2rem;">+</button>
                                             </div>
+                                            <!-- Icone de status tem width 24px + ms-2 (aprox 8px) = 32px totais à direita -->
                                             <div class="ms-2 d-flex align-items-center justify-content-center" style="width: 24px;" id="status_save_q<?php echo $quadra['id']; ?>"></div>
                                         </div>
                                     </div>
-                                    <!-- FIM DA MODIFICACAO DE ESTILO -->
                                 <?php endforeach; ?>
+                                
+                                <!-- CORREÇÃO DE ALINHAMENTO DO TOTAL -->
                                 <div class="list-group-item d-flex justify-content-between align-items-center p-2 border-top fw-bold bg-light"> 
-                                    <span>Total</span> 
-                                    <span class="fs-5" id="total-pessoas-mapa-<?php echo $mapa['id']; ?>"><?php echo $soma_pessoas; ?></span> 
+                                    <span class="fs-5">Total</span> 
+                                    <div class="d-flex align-items-center">
+                                        <!-- Width deve coincidir com o input-group (150px) -->
+                                        <span class="fs-5 text-center fw-bold" style="width: 150px;" id="total-pessoas-mapa-<?php echo $mapa['id']; ?>"><?php echo $soma_pessoas; ?></span> 
+                                        <!-- Espaçador para manter alinhamento com a coluna acima -->
+                                        <div style="width: 32px;"></div>
+                                    </div>
                                 </div>
                                 <?php endif; ?>
                                 </div>
