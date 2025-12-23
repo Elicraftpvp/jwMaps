@@ -105,7 +105,13 @@ try {
         body { padding: 15px; background-color: var(--content-bg); } 
         .quadra-item { border-bottom: 1px solid #eee; }
         .quadra-item:last-child { border-bottom: none; }
-        .no-spinners::-webkit-outer-spin-button, .no-spinners::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        /* Ajustes Inputs Numéricos */
+        .no-spinners::-webkit-outer-spin-button, 
+        .no-spinners::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .no-spinners { -moz-appearance: textfield; }
+        .quadra-input { padding: 0; background-color: #fff !important; }
+
         .card-header-group { background-color: #4190be !important; border-color: #4190be !important; }
         
         /* Estilo para botão de expandir nos cards de grupo */
@@ -250,20 +256,23 @@ try {
                                 <div class="d-flex justify-content-end px-2 pb-1"> <small class="fw-bold text-muted" style="width: 140px; text-align: center;">Nº Pessoas</small> </div>
                                 <div class="list-group list-group-flush mb-3 quadra-list" data-mapa-id="<?php echo $mapa['id']; ?>">
                                 <?php if (isset($quadras_por_mapa[$mapa['id']])): foreach ($quadras_por_mapa[$mapa['id']] as $quadra): ?>
-                                    <div class="list-group-item quadra-item d-flex justify-content-between align-items-right p-2">
-                                        <span>Quadra <strong><?php echo $quadra['numero']; ?></strong></span>
-                                        <div class="d-flex align-items-right">
-                                            <div class="input-group input-group-sm" style="width: 100px;">
-                                                <button class="btn btn-outline-secondary btn-decrement" type="button">-</button>
-                                                <input type="number" class="form-control text-center quadra-input no-spinners" 
+                                    <!-- INICIO DA MODIFICACAO DE ESTILO -->
+                                    <div class="list-group-item quadra-item d-flex justify-content-between align-items-center py-3 px-2">
+                                        <span class="fs-5">Quadra <strong><?php echo $quadra['numero']; ?></strong></span>
+                                        <div class="d-flex align-items-center">
+                                            <div class="input-group" style="width: 150px;">
+                                                <button class="btn btn-outline-secondary btn-decrement px-3 fw-bold" type="button" style="font-size: 1.2rem;">-</button>
+                                                <input type="number" class="form-control text-center quadra-input no-spinners fw-bold" 
+                                                       style="font-size: 1.1rem;"
                                                        value="<?php echo $quadra['pessoas_faladas']; ?>" 
                                                        data-quadra-id="<?php echo $quadra['id']; ?>" 
-                                                       data-previous-value="<?php echo $quadra['pessoas_faladas']; ?>" min="0">
-                                                <button class="btn btn-outline-secondary btn-increment" type="button">+</button>
+                                                       data-previous-value="<?php echo $quadra['pessoas_faladas']; ?>" min="0" readonly>
+                                                <button class="btn btn-outline-secondary btn-increment px-3 fw-bold" type="button" style="font-size: 1.2rem;">+</button>
                                             </div>
-                                            <div class="ms-3" style="width: 24px;" id="status_save_q<?php echo $quadra['id']; ?>"></div>
+                                            <div class="ms-2 d-flex align-items-center justify-content-center" style="width: 24px;" id="status_save_q<?php echo $quadra['id']; ?>"></div>
                                         </div>
                                     </div>
+                                    <!-- FIM DA MODIFICACAO DE ESTILO -->
                                 <?php endforeach; ?>
                                 <div class="list-group-item d-flex justify-content-between align-items-center p-2 border-top fw-bold bg-light"> 
                                     <span>Total</span> 
