@@ -108,6 +108,10 @@ try {
         .no-spinners::-webkit-outer-spin-button, .no-spinners::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .card-header-group { background-color: #4190be !important; border-color: #4190be !important; }
         
+        /* Estilo para botão de expandir nos cards de grupo */
+        .btn-group-color { background-color: #4190be !important; border-color: #4190be !important; color: white !important; }
+        .btn-group-color:hover { background-color: #357a9e !important; border-color: #357a9e !important; }
+
         .pdf-preview-container { position: relative; height: 300px; background-color: #e9ecef; border-bottom: 1px solid #dee2e6; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         .pdf-preview-container img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: pointer; }
         .pdf-preview-container .btn-expand { position: absolute; top: 8px; right: 8px; z-index: 10; }
@@ -117,12 +121,67 @@ try {
         .card.card-interativo .card-header { cursor: pointer; user-select: none; }
         .header-icon { transition: transform 0.3s ease; }
         .card.collapsed .header-icon { transform: rotate(-90deg); }
-
+        
         .masonry-layout { column-count: 1; column-gap: 1.5rem; }
         @media (min-width: 768px) { .masonry-layout { column-count: 2; } }
         @media (min-width: 1400px) { .masonry-layout { column-count: 3; } }
         .card-container-wrapper { break-inside: avoid; margin-bottom: 1.5rem; }
-        @media (max-width: 768px) { body { zoom: 1.1; } }
+
+        /* Estilos do Modal de Visualização */
+        .modal-fullscreen .modal-content { background-color: black; }
+        .modal-fullscreen .modal-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            border-bottom: none;
+            z-index: 9999; /* Garante que fique acima da imagem */
+            padding: 15px 20px;
+        }
+        .modal-fullscreen .modal-title { color: white; font-size: 1.1rem; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+        .btn-close-custom {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            opacity: 0.9;
+            transition: transform 0.2s;
+        }
+        .btn-close-custom:hover { opacity: 1; transform: scale(1.1); color: #fff; }
+
+        /* Responsividade para Celulares Pequenos/Antigos (< 480px) */
+        @media (max-width: 480px) {
+            body { 
+                padding: 10px; 
+                zoom: 1 !important; /* Desabilita zoom forçado para evitar cortes */
+            }
+            .card-title {
+                display: flex;
+                flex-wrap: nowrap;
+                align-items: center;
+                width: 100%;
+            }
+            /* Reduz o texto do mapa para caber em uma linha ou quebrar suavemente */
+            .map-name {
+                font-size: 0.95rem; /* Fonte menor */
+                white-space: normal; /* Permite quebra se for extremamente longo */
+                line-height: 1.2;
+                margin-right: 5px;
+            }
+            /* Reduz a tag do grupo */
+            .group-tag {
+                font-size: 0.6rem !important;
+                max-width: 80px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            /* Ícone de colapso */
+            .header-icon { font-size: 0.9rem; }
+            /* Ícone principal */
+            .card-title i.fa-map-pin, .card-title i.fa-users { font-size: 0.9rem; }
+        }
     </style>
 </head>
 <body>
@@ -146,16 +205,17 @@ try {
             <div class="card-container-wrapper" id="mapa-card-<?php echo $mapa['id']; ?>">
                 <div class="card shadow-sm <?php echo $classe_inicial; ?>">
                     <div class="card-header <?php echo $isGroup ? 'card-header-group' : 'bg-primary'; ?> text-white d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0 d-flex align-items-center">
-                            <i class="fas <?php echo $isGroup ? 'fa-users' : 'fa-map-pin'; ?> me-2"></i> 
-                            <?php echo htmlspecialchars($mapa['identificador']); ?>
+                        <h5 class="card-title mb-0 d-flex align-items-center w-100">
+                            <i class="fas <?php echo $isGroup ? 'fa-users' : 'fa-map-pin'; ?> me-2 flex-shrink-0"></i> 
+                            <span class="map-name flex-grow-1"><?php echo htmlspecialchars($mapa['identificador']); ?></span>
+                            
+                            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                <?php if($isGroup): ?>
+                                    <span class="badge bg-white text-dark group-tag" style="opacity: 0.9;"><?php echo htmlspecialchars($mapa['nome_grupo']); ?></span>
+                                <?php endif; ?>
+                                <i class="fas fa-chevron-down header-icon"></i>
+                            </div>
                         </h5>
-                        <div class="d-flex align-items-center gap-2">
-                            <?php if($isGroup): ?>
-                                <span class="badge bg-white text-dark" style="opacity: 0.9; font-size: 0.65rem;">GRUPO: <?php echo htmlspecialchars($mapa['nome_grupo']); ?></span>
-                            <?php endif; ?>
-                            <i class="fas fa-chevron-down header-icon"></i>
-                        </div>
                     </div>
                     
                     <div class="card-collapsible-content">
@@ -170,7 +230,7 @@ try {
                         ?>
                             <div class="pdf-preview-container">
                                 <img src="<?php echo $url_jpg; ?>" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
-                                <button class="btn btn-primary btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                                <button class="btn <?php echo $isGroup ? 'btn-group-color' : 'btn-primary'; ?> btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
                                     <i class="fas fa-expand-alt me-1"></i> Expandir
                                 </button>
                             </div>
@@ -186,12 +246,14 @@ try {
 
                         <div class="card-body">
                             <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                                <label class="form-label fw-bold mt-2">Pessoas Encontradas no Território:</label>
+                                <div class="d-flex justify-content-end px-2 pb-1"> <small class="fw-bold text-muted" style="width: 140px; text-align: center;">Nº Pessoas</small> </div>
                                 <div class="list-group list-group-flush mb-3 quadra-list" data-mapa-id="<?php echo $mapa['id']; ?>">
                                 <?php if (isset($quadras_por_mapa[$mapa['id']])): foreach ($quadras_por_mapa[$mapa['id']] as $quadra): ?>
-                                    <div class="list-group-item quadra-item d-flex justify-content-between align-items-center p-2">
+                                    <div class="list-group-item quadra-item d-flex justify-content-between align-items-right p-2">
                                         <span>Quadra <strong><?php echo $quadra['numero']; ?></strong></span>
-                                        <div class="d-flex align-items-center">
-                                            <div class="input-group input-group-sm" style="width: 120px;">
+                                        <div class="d-flex align-items-right">
+                                            <div class="input-group input-group-sm" style="width: 100px;">
                                                 <button class="btn btn-outline-secondary btn-decrement" type="button">-</button>
                                                 <input type="number" class="form-control text-center quadra-input no-spinners" 
                                                        value="<?php echo $quadra['pessoas_faladas']; ?>" 
@@ -199,7 +261,7 @@ try {
                                                        data-previous-value="<?php echo $quadra['pessoas_faladas']; ?>" min="0">
                                                 <button class="btn btn-outline-secondary btn-increment" type="button">+</button>
                                             </div>
-                                            <div class="ms-2" style="width: 24px;" id="status_save_q<?php echo $quadra['id']; ?>"></div>
+                                            <div class="ms-3" style="width: 24px;" id="status_save_q<?php echo $quadra['id']; ?>"></div>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
@@ -225,8 +287,23 @@ try {
 
     <!-- Modais -->
     <div class="modal fade" id="pdfModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-fullscreen"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Visualizador</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 d-flex justify-content-center bg-black"><img id="modal-img" src="" style="max-width:100%; object-fit:contain;"></div></div></div>
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content bg-black">
+                <!-- Header flutuante sobreposto à imagem -->
+                <div class="modal-header">
+                    <h5 class="modal-title" id="pdfModalTitle">Visualizador</h5>
+                    <button type="button" class="btn-close-custom" data-bs-dismiss="modal" aria-label="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <!-- Body com imagem centralizada -->
+                <div class="modal-body p-0 d-flex justify-content-center align-items-center bg-black" style="height: 100vh;">
+                    <img id="modal-img" src="" style="max-width:100%; max-height:100%; object-fit:contain;">
+                </div>
+            </div>
+        </div>
     </div>
+    
     <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="feedbackModalTitle">Aviso</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="feedbackModalBody"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button></div></div></div>
     </div>
@@ -337,7 +414,8 @@ try {
 
             document.getElementById('pdfModal').addEventListener('show.bs.modal', (e) => { 
                 const btn = e.relatedTarget;
-                document.getElementById('modal-img').src = btn.dataset.imgSrc; 
+                document.getElementById('modal-img').src = btn.dataset.imgSrc;
+                document.getElementById('pdfModalTitle').textContent = btn.dataset.pdfTitle || 'Visualizador';
             });
         });
     </script>
