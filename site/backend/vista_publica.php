@@ -61,7 +61,7 @@ try {
     $user = $stmt_user->fetch();
 
     if (!$user) {
-        exibirErroFatal("Acesso Não Encontrado", "O link pode ter expirado ou o usuário foi alterado.", $baseUrl);
+        exibirErroFatal("Nenhum Território Encontrado", "O seu link de território expirou! Contate seu servo de territorio para solicitar um novo.", $baseUrl);
     }
     
     $user_id = $user['id'];
