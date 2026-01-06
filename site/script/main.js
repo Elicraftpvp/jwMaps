@@ -1,13 +1,12 @@
-// site/script/main.js
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Definição das permissões (sem alteração)
+    // 1. Definição das permissões
     const PERM_DIRIGENTE = 1;
     const PERM_ADMIN = 2;
     const PERM_CARRINHO = 4;
     const PERM_PUBLICADOR = 8;
     const PERM_CAMPANHA = 16;
 
-    // 2. Verifica o usuário logado (sem alteração)
+    // 2. Verifica o usuário logado
     const userString = sessionStorage.getItem('user');
     if (!userString) {
         window.location.href = '/login';
@@ -16,46 +15,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const user = JSON.parse(userString);
     const userPermissoes = parseInt(user.permissoes, 10);
 
-    // 3. Monta o menu com lógica aditiva ("de baixo para cima")
+    // 3. Monta o menu principal
     let menuItems = [];
     let hasAccess = false;
 
-    // A permissão de Admin (Servo) é um caso especial, pois vê tudo.
-    // Se o usuário for admin, construímos o menu completo e encerramos.
     if ((userPermissoes & PERM_ADMIN) === PERM_ADMIN) {
         hasAccess = true;
         menuItems = [
-            // Dashboard é o primeiro e ativo por padrão
             { href: 'pages/dashboard.html', icon: 'fas fa-tachometer-alt', text: 'Dashboard', active: true },
             { href: 'pages/gerenciar_mapas.html', icon: 'fas fa-map', text: 'Gerenciar Mapas' },
             { href: 'pages/dirigentes.html', icon: 'fas fa-user-cog', text: 'Gerenciar Usuarios' },
             { href: 'pages/gerenciar_grupos.html', icon: 'fas fa-users-cog', text: 'Gerenciar Grupos' },
-            // MODIFICAÇÃO: Adicionado "Meus Mapas" para o Admin
             { href: 'backend/vista_dirigente.php', icon: 'fas fa-id-card', text: 'Meus Mapas' },
             { href: 'pages/controle.html', icon: 'fas fa-history', text: 'Controle' }
         ];
     }
-    // Para todos os outros usuários, construímos o menu adicionando os itens de cada permissão
     else {
-        // PERMISSÃO MÍNIMA: Dirigente (1)
         if ((userPermissoes & PERM_DIRIGENTE) === PERM_DIRIGENTE) {
             hasAccess = true;
             menuItems.push({ href: 'backend/vista_dirigente.php', icon: 'fas fa-id-card', text: 'Meus Mapas' });
         }
 
-        // MODIFICAÇÃO: Nova permissão para Publicador ver "Meus Mapas"
         if ((userPermissoes & PERM_PUBLICADOR) === PERM_PUBLICADOR) {
             hasAccess = true;
-            // Adiciona "Meus Mapas" apenas se ainda não existir (evita duplicar com a permissão de Dirigente)
             if (!menuItems.some(item => item.href.includes('vista_dirigente'))) {
                 menuItems.push({ href: 'backend/vista_dirigente.php', icon: 'fas fa-id-card', text: 'Meus Mapas' });
             }
         }
 
-        // PERMISSÃO MÉDIA: Campanha (16)
         if ((userPermissoes & PERM_CAMPANHA) === PERM_CAMPANHA) {
             hasAccess = true;
-            // Adiciona apenas se ainda não existirem, para evitar duplicatas caso uma futura permissão os inclua
             if (!menuItems.some(item => item.href.includes('gerenciar_mapas'))) {
                  menuItems.push({ href: 'pages/gerenciar_mapas.html', icon: 'fas fa-map', text: 'Gerenciar Mapas' });
             }
@@ -64,13 +53,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Adiciona o Dashboard no início da lista se o usuário tiver qualquer acesso válido
         if (hasAccess) {
             menuItems.unshift({ href: 'pages/dashboard.html', icon: 'fas fa-tachometer-alt', text: 'Dashboard', active: true });
         }
     }
 
-    // 4. Bloqueia acesso se nenhuma permissão válida foi encontrada (apenas Carrinho, por exemplo)
+    // 4. Bloqueia acesso
     if (!hasAccess) {
         alert('Você não tem permissão para acessar o sistema.');
         sessionStorage.removeItem('user');
@@ -78,8 +66,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // 5. Constrói o HTML final a partir do array de itens do menu
-    let menuHTML = menuItems.map(item => `
+    // 5. Gera HTML do Menu Principal
+    const menuHTML = menuItems.map(item => `
         <li class="nav-item">
             <a class="nav-link ${item.active ? 'active' : ''}" href="${item.href}" target="contentFrame">
                 <i class="${item.icon}"></i> ${item.text}
@@ -87,20 +75,29 @@ document.addEventListener('DOMContentLoaded', () => {
         </li>
     `).join('');
 
-    // Adiciona o botão de Sair no final
-    menuHTML += `
-        <li class="nav-item mt-auto">
-            <a class="nav-link" href="#" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Sair</a>
+    // 6. Gera HTML do Menu de Sair (Separado e com a borda forçada via style inline para garantir)
+    const logoutHTML = `
+        <li class="nav-item">
+            <a class="nav-link" href="#" id="logout-btn" style="border-top: 1px solid #495057;">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </a>
         </li>
     `;
 
-    // 6. Popula os menus e adiciona eventos (sem alterações na lógica de eventos)
+    // 7. Injeta no HTML
     const menuDesktop = document.getElementById('menu-principal-desktop');
+    const menuLogoutDesktop = document.getElementById('menu-logout-desktop');
+    
     const menuMobile = document.getElementById('menu-principal-mobile');
+    const menuLogoutMobile = document.getElementById('menu-logout-mobile');
+
     if (menuDesktop) menuDesktop.innerHTML = menuHTML;
     if (menuMobile) menuMobile.innerHTML = menuHTML;
+
+    if (menuLogoutDesktop) menuLogoutDesktop.innerHTML = logoutHTML;
+    if (menuLogoutMobile) menuLogoutMobile.innerHTML = logoutHTML;
     
-    // Lógica de UI para links ativos e logout
+    // 8. Eventos de clique
     const allNavLinks = document.querySelectorAll('.nav-link');
     const sidebarMobileElement = document.getElementById('sidebarMobile');
     const sidebarMobileInstance = bootstrap.Offcanvas.getInstance(sidebarMobileElement) || new bootstrap.Offcanvas(sidebarMobileElement);
@@ -113,15 +110,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = '/login';
                 return;
             }
+            
             if (this.getAttribute('target') === 'contentFrame') {
-                // Remove 'active' de todos
+                // Remove active de todos
                 allNavLinks.forEach(l => l.classList.remove('active'));
                 
-                // Adiciona 'active' no link clicado (tanto no desktop quanto no mobile)
+                // Adiciona active no link correspondente
                 const href = this.getAttribute('href');
                 document.querySelectorAll(`.nav-link[href="${href}"]`).forEach(matchingLink => matchingLink.classList.add('active'));
 
-                // Fecha o menu mobile se estiver aberto
+                // Fecha mobile
                 if (sidebarMobileInstance && window.getComputedStyle(sidebarMobileElement).visibility === 'visible') {
                     sidebarMobileInstance.hide();
                 }
@@ -129,7 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Inicia o iframe com a página do dashboard por padrão
     const contentFrame = document.getElementById('contentFrame');
     if (contentFrame && hasAccess) {
         contentFrame.src = "pages/dashboard.html";

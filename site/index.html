@@ -14,50 +14,58 @@
     <link rel="stylesheet" href="style/css.css">
     
     <style>
-        /* Estilos específicos para o layout "Janela" */
+        /* Estilos gerais da Janela */
         body {
-            background-color: #212529; /* Cor de fundo externa */
+            background-color: #212529; 
             height: 100vh;
-            padding: 2px; /* Espaço para ver a borda externa */
+            padding: 2px; 
             box-sizing: border-box;
-            overflow: hidden; /* Evita scroll na página principal */
+            overflow: hidden; 
         }
 
         .window-frame {
-            /* Simula a janela */
-            border: 2px solid #212529; /* Mesma cor do menu (bg-dark) */
-            border-radius: 15px; /* Cantos arredondados */
-            overflow: hidden; /* Garante que o conteúdo respeite o arredondamento */
+            border: 2px solid #212529; 
+            border-radius: 15px; 
+            overflow: hidden; 
             height: 100%;
             display: flex;
             background-color: #212529;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3); /* Sombra para dar profundidade */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); 
             position: relative;
         }
 
-        /* Ajustes na Sidebar para Flexbox (Sticky Footer) */
         .sidebar-container {
             display: flex;
             flex-direction: column;
             height: 100%;
         }
 
+        /* --- CORREÇÃO DO ESPAÇAMENTO --- */
+        /* Isso anula o CSS externo que está empurrando o "Controle" para baixo */
+        #menu-principal-desktop .nav-item:last-child,
+        #menu-principal-mobile .nav-item:last-child {
+            margin-top: 0 !important; /* Remove o buraco gigante */
+        }
+        
+        /* Remove a linha acima de "Controle" */
+        #menu-principal-desktop .nav-item:last-child .nav-link,
+        #menu-principal-mobile .nav-item:last-child .nav-link {
+            border-top: none !important;
+        }
 
-        /* Estilização do Footer do Menu */
+        /* Footer onde fica a Versão e o Sair */
         .sidebar-footer {
             padding-top: 1rem;
-
-            margin-top: auto; /* Garante que fique no rodapé */
+            margin-top: auto; /* É isso que empurra a versão e o sair para o final */
         }
         
         .version-text {
             font-size: 0.75rem;
             color: rgba(255,255,255,0.5);
             text-align: center;
-            margin-top: 10px;
+            margin-bottom: 10px;
         }
 
-        /* Ajuste do wrapper original para usar a classe window-frame */
         .wrapper {
             width: 100%;
             height: 100%;
@@ -67,56 +75,60 @@
 </head>
 <body>
     
-    <!-- Container principal com visual de Janela -->
     <div class="window-frame">
         <div class="wrapper">
-            <!-- Sidebar para DESKTOP (Fixa) -->
+            <!-- Sidebar DESKTOP -->
             <nav id="sidebar" class="sidebar bg-dark d-none d-lg-block">
                 <div class="sidebar-container">
                     <div class="sidebar-header">
                         <h3 class="text-white"><i class="fas fa-map-marked-alt"></i> Gerenciador de Territorios Forquilhinha</h3>
                     </div>
                     
-                    <!-- Menu Dinâmico -->
+                    <!-- Menu Principal (Itens normais) -->
                     <ul id="menu-principal-desktop" class="nav flex-column sidebar-content">
-                        <!-- Links do menu serão inseridos aqui pelo JavaScript -->
+                        <!-- JS insere aqui -->
                     </ul>
 
-                    <!-- Footer do Menu (Fixo no Bottom) -->
+                    <!-- Footer (Versão + Botão Sair separado) -->
                     <div class="sidebar-footer">
                         <div class="version-text">
                             Versão 1.2<br>
                             &copy; 2026
                         </div>
+                        
+                        <!-- Novo Menu APENAS para o Sair -->
+                        <ul id="menu-logout-desktop" class="nav flex-column">
+                            <!-- JS insere o botão Sair aqui -->
+                        </ul>
                     </div>
                 </div>
             </nav>
 
-            <!-- Sidebar para MOBILE (Offcanvas) -->
+            <!-- Sidebar MOBILE -->
             <div class="offcanvas offcanvas-start bg-dark text-white" tabindex="-1" id="sidebarMobile" aria-labelledby="sidebarMobileLabel">
                 <div class="offcanvas-header">
                      <h5 class="offcanvas-title" id="sidebarMobileLabel"><i class="fas fa-map-marked-alt"></i> Gerenciador de Territorios Forquilhinha</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
                 </div>
                 <div class="offcanvas-body d-flex flex-column h-100">
-                    <!-- Menu Dinâmico Mobile -->
                     <ul id="menu-principal-mobile" class="nav flex-column flex-grow-1">
-                        <!-- Links do menu serão inseridos aqui pelo JavaScript -->
+                        <!-- JS insere aqui -->
                     </ul>
 
-                    <!-- Footer do Menu Mobile -->
                     <div class="sidebar-footer mt-auto">
                         <div class="version-text">
                             Versão 1.2<br>
                             &copy; 2026
                         </div>
+                        <ul id="menu-logout-mobile" class="nav flex-column">
+                             <!-- JS insere o botão Sair aqui -->
+                        </ul>
                     </div>
                 </div>
             </div>
 
-            <!-- Conteúdo Principal -->
+            <!-- Conteúdo -->
             <div id="content">
-                <!-- Navbar Superior para MOBILE -->
                 <nav class="navbar navbar-expand-lg navbar-light bg-light d-lg-none sticky-top shadow-sm">
                     <div class="container-fluid">
                         <button class="btn btn-dark" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMobile" aria-controls="sidebarMobile" aria-label="Abrir menu de navegação">
@@ -126,7 +138,6 @@
                     </div>
                 </nav>
                 
-                <!-- Iframe para carregar o conteúdo das páginas -->
                 <iframe name="contentFrame" src="pages/dashboard.html" class="content-frame" title="Gerenciador de Territorios Forquilhinha"></iframe>
             </div>
         </div>
@@ -134,7 +145,6 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Custom JS -->
     <script src="script/common.js"></script>
     <script src="script/historico_mapas.js"></script>
     <script src="script/controle.js"></script>
