@@ -1,11 +1,10 @@
 // site/script/dashboard.js
 document.addEventListener('DOMContentLoaded', () => {
-    // Definição de permissões no JS para facilitar a leitura
     const PERM_DIRIGENTE = 1;
     const PERM_ADMIN = 2;
     const PERM_CAMPANHA = 16;
+    const PERM_PUBLICADOR = 8;
     
-    // Elementos da página
     const adminView = document.getElementById('admin-view');
     const dirigenteView = document.getElementById('dirigente-view');
     
@@ -13,11 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const countEmUso = document.getElementById('count-em-uso');
     const countDirigentes = document.getElementById('count-dirigentes');
 
-    // --- VARIÁVEIS GLOBAIS PARA O AGRUPAMENTO (NOVO ESTILO) ---
     let mapasAgrupadosPorDirigente = {};
     let totalAtrasados = 0;
 
-    // Função principal que inicializa o dashboard
     const initDashboard = () => {
         const user = JSON.parse(sessionStorage.getItem('user'));
         
@@ -33,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if ((userPermissoes & PERM_ADMIN) === PERM_ADMIN || (userPermissoes & PERM_CAMPANHA) === PERM_CAMPANHA) {
             mostrarVisaoAdmin();
         } 
-        else if ((userPermissoes & PERM_DIRIGENTE) === PERM_DIRIGENTE) {
+        else if ((userPermissoes & PERM_DIRIGENTE) === PERM_DIRIGENTE || (userPermissoes & PERM_PUBLICADOR) === PERM_PUBLICADOR) {
             mostrarVisaoDirigente();
         }
         else {
@@ -52,26 +49,22 @@ document.addEventListener('DOMContentLoaded', () => {
             countDirigentes.textContent = data.stats.dirigentes || 0;
 
         } catch (error) {
-            console.error("Erro ao carregar estatísticas:", error);
-            [countDisponiveis, countEmUso, countDirigentes].forEach(el => el.textContent = '!');
+            console.error("Erro ao carregar estatísticas:", error);[countDisponiveis, countEmUso, countDirigentes].forEach(el => el.textContent = '!');
         }
     };
 
-    // --- FUNÇÕES PARA A VISÃO DE ADMIN ---
     const mostrarVisaoAdmin = () => {
         adminView.classList.remove('d-none');
         dirigenteView.classList.add('d-none');
         carregarListasAdmin();
 
-        // --- INÍCIO DA MODIFICAÇÃO: Resetando variáveis do novo estilo ---
         mapasAgrupadosPorDirigente = {};
         totalAtrasados = 0;
         
         const listaMapasEmUso = document.getElementById('lista-mapas-em-uso');
         listaMapasEmUso.innerHTML = '<li class="list-group-item text-center"><div class="spinner-border spinner-border-sm"></div> Carregando mapas em uso...</li>';
         
-        carregarMapasAtrasadosAdmin(1); // Inicia o processo recursivo
-        // --- FIM DA MODIFICAÇÃO ---
+        carregarMapasAtrasadosAdmin(1); 
     };
 
     const carregarListasAdmin = async () => {
@@ -88,7 +81,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.recentes && data.recentes.length > 0) {
                 data.recentes.forEach(mapa => {
                     const dataEntrega = new Date(mapa.data_entrega + 'T00:00:00').toLocaleDateString('pt-BR');
-                    listaMapasRecentes.innerHTML += `<li class="list-group-item"><strong>${mapa.identificador}</strong> com ${mapa.dirigente_nome}<br><small class="text-muted">Entregue em: ${dataEntrega}</small></li>`;
+                    // Verifica se é mapa de grupo ou individual
+                    const responsavel = mapa.grupo_nome ? `<span class="badge bg-info text-dark">Grupo</span> ${mapa.grupo_nome}` : mapa.dirigente_nome;
+                    
+                    listaMapasRecentes.innerHTML += `<li class="list-group-item"><strong>${mapa.identificador}</strong> com ${responsavel}<br><small class="text-muted">Entregue em: ${dataEntrega}</small></li>`;
                 });
             } else {
                 listaMapasRecentes.innerHTML = '<li class="list-group-item text-muted text-center">Nenhum mapa entregue recentemente.</li>';
@@ -110,9 +106,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    // --- INÍCIO DA MODIFICAÇÃO: FUNÇÕES DE AGRUPAMENTO E RENDERIZAÇÃO ---
-    
-    // Função auxiliar para desenhar o HTML agrupado (Estilo Solicitado)
     const renderizarMapasAgrupados = (elementoLista) => {
         elementoLista.innerHTML = '';
         
@@ -124,16 +117,14 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const dirigente in mapasAgrupadosPorDirigente) {
             const mapas = mapasAgrupadosPorDirigente[dirigente];
             
-            // Gera a sub-lista de mapas
             const listaDeMapasHtml = mapas.map(mapa => 
                 `<li>
                     <small>
-                        Mapa ${mapa.identificador}: com o dirigente há <strong class="text-danger">${mapa.dias} dias</strong>
+                        Mapa ${mapa.identificador}: em uso há <strong class="text-danger">${mapa.dias} dias</strong>
                     </small>
                  </li>`
             ).join('');
 
-            // Gera o item principal do dirigente
             const itemHtml = `
                 <li class="list-group-item">
                     <strong>${dirigente}</strong> (${mapas.length} mapa${mapas.length > 1 ? 's' : ''})
@@ -146,7 +137,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Função recursiva atualizada com lógica de agrupamento
     const carregarMapasAtrasadosAdmin = async (page = 1) => {
         const listaMapasEmUso = document.getElementById('lista-mapas-em-uso');
         
@@ -155,14 +145,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error('API de mapas em uso falhou.');
             const result = await response.json();
 
-            // Limpa o spinner inicial apenas na primeira página
             if (page === 1) {
                 listaMapasEmUso.innerHTML = '';
             }
 
-            const mapasDaPagina = result.data || [];
+            const mapasDaPagina = result.data ||[];
             
-            // Data do servidor para cálculo preciso
             const dataServidor = new Date(result.serverDate + 'T00:00:00');
             const umDiaEmMs = 24 * 60 * 60 * 1000;
             let encontrouAtrasadoNestaPagina = false;
@@ -174,17 +162,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const diferencaEmMs = dataServidor.getTime() - dataEntrega.getTime();
                 const diasDeDiferenca = Math.floor(diferencaEmMs / umDiaEmMs);
 
-                // Filtra apenas 30 dias ou mais
                 if (diasDeDiferenca >= 30) {
                     encontrouAtrasadoNestaPagina = true;
                     totalAtrasados++;
-                    const dirigente = mapa.dirigente_nome || 'Desconhecido';
+                    // Se o mapa tiver grupo, mostra o nome do grupo, senão o dirigente
+                    const dirigente = mapa.grupo_nome ? `[Grupo] ${mapa.grupo_nome}` : (mapa.dirigente_nome || 'Desconhecido');
 
                     if (!mapasAgrupadosPorDirigente[dirigente]) {
                         mapasAgrupadosPorDirigente[dirigente] = [];
                     }
 
-                    // Adiciona ao objeto de agrupamento
                     mapasAgrupadosPorDirigente[dirigente].push({
                         identificador: mapa.identificador,
                         dias: diasDeDiferenca 
@@ -192,17 +179,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // Renderiza o que temos até agora se encontrou algo novo ou se for a primeira página vazia
             if (encontrouAtrasadoNestaPagina || (page === 1 && totalAtrasados === 0)) {
                 renderizarMapasAgrupados(listaMapasEmUso);
             }
 
-            // Verifica se há próxima página
             if (result.page < result.totalPages) {
-                // Pequeno delay para não travar a UI
                 setTimeout(() => carregarMapasAtrasadosAdmin(result.page + 1), 100);
             } else {
-                // Fim da recursão: garante renderização final
                 if (totalAtrasados === 0) {
                     renderizarMapasAgrupados(listaMapasEmUso);
                 }
@@ -213,9 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
             listaMapasEmUso.innerHTML = '<li class="list-group-item text-danger text-center">Erro ao carregar mapas em uso.</li>';
         }
     };
-    // --- FIM DA MODIFICAÇÃO ---
 
-    // --- FUNÇÕES PARA A VISÃO DE DIRIGENTE ---
     const mostrarVisaoDirigente = () => {
         adminView.classList.add('d-none');
         dirigenteView.classList.remove('d-none');
@@ -237,10 +218,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (mapa.dias_comigo >= 30) corBadge = 'bg-warning';
                     if (mapa.dias_comigo >= 60) corBadge = 'bg-danger';
 
+                    // Identifica se é do Grupo do dirigente
+                    const nomeExibicao = mapa.grupo_nome ? `Mapa ${mapa.identificador} <span class="badge bg-info text-dark ms-1" style="font-size: 0.7em;">Grupo ${mapa.grupo_nome}</span>` : `Mapa ${mapa.identificador}`;
+
                     listaMeusMapas.innerHTML += `
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <span>
-                                <strong>Mapa ${mapa.identificador}</strong>
+                                <strong>${nomeExibicao}</strong>
                                 <br>
                                 <small class="text-muted">Entregue em: ${new Date(mapa.data_entrega + 'T00:00:00').toLocaleDateString('pt-BR')}</small>
                             </span>

@@ -3,7 +3,6 @@
 header('Content-Type: application/json');
 require_once 'conexao.php';
 
-// Definir o fuso horário para garantir consistência na data do servidor
 date_default_timezone_set('America/Sao_Paulo');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
@@ -13,7 +12,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 try {
-    // Parâmetros de paginação
     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
     $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 5;
 
@@ -22,12 +20,10 @@ try {
 
     $offset = ($page - 1) * $limit;
 
-    // Contar o total de registros (Mapas com Dirigente OU com Grupo)
     $total_stmt = $pdo->query("SELECT COUNT(m.id) FROM mapas m WHERE m.dirigente_id IS NOT NULL OR m.grupo_id IS NOT NULL");
     $total_results = $total_stmt->fetchColumn();
     $total_pages = ceil($total_results / $limit);
 
-    // Buscar os dados paginados com Joins para Usuários e Grupos
     $stmt = $pdo->prepare("
         SELECT 
             m.identificador, 
@@ -51,7 +47,6 @@ try {
     $stmt->execute();
     
     $mapas_em_uso = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
     $current_server_date = date('Y-m-d');
 
     echo json_encode([

@@ -1,6 +1,6 @@
 <?php
 // site/backend/dashboard_api.php
-session_start(); // Essencial para ler os dados do usuário logado
+session_start();
 
 header('Content-Type: application/json');
 require_once 'conexao.php';
@@ -12,7 +12,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-// 2. DEFINIÇÃO DAS PERMISSÕES (conforme sua especificação)
+// 2. DEFINIÇÃO DAS PERMISSÕES
 define('PERM_DIRIGENTE', 1);
 define('PERM_ADMIN', 2);
 define('PERM_CARRINHO', 4);
@@ -25,21 +25,25 @@ $user_permissoes = (int) $_SESSION['permissoes'];
 
 try {
     // 3. ESTATÍSTICAS GLOBAIS (Visíveis para todos)
-    $stmt_disponiveis = $pdo->query("SELECT COUNT(id) as total FROM mapas WHERE dirigente_id IS NULL");
+    // Mapas disponíveis são os que não têm dirigente NEM grupo
+    $stmt_disponiveis = $pdo->query("SELECT COUNT(id) as total FROM mapas WHERE dirigente_id IS NULL AND grupo_id IS NULL");
     $disponiveis = $stmt_disponiveis->fetchColumn();
 
-    $stmt_em_uso = $pdo->query("SELECT COUNT(id) as total FROM mapas WHERE dirigente_id IS NOT NULL");
+    // Mapas em uso são os que TÊM dirigente OU grupo
+    $stmt_em_uso = $pdo->query("SELECT COUNT(id) as total FROM mapas WHERE dirigente_id IS NOT NULL OR grupo_id IS NOT NULL");
     $em_uso = $stmt_em_uso->fetchColumn();
 
-    // Conta dirigentes ativos usando a coluna 'permissoes'
     $stmt_dirigentes = $pdo->query("SELECT COUNT(id) as total FROM users WHERE (permissoes & " . PERM_DIRIGENTE . ") = " . PERM_DIRIGENTE . " AND status = 'ativo'");
     $dirigentes = $stmt_dirigentes->fetchColumn();
     
     // --- DADOS PARA A VISÃO DE ADMIN ---
     $stmt_recentes = $pdo->query("
-        SELECT m.identificador, m.data_entrega, u.nome as dirigente_nome
-        FROM mapas m JOIN users u ON m.dirigente_id = u.id
-        WHERE m.dirigente_id IS NOT NULL ORDER BY m.data_entrega DESC LIMIT 10
+        SELECT m.identificador, m.data_entrega, u.nome as dirigente_nome, g.nome as grupo_nome
+        FROM mapas m 
+        LEFT JOIN users u ON m.dirigente_id = u.id
+        LEFT JOIN grupos g ON m.grupo_id = g.id
+        WHERE m.dirigente_id IS NOT NULL OR m.grupo_id IS NOT NULL 
+        ORDER BY m.data_entrega DESC LIMIT 10
     ");
     $recentes = $stmt_recentes->fetchAll(PDO::FETCH_ASSOC);
 
@@ -49,31 +53,33 @@ try {
         ORDER BY h.data_devolucao DESC LIMIT 10
     ");
     $historico = $stmt_historico->fetchAll(PDO::FETCH_ASSOC);
-    // --- FIM DOS DADOS PARA A VISÃO DE ADMIN ---
 
 
     // 4. MONTAGEM DA RESPOSTA JSON
-    $response = [
-        'user_permissoes' => $user_permissoes, // Informa ao front-end as permissões
-        'stats' => [
+    $response =[
+        'user_permissoes' => $user_permissoes, 
+        'stats' =>[
             'disponiveis' => (int) $disponiveis,
             'em_uso' => (int) $em_uso,
             'dirigentes' => (int) $dirigentes
         ],
-        'recentes' => $recentes, // Dados da visão admin
-        'historico' => $historico // Dados da visão admin
+        'recentes' => $recentes, 
+        'historico' => $historico 
     ];
 
-    // 5. DADOS CONDICIONAIS PARA DIRIGENTES
-    // Se o usuário tiver a permissão de DIRIGENTE, adiciona a lista de "seus mapas"
-    if (($user_permissoes & PERM_DIRIGENTE) === PERM_DIRIGENTE) {
+    // 5. DADOS CONDICIONAIS PARA DIRIGENTES / PUBLICADORES
+    $is_dirigente = ($user_permissoes & PERM_DIRIGENTE) === PERM_DIRIGENTE;
+    $is_publicador = ($user_permissoes & PERM_PUBLICADOR) === PERM_PUBLICADOR;
+
+    if ($is_dirigente || $is_publicador) {
         $stmt_meus_mapas = $pdo->prepare("
-            SELECT m.id, m.identificador, m.data_entrega, DATEDIFF(CURDATE(), m.data_entrega) as dias_comigo
+            SELECT m.id, m.identificador, m.data_entrega, DATEDIFF(CURDATE(), m.data_entrega) as dias_comigo, g.nome as grupo_nome
             FROM mapas m
-            WHERE m.dirigente_id = ?
+            LEFT JOIN grupos g ON m.grupo_id = g.id
+            WHERE m.dirigente_id = ? OR m.grupo_id IN (SELECT grupo_id FROM grupo_membros WHERE user_id = ?)
             ORDER BY m.data_entrega ASC
         ");
-        $stmt_meus_mapas->execute([$user_id]);
+        $stmt_meus_mapas->execute([$user_id, $user_id]);
         $response['meus_mapas'] = $stmt_meus_mapas->fetchAll(PDO::FETCH_ASSOC);
     }
     
