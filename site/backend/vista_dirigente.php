@@ -24,18 +24,30 @@ try {
         die("<h1>Dirigente com ID $dirigente_id não encontrado.</h1>");
     }
     
-    // 3. Busca os mapas do dirigente logado
+    // 3. Busca os mapas do dirigente logado (tanto os individuais atribuídos diretamente a ele, quanto os dos grupos que participa)
     $stmt_mapas = $pdo->prepare(
-        "SELECT id, identificador, data_entrega, gdrive_file_id 
-         FROM mapas 
-         WHERE dirigente_id = ? 
-         ORDER BY identificador ASC"
+        "SELECT m.id, m.identificador, m.data_entrega, m.gdrive_file_id, m.grupo_id, g.nome as nome_grupo 
+         FROM mapas m
+         LEFT JOIN grupos g ON m.grupo_id = g.id
+         WHERE (m.dirigente_id = ? OR m.grupo_id IN (SELECT grupo_id FROM grupo_membros WHERE user_id = ?))
+         ORDER BY m.identificador ASC"
     );
-    $stmt_mapas->execute([$dirigente_id]);
+    $stmt_mapas->execute([$dirigente_id, $dirigente_id]);
     $mapas = $stmt_mapas->fetchAll(PDO::FETCH_ASSOC);
 
+    // Separar Mapas em Individuais e Grupos
+    $mapas_individuais =[];
+    $mapas_grupo = [];
+    foreach ($mapas as $m) {
+        if (!empty($m['grupo_id'])) {
+            $mapas_grupo[] = $m;
+        } else {
+            $mapas_individuais[] = $m;
+        }
+    }
+
     // 4. Busca todas as quadras para os mapas encontrados
-    $quadras_por_mapa = [];
+    $quadras_por_mapa =[];
     if (!empty($mapas)) {
         $mapa_ids = array_column($mapas, 'id');
         $placeholders = implode(',', array_fill(0, count($mapa_ids), '?'));
@@ -56,6 +68,112 @@ try {
 } catch (PDOException $e) {
     http_response_code(500);
     die("Erro ao conectar ou consultar o banco de dados: " . $e->getMessage());
+}
+
+/**
+ * Função auxiliar para renderizar o card do mapa para o dirigente.
+ * Reutiliza a mesma estrutura de layout atual da vista_dirigente.php.
+ */
+function renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards) {
+    $isGroup = !empty($mapa['grupo_id']);
+    $soma_pessoas = 0;
+    if (isset($quadras_por_mapa[$mapa['id']])) {
+        foreach ($quadras_por_mapa[$mapa['id']] as $q) {
+            $soma_pessoas += (int)$q['pessoas_faladas'];
+        }
+    }
+    
+    // Só colapsa se houver mais de 1 mapa E a soma for 0
+    $classe_inicial = ($total_cards > 1 && $soma_pessoas == 0) ? 'collapsed' : '';
+    ?>
+    <div class="col-lg-6 mb-4 card-container-wrapper" id="mapa-card-<?php echo $mapa['id']; ?>">
+        <div class="card shadow-sm <?php echo $classe_inicial; ?>">
+            <div class="card-header <?php echo $isGroup ? 'card-header-group' : 'bg-primary'; ?> text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 d-flex align-items-center w-100">
+                    <i class="fas <?php echo $isGroup ? 'fa-users' : 'fa-map-pin'; ?> me-2 flex-shrink-0"></i> 
+                    <span class="map-name flex-grow-1"><?php echo htmlspecialchars($mapa['identificador']); ?></span>
+                    
+                    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                        <?php if($isGroup): ?>
+                            <span class="badge bg-white text-dark group-tag" style="opacity: 0.9;"><?php echo htmlspecialchars($mapa['nome_grupo']); ?></span>
+                        <?php endif; ?>
+                        <i class="fas fa-chevron-down header-icon"></i>
+                    </div>
+                </h5>
+            </div>
+
+            <!-- Wrapper para o conteúdo colapsável -->
+            <div class="card-collapsible-content">
+                <?php
+                // Visualização do GDrive
+                if (!empty($mapa['gdrive_file_id'])):
+                    $pdf_embed_url = "https://drive.google.com/file/d/" . $mapa['gdrive_file_id'] . "/preview";
+                ?>
+                    <div class="pdf-preview-container">
+                        <iframe src="<?php echo $pdf_embed_url; ?>"></iframe>
+                        <button class="btn <?php echo $isGroup ? 'btn-group-color' : 'btn-primary'; ?> btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-src="<?php echo $pdf_embed_url; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                            <i class="fas fa-expand-alt me-1"></i> Expandir
+                        </button>
+                    </div>
+                <?php else: ?>
+                    <div class="text-center p-3 text-muted border-bottom"><i class="fas fa-exclamation-triangle me-2"></i> Mapa não encontrado no Drive.</div>
+                <?php endif; ?>
+
+                <!-- === BOTÃO DE DOWNLOAD DO PDF === -->
+                <?php
+                    // Nome do arquivo baseado no identificador + .pdf
+                    $nome_arquivo_pdf = $mapa['identificador'] . ".pdf";
+                    // Caminho físico para verificar se existe
+                    $caminho_local_pdf = __DIR__ . "/pdfs/" . $nome_arquivo_pdf;
+                    // URL para o link
+                    $url_download_pdf = "pdfs/" . rawurlencode($nome_arquivo_pdf);
+
+                    if (file_exists($caminho_local_pdf)):
+                ?>
+                    <div class="px-3 pt-3">
+                        <a href="<?php echo $url_download_pdf; ?>" class="btn btn-outline-dark w-100" download="<?php echo htmlspecialchars($nome_arquivo_pdf); ?>">
+                            <i class="fas fa-file-download me-2"></i> Baixar Mapa em PDF
+                        </a>
+                    </div>
+                <?php endif; ?>
+                <!-- ============================================== -->
+
+                <div class="card-body">
+                    <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                        <label class="form-label fw-bold mt-2">Registro por Quadra:</label>
+                        <div class="d-flex justify-content-end px-2 pb-1"> <small class="fw-bold text-muted" style="width: 140px; text-align: center;">Nº Pessoas</small> </div>
+                        <div class="list-group list-group-flush mb-3 quadra-list" data-mapa-id="<?php echo $mapa['id']; ?>">
+                        <?php if (!empty($quadras_por_mapa[$mapa['id']])): foreach ($quadras_por_mapa[$mapa['id']] as $quadra): ?>
+                            <div class="list-group-item quadra-item d-flex justify-content-between align-items-center p-2">
+                                <span>Quadra <strong><?php echo htmlspecialchars($quadra['numero']); ?></strong></span>
+                                <div class="d-flex align-items-center">
+                                    <div class="input-group input-group-sm" style="width: 120px;">
+                                        <button class="btn btn-outline-secondary btn-decrement" type="button">-</button>
+                                        <input type="number" class="form-control text-center quadra-input no-spinners" value="<?php echo htmlspecialchars($quadra['pessoas_faladas']); ?>" data-quadra-id="<?php echo $quadra['id']; ?>" min="0" aria-label="Pessoas faladas">
+                                        <button class="btn btn-outline-secondary btn-increment" type="button">+</button>
+                                    </div>
+                                    <div class="ms-2 d-flex justify-content-center align-items-center" style="width: 24px; height: 24px;" id="status_save_q<?php echo $quadra['id']; ?>"></div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                        <div class="list-group-item d-flex justify-content-between align-items-center p-2 border-top fw-bold bg-light"> <span>Total</span> <span class="fs-5" id="total-pessoas-mapa-<?php echo $mapa['id']; ?>"><?php echo $soma_pessoas; ?></span> </div>
+                        <?php else: ?>
+                            <div class="list-group-item text-muted">Nenhuma quadra encontrada para este mapa.</div>
+                        <?php endif; ?>
+                        </div>
+                        <hr>
+                        <p class="mb-2"><strong>Recebido em:</strong> <?php echo date('d/m/Y', strtotime($mapa['data_entrega'])); ?></p>
+                        <div class="mb-3">
+                            <label for="data_devolucao_<?php echo $mapa['id']; ?>" class="form-label">Data de Devolução:</label>
+                            <input type="date" class="form-control" id="data_devolucao_<?php echo $mapa['id']; ?>" value="<?php echo date('Y-m-d'); ?>" required>
+                        </div>
+                        <div class="d-grid"><button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Devolver Mapa Completo</button></div>
+                    </form>
+                </div>
+            </div> <!-- Fim Card Collapsible -->
+        </div>
+    </div>
+    <?php
 }
 ?>
 <!DOCTYPE html>
@@ -106,21 +224,43 @@ try {
         .card-collapsible-content {
             overflow: hidden;
             transition: max-height 0.4s ease-in-out, opacity 0.4s ease-in-out;
-            max-height: 2000px; /* Valor alto suficiente para caber o conteúdo */
+            max-height: 2000px;
             opacity: 1;
         }
 
-        .card.collapsed .card-collapsible-content {
-            max-height: 0;
-            opacity: 0;
-        }
+        .card.collapsed .card-collapsible-content { max-height: 0; opacity: 0; }
+        .card.card-interativo .card-header { cursor: pointer; user-select: none; }
 
-        .card.card-interativo .card-header { 
-            cursor: pointer; 
-            user-select: none; 
+        /* Estilos para Identidade de Grupos (Trazidos da Vista Pública) */
+        .card-header-group { background-color: #4190be !important; border-color: #4190be !important; }
+        
+        .btn-group-color { background-color: #4190be !important; border-color: #4190be !important; color: white !important; }
+        .btn-group-color:hover { background-color: #357a9e !important; border-color: #357a9e !important; }
+
+        .section-divider {
+            display: flex; align-items: center; text-align: center; color: #4190be;
+            margin: 2rem 0 1.5rem 0; font-weight: 700; text-transform: uppercase;
+            font-size: 0.9rem; letter-spacing: 1px;
         }
+        .section-divider::before, .section-divider::after {
+            content: ''; flex: 1; border-bottom: 1px solid #bfdcf0;
+        }
+        .section-divider:not(:empty)::before { margin-right: .5em; }
+        .section-divider:not(:empty)::after { margin-left: .5em; }
+
+        .header-icon { transition: transform 0.3s ease; }
+        .card.collapsed .header-icon { transform: rotate(-90deg); }
+        .group-tag { font-size: 0.8rem; }
 
         @media (max-width: 768px) { .iframe-page { zoom: 1.3; } }
+
+        @media (max-width: 480px) {
+            .card-title { display: flex; flex-wrap: nowrap; align-items: center; width: 100%; }
+            .map-name { font-size: 0.95rem; white-space: normal; line-height: 1.2; margin-right: 5px; }
+            .group-tag { font-size: 0.6rem !important; max-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .header-icon { font-size: 0.9rem; }
+            .card-title i.fa-map-pin, .card-title i.fa-users { font-size: 0.9rem; }
+        }
     </style>
 </head>
 <body class="iframe-page">
@@ -137,97 +277,29 @@ try {
                     </div>
                 </div>
             <?php else: 
-                $total_cards = count($mapas);
-                foreach ($mapas as $mapa): 
-                    // Lógica para determinar se deve iniciar colapsado
-                    $soma_pessoas = 0;
-                    if (isset($quadras_por_mapa[$mapa['id']])) {
-                        foreach ($quadras_por_mapa[$mapa['id']] as $q) {
-                            $soma_pessoas += (int)$q['pessoas_faladas'];
-                        }
-                    }
-                    
-                    // Só colapsa se houver mais de 1 mapa E a soma for 0
-                    $classe_inicial = ($total_cards > 1 && $soma_pessoas == 0) ? 'collapsed' : '';
+                $total_cards_geral = count($mapas);
             ?>
-                <div class="col-lg-6 mb-4 card-container-wrapper" id="mapa-card-<?php echo $mapa['id']; ?>">
-                    <div class="card shadow-sm <?php echo $classe_inicial; ?>">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="card-title mb-0"><i class="fas fa-map-pin me-2"></i> <?php echo htmlspecialchars($mapa['identificador']); ?></h5>
+                
+                <!-- MAPAS INDIVIDUAIS -->
+                <?php if (!empty($mapas_individuais)): ?>
+                    <?php foreach ($mapas_individuais as $mapa): 
+                        renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards_geral);
+                    endforeach; ?>
+                <?php endif; ?>
+
+                <!-- MAPAS DE GRUPO -->
+                <?php if (!empty($mapas_grupo)): ?>
+                    <div class="col-12">
+                        <div class="section-divider">
+                            <i class="fas fa-users me-2"></i> Mapas para Finais de Semana
                         </div>
-
-                        <!-- Wrapper para o conteúdo colapsável -->
-                        <div class="card-collapsible-content">
-                            <?php
-                            // Visualização do GDrive
-                            if (!empty($mapa['gdrive_file_id'])):
-                                $pdf_embed_url = "https://drive.google.com/file/d/" . $mapa['gdrive_file_id'] . "/preview";
-                            ?>
-                                <div class="pdf-preview-container">
-                                    <iframe src="<?php echo $pdf_embed_url; ?>"></iframe>
-                                    <button class="btn btn-primary btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-src="<?php echo $pdf_embed_url; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
-                                        <i class="fas fa-expand-alt me-1"></i> Expandir
-                                    </button>
-                                </div>
-                            <?php else: ?>
-                                <div class="text-center p-3 text-muted border-bottom"><i class="fas fa-exclamation-triangle me-2"></i> Mapa não encontrado no Drive.</div>
-                            <?php endif; ?>
-
-                            <!-- === BOTÃO DE DOWNLOAD DO PDF === -->
-                            <?php
-                                // Nome do arquivo baseado no identificador + .pdf
-                                $nome_arquivo_pdf = $mapa['identificador'] . ".pdf";
-                                // Caminho físico para verificar se existe
-                                $caminho_local_pdf = __DIR__ . "/pdfs/" . $nome_arquivo_pdf;
-                                // URL para o link
-                                $url_download_pdf = "pdfs/" . rawurlencode($nome_arquivo_pdf);
-
-                                if (file_exists($caminho_local_pdf)):
-                            ?>
-                                <div class="px-3 pt-3">
-                                    <a href="<?php echo $url_download_pdf; ?>" class="btn btn-outline-dark w-100" download="<?php echo htmlspecialchars($nome_arquivo_pdf); ?>">
-                                        <i class="fas fa-file-download me-2"></i> Baixar Mapa em PDF
-                                    </a>
-                                </div>
-                            <?php endif; ?>
-                            <!-- ============================================== -->
-
-                            <div class="card-body">
-                                <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
-                                    <label class="form-label fw-bold mt-2">Registro por Quadra:</label>
-                                    <div class="d-flex justify-content-end px-2 pb-1"> <small class="fw-bold text-muted" style="width: 140px; text-align: center;">Nº Pessoas</small> </div>
-                                    <div class="list-group list-group-flush mb-3 quadra-list" data-mapa-id="<?php echo $mapa['id']; ?>">
-                                    <?php if (!empty($quadras_por_mapa[$mapa['id']])): foreach ($quadras_por_mapa[$mapa['id']] as $quadra): ?>
-                                        <div class="list-group-item quadra-item d-flex justify-content-between align-items-center p-2">
-                                            <span>Quadra <strong><?php echo htmlspecialchars($quadra['numero']); ?></strong></span>
-                                            <div class="d-flex align-items-center">
-                                                <div class="input-group input-group-sm" style="width: 120px;">
-                                                    <button class="btn btn-outline-secondary btn-decrement" type="button">-</button>
-                                                    <input type="number" class="form-control text-center quadra-input no-spinners" value="<?php echo htmlspecialchars($quadra['pessoas_faladas']); ?>" data-quadra-id="<?php echo $quadra['id']; ?>" min="0" aria-label="Pessoas faladas">
-                                                    <button class="btn btn-outline-secondary btn-increment" type="button">+</button>
-                                                </div>
-                                                <div class="ms-2 d-flex justify-content-center align-items-center" style="width: 24px; height: 24px;" id="status_save_q<?php echo $quadra['id']; ?>"></div>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
-                                    <div class="list-group-item d-flex justify-content-between align-items-center p-2 border-top fw-bold bg-light"> <span>Total</span> <span class="fs-5" id="total-pessoas-mapa-<?php echo $mapa['id']; ?>"><?php echo $soma_pessoas; ?></span> </div>
-                                    <?php else: ?>
-                                        <div class="list-group-item text-muted">Nenhuma quadra encontrada para este mapa.</div>
-                                    <?php endif; ?>
-                                    </div>
-                                    <hr>
-                                    <p class="mb-2"><strong>Recebido em:</strong> <?php echo date('d/m/Y', strtotime($mapa['data_entrega'])); ?></p>
-                                    <div class="mb-3">
-                                        <label for="data_devolucao_<?php echo $mapa['id']; ?>" class="form-label">Data de Devolução:</label>
-                                        <input type="date" class="form-control" id="data_devolucao_<?php echo $mapa['id']; ?>" value="<?php echo date('Y-m-d'); ?>" required>
-                                    </div>
-                                    <div class="d-grid"><button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Devolver Mapa Completo</button></div>
-                                </form>
-                            </div>
-                        </div> <!-- Fim Card Collapsible -->
                     </div>
-                </div>
-            <?php endforeach; endif; ?>
+                    <?php foreach ($mapas_grupo as $mapa): 
+                        renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards_geral);
+                    endforeach; ?>
+                <?php endif; ?>
+
+            <?php endif; ?>
         </div>
     </div>
 
@@ -339,6 +411,8 @@ try {
                 } else {
                     card.classList.remove('card-interativo');
                     card.classList.remove('collapsed'); 
+                    const icon = card.querySelector('.header-icon');
+                    if (icon) icon.style.display = 'none';
                 }
             });
         };
@@ -414,8 +488,6 @@ try {
         });
         
         const updateTotal = (quadraList) => { const mapaId = quadraList.dataset.mapaId; let total = 0; quadraList.querySelectorAll('.quadra-input').forEach(input => { total += parseInt(input.value) || 0; }); document.getElementById(`total-pessoas-mapa-${mapaId}`).textContent = total; };
-        
-        // document.querySelectorAll('.quadra-list').forEach(list => updateTotal(list));
         
         document.querySelectorAll('.form-devolver').forEach(form => {
             form.addEventListener('submit', (e) => {
