@@ -67,13 +67,6 @@ try {
                 
                 // Limpar relações antigas de membros para reinserir
                 $pdo->prepare("DELETE FROM grupo_membros WHERE grupo_id = ?")->execute([$groupId]);
-                
-                // Nota: A regra de negócio atual do JS envia mapas como array vazio.
-                // Se desejar preservar os mapas já vinculados ao editar, 
-                // remova a linha abaixo ou trate condicionalmente.
-                if (isset($data['mapas'])) {
-                    $pdo->prepare("UPDATE mapas SET grupo_id = NULL WHERE grupo_id = ?")->execute([$groupId]);
-                }
             }
 
             // Inserir Membros (Vínculo Muitos-para-Muitos)
@@ -108,6 +101,9 @@ try {
             echo json_encode(['status' => 'reactivated']);
         }
         elseif ($action === 'delete') {
+            // Desvincula mapas do grupo que será excluído fisicamente
+            $pdo->prepare("UPDATE mapas SET grupo_id = NULL WHERE grupo_id = ?")->execute([$data['id']]);
+            
             // Mantido caso ainda precise de exclusão física por algum motivo administrativo direto
             $pdo->prepare("DELETE FROM grupos WHERE id = ?")->execute([$data['id']]);
             echo json_encode(['status' => 'deleted_permanently']);
