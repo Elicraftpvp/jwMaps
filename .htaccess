@@ -8,6 +8,9 @@ RewriteRule ^mapa/([a-zA-Z0-9]+)$ site/backend/vista_publica.php?token=$1 [L,QSA
 # Regra NOVA: Link curto para mapas de GRUPOS
 RewriteRule ^grupo/([a-zA-Z0-9]+)$ site/backend/vista_grupo.php?token=$1 [L,QSA]
 
+# Regra NOVA: Compartilhamento temporário
+RewriteRule ^share/([a-zA-Z0-9]+)$ site/backend/vista_compartilhada.php?s=$1 [L,QSA]
+
 # Regra 2: Login
 RewriteRule ^login/?$ login.html [L]
 
