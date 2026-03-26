@@ -256,6 +256,20 @@ function handle_post_unified($pdo) {
                 echo json_encode(['status' => 'success']);
                 break;
 
+            case 'gerar_compartilhamento':
+                if (empty($data['mapa_id'])) throw new Exception('ID do mapa não fornecido.', 400);
+                
+                $minutos = isset($data['minutos']) ? (int)$data['minutos'] : 90;
+                if ($minutos < 30) $minutos = 30;
+                if ($minutos > 720) $minutos = 720;
+
+                $token = substr(bin2hex(random_bytes(16)), 0, 8);
+                $expira_em = date('Y-m-d H:i:s', strtotime("+$minutos minutes"));
+                $sql = "INSERT INTO compartilhamentos (mapa_id, token, expira_em) VALUES (?, ?, ?)";
+                $pdo->prepare($sql)->execute([$data['mapa_id'], $token, $expira_em]);
+                echo json_encode(['success' => true, 'token' => $token]);
+                break;
+
             default:
                 throw new Exception('Ação inválida.', 400);
         }
