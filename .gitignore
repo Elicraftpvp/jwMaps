@@ -2,3 +2,4 @@ vendor/
 auth/site/backend/pdfs/
 pdfs/
 !*.backend
+site/backend/jw_mapas_estrutura.sql
