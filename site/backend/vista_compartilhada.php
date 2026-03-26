@@ -18,6 +18,7 @@ function exibirErroFatal($titulo, $mensagem, $baseUrl) {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Aviso de Território</title>
+        <link rel="icon" type="image/png" href="<?php echo $baseUrl; ?>site/images/map.png">
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <style>
             body { background-color: #f0f2f5; height: 100vh; display: flex; align-items: center; justify-content: center; font-family: system-ui, sans-serif; margin: 0; }
@@ -60,6 +61,12 @@ try {
     $url_jpg = "pdfs/" . rawurlencode($mapa['identificador']) . ".jpg";
     $url_pdf = "pdfs/" . rawurlencode($mapa['identificador']) . ".pdf";
     $caminho_local_jpg = __DIR__ . "/pdfs/" . $mapa['identificador'] . ".jpg";
+    
+    $isGroup = !empty($mapa['grupo_id']);
+    $agora = new DateTime();
+    $expira = new DateTime($mapa['expira_em']);
+    $segundos_restantes = $expira->getTimestamp() - $agora->getTimestamp();
+    if ($segundos_restantes < 0) $segundos_restantes = 0;
 } catch (PDOException $e) { exibirErroFatal("Erro", "Falha na conexão.", $baseUrl); }
 ?>
 <!DOCTYPE html>
@@ -69,12 +76,15 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <base href="<?php echo $baseUrl; ?>site/backend/">
     <title>Compartilhamento - <?php echo htmlspecialchars($mapa['identificador']); ?></title>
+    <link rel="icon" type="image/png" href="../images/map.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         body { padding: 15px; background-color: #f8f9fa; }
-        .share-banner { background: #e7f3ff; color: #0056b3; padding: 12px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #b8daff; font-weight: 600; text-align: center; }
-        .card-header { background-color: #007bff; color: white; }
+        .share-banner { background: rgba(56, 137, 253, 0.1); color: #FFA000; padding: 12px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(56, 137, 253, 0.3); font-weight: 600; text-align: center; }
+        .card-header-group { background-color: #4190be !important; border-color: #4190be !important; }
+        .bg-custom-share { background-color: #FFA000 !important; color: white !important; }
+        .text-custom-share { color: #FFA000 !important; }
         .no-spinners::-webkit-outer-spin-button, .no-spinners::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .pdf-preview-container { position: relative; height: 250px; background-color: #eee; display: flex; justify-content: center; align-items: center; overflow: hidden; border-bottom: 1px solid #ddd; }
         .pdf-preview-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
@@ -83,14 +93,17 @@ try {
 <body>
     <div class="container-fluid">
         <div class="share-banner">
-            <i class="fas fa-user-friends me-2"></i> 
+            <i class="fas fa-layer-group me-2"></i> 
             <?php echo htmlspecialchars($mapa['dirigente_nome']); ?> compartilhou <?php echo htmlspecialchars($mapa['identificador']); ?> 
-            restando <span id="timer" class="badge bg-primary">--:--</span>
+            restando <span id="timer" class="badge bg-custom-share">--:--</span>
         </div>
 
         <div class="card shadow-sm mx-auto" style="max-width: 600px;">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><?php echo htmlspecialchars($mapa['identificador']); ?></h5>
+            <div class="card-header d-flex justify-content-between align-items-center <?php echo $isGroup ? 'card-header-group' : 'bg-custom-share'; ?> text-white">
+                <h5 class="mb-0">
+                    <i class="fas <?php echo $isGroup ? 'fa-users' : 'fa-link'; ?> me-2"></i>
+                    <?php echo htmlspecialchars($mapa['identificador']); ?>
+                </h5>
             </div>
             
             <?php if (file_exists($caminho_local_jpg)): ?>
@@ -145,22 +158,27 @@ try {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const exp = new Date("<?php echo str_replace(' ', 'T', $mapa['expira_em']); ?>").getTime();
+            let segundosRestantes = <?php echo $segundos_restantes; ?>;
             const timer = document.getElementById('timer');
-            const countdown = setInterval(() => {
-                const now = new Date().getTime();
-                const dist = exp - now;
-                if (dist < 0) { clearInterval(countdown); timer.textContent = "EXPIRADO"; location.reload(); return; }
-                const h = Math.floor(dist / 3600000);
-                const m = Math.floor((dist % 3600000) / 60000);
-                const s = Math.floor((dist % 60000) / 1000);
+            
+            const renderTimer = () => {
+                const h = Math.floor(segundosRestantes / 3600);
+                const m = Math.floor((segundosRestantes % 3600) / 60);
+                const s = Math.floor(segundosRestantes % 60);
                 timer.textContent = (h > 0 ? h + "h " : "") + m.toString().padStart(2, '0') + ":" + s.toString().padStart(2, '0');
+            };
+            renderTimer();
+
+            const countdown = setInterval(() => {
+                segundosRestantes--;
+                if (segundosRestantes < 0) { clearInterval(countdown); timer.textContent = "EXPIRADO"; location.reload(); return; }
+                renderTimer();
             }, 1000);
 
             const pending = {};
             const save = async (id, stDiv) => {
                 const delta = pending[id]; if (!delta) return; pending[id] = 0;
-                stDiv.innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span>';
+                stDiv.innerHTML = '<span class="spinner-border spinner-border-sm text-custom-share"></span>';
                 try {
                     await fetch('./mapas_api.php', { method: 'POST', body: JSON.stringify({ action: 'update_quadra_increment', quadra_id: id, delta: delta }) });
                     stDiv.innerHTML = '<i class="fas fa-check text-success"></i>';

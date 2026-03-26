@@ -87,6 +87,7 @@ function renderizarCard($mapa, $quadras_por_mapa, $total_cards_geral) {
                                 style="background: rgba(255,255,255,0.2); color: white;"
                                 data-mapa-id="<?php echo $mapa['id']; ?>" 
                                 data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>"
+                                data-is-group="<?php echo $isGroup ? '1' : '0'; ?>"
                                 title="Compartilhar temporariamente">
                             <i class="fas fa-share-alt"></i>
                         </button>
@@ -313,6 +314,36 @@ try {
     <div class="modal fade" id="confirmacaoModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Confirmação</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="confirmacaoModalBody"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="btnConfirmarAcao">Confirmar</button></div></div></div>
     </div>
+    <div class="modal fade" id="shareModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Compartilhar Mapa <b id="shareMapName"></b></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3 text-muted">Gera um link temporário para que outra pessoa possa acessar esse mapa sem precisar ter conta.</p>
+                    <div class="form-group mb-0">
+                        <label for="shareDurationSelect" class="form-label fw-bold">Tempo de Validade do Link</label>
+                        <select class="form-select" id="shareDurationSelect">
+                            <option value="30">30 Minutos</option>
+                            <option value="60">1 Hora</option>
+                            <option value="90" selected>1 Hora e 30 Minutos</option>
+                            <option value="120">2 Horas</option>
+                            <option value="180">3 Horas</option>
+                            <option value="240">4 Horas</option>
+                            <option value="360">6 Horas</option>
+                            <option value="720">12 Horas</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" id="btnConfirmShare" class="btn btn-primary">Gerar Link</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../script/common.js"></script>
     <script>
@@ -322,6 +353,7 @@ try {
             const pendingDeltas = {};
             const feedbackModal = new bootstrap.Modal(document.getElementById('feedbackModal'));
             const confirmacaoModal = new bootstrap.Modal(document.getElementById('confirmacaoModal'));
+            const shareModalObj = new bootstrap.Modal(document.getElementById('shareModal'));
             const btnConfirmarAcao = document.getElementById('btnConfirmarAcao');
             const mostrarFeedback = (titulo, mensagem, tipo = 'primary') => {
                 document.getElementById('feedbackModalTitle').textContent = titulo;
@@ -349,18 +381,70 @@ try {
                     e.stopPropagation();
                     const mapaId = btnShare.dataset.mapaId;
                     const mapaNome = btnShare.dataset.mapaNome;
-                    mostrarConfirmacao('Compartilhar Mapa', `Deseja gerar um link temporário (1h30m) para o mapa <b>${mapaNome}</b>?`, async () => {
+                    const isGroup = btnShare.dataset.isGroup === '1';
+                    
+                    document.getElementById('shareMapName').textContent = mapaNome;
+                    
+                    const btnConfirmShare = document.getElementById('btnConfirmShare');
+                    btnConfirmShare.className = 'btn ' + (isGroup ? 'btn-group-color' : 'btn-primary');
+                    
+                    btnConfirmShare.onclick = async () => {
+                        const btnOriginalText = btnConfirmShare.innerHTML;
+                        btnConfirmShare.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Gerando...';
+                        btnConfirmShare.disabled = true;
+                        
+                        const mins = document.getElementById('shareDurationSelect').value;
+                        
                         try {
-                            const resp = await fetch(`${API_BASE_URL}/mapas_api.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'gerar_compartilhamento', mapa_id: mapaId }) });
+                            const resp = await fetch(`${API_BASE_URL}/mapas_api.php`, { 
+                                method: 'POST', 
+                                headers: { 'Content-Type': 'application/json' }, 
+                                body: JSON.stringify({ action: 'gerar_compartilhamento', mapa_id: mapaId, minutos: mins }) 
+                            });
                             const res = await resp.json();
                             if(res.success) {
-                                const currentUrl = window.location.href.split('vista_publica.php')[0];
-                                const shareLink = `${currentUrl}vista_compartilhada.php?s=${res.token}`;
-                                navigator.clipboard.writeText(shareLink);
-                                mostrarFeedback('Sucesso', `Link copiado para a área de transferência!<br><br><small class="text-muted">${shareLink}</small>`, 'success');
+                                shareModalObj.hide();
+                                const currentOrigin = window.location.origin;
+                                let shareUrlPath = window.location.pathname;
+                                
+                                if (shareUrlPath.includes('/mapa/') || shareUrlPath.includes('/grupo/')) {
+                                    shareUrlPath = shareUrlPath.replace(/\/(mapa|grupo)\/.*$/, `/share/${res.token}`);
+                                } else {
+                                    // Fallback
+                                    shareUrlPath = shareUrlPath.substring(0, shareUrlPath.lastIndexOf('/') + 1) + `vista_compartilhada.php?s=${res.token}`;
+                                }
+                                const shareLink = currentOrigin + shareUrlPath;
+
+                                const copyHtml = `
+                                    <div class="mt-2 text-center">
+                                        <p class="mb-3 text-muted" style="font-size: 0.95rem;">Envie este link para conceder acesso temporário:</p>
+                                        <div class="input-group shadow-sm">
+                                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-link text-primary"></i></span>
+                                            <input type="text" class="form-control bg-white border-start-0 ps-0" style="font-size: 0.9rem;" id="copyShareLink" value="${shareLink}" readonly>
+                                            <button class="btn btn-primary px-3 fw-bold" type="button" 
+                                                onclick="navigator.clipboard.writeText(document.getElementById('copyShareLink').value).then(() => { 
+                                                    const b=this; const o=b.innerHTML; 
+                                                    b.innerHTML='<i class=\\\'fas fa-check\\\'></i> Copiado'; 
+                                                    setTimeout(()=>{b.innerHTML=o;},2500); 
+                                                })">
+                                                <i class="fas fa-copy"></i> Copiar
+                                            </button>
+                                        </div>
+                                    </div>
+                                `;
+                                navigator.clipboard.writeText(shareLink).catch(err => console.log('Clipboard falhou:', err));
+                                mostrarFeedback('Compartilhamento Gerado!', copyHtml, 'success');
                             }
-                        } catch (err) { mostrarFeedback('Erro', 'Não foi possível gerar o link.'); }
-                    });
+                        } catch (err) { 
+                            shareModalObj.hide();
+                            mostrarFeedback('Erro', 'Não foi possível gerar o link.'); 
+                        } finally {
+                            btnConfirmShare.innerHTML = btnOriginalText;
+                            btnConfirmShare.disabled = false;
+                        }
+                    };
+                    
+                    shareModalObj.show();
                     return;
                 }
                 if (header) { const card = header.closest('.card'); if (card.classList.contains('card-interativo')) card.classList.toggle('collapsed'); }
