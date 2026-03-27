@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Dashboard é o primeiro e ativo por padrão
             { href: 'pages/dashboard.html', icon: 'fas fa-tachometer-alt', text: 'Dashboard', active: true },
             { href: 'pages/gerenciar_mapas.html', icon: 'fas fa-map', text: 'Gerenciar Mapas' },
+            { href: 'pages/gerenciar_mapas_predio.html', icon: 'fas fa-building', text: 'Mapas de Predios' },
             { href: 'pages/dirigentes.html', icon: 'fas fa-user-cog', text: 'Gerenciar Usuarios' },
             { href: 'pages/gerenciar_grupos.html', icon: 'fas fa-users-cog', text: 'Gerenciar Grupos' },
             // MODIFICAÇÃO: Adicionado "Meus Mapas" para o Admin
@@ -56,8 +57,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if ((userPermissoes & PERM_CAMPANHA) === PERM_CAMPANHA) {
             hasAccess = true;
             // Adiciona apenas se ainda não existirem, para evitar duplicatas caso uma futura permissão os inclua
-            if (!menuItems.some(item => item.href.includes('gerenciar_mapas'))) {
+            if (!menuItems.some(item => item.href.includes('gerenciar_mapas.html'))) {
                 menuItems.push({ href: 'pages/gerenciar_mapas.html', icon: 'fas fa-map', text: 'Gerenciar Mapas' });
+            }
+            if (!menuItems.some(item => item.href.includes('gerenciar_mapas_predio.html'))) {
+                menuItems.push({ href: 'pages/gerenciar_mapas_predio.html', icon: 'fas fa-building', text: 'Mapas de Predios' });
             }
             if (!menuItems.some(item => item.href.includes('controle'))) {
                 menuItems.push({ href: 'pages/controle.html', icon: 'fas fa-history', text: 'Controle' });
