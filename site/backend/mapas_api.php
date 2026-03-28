@@ -68,12 +68,12 @@ function handle_get($pdo, $id, $recurso) {
         }
 
         if ($id) {
-            $stmt = $pdo->prepare("SELECT id, identificador, quadra_inicio, quadra_fim, regiao, tipo, grupo_id FROM mapas WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT id, identificador, quadra_inicio, quadra_fim, regiao, tipo, obs, grupo_id FROM mapas WHERE id = ?");
             $stmt->execute([$id]);
             echo json_encode($stmt->fetch(PDO::FETCH_ASSOC));
         } else {
             // Atualizado para buscar também o nome do grupo
-            $sql = "SELECT m.id, m.identificador, m.quadra_inicio, m.quadra_fim, m.regiao, m.tipo, 
+            $sql = "SELECT m.id, m.identificador, m.quadra_inicio, m.quadra_fim, m.regiao, m.tipo, m.obs, 
                     m.dirigente_id, m.grupo_id, m.data_entrega, 
                     u.nome as dirigente_nome, g.nome as grupo_nome,
                     DATEDIFF(CURDATE(), m.data_entrega) as dias_com_dirigente
@@ -102,9 +102,9 @@ function handle_post_unified($pdo) {
             case 'create':
                 if (empty($data['identificador']) || !isset($data['quadra_inicio']) || !isset($data['quadra_fim'])) throw new Exception('Identificador e quadras são obrigatórios.', 400);
                 $pdo->beginTransaction();
-                $sql = "INSERT INTO mapas (identificador, quadra_inicio, quadra_fim, regiao, tipo) VALUES (?, ?, ?, ?, ?)";
+                $sql = "INSERT INTO mapas (identificador, quadra_inicio, quadra_fim, regiao, tipo, obs) VALUES (?, ?, ?, ?, ?, ?)";
                 $stmt = $pdo->prepare($sql);
-                $stmt->execute([$data['identificador'], $data['quadra_inicio'], $data['quadra_fim'], $data['regiao'], $data['tipo']]);
+                $stmt->execute([$data['identificador'], $data['quadra_inicio'], $data['quadra_fim'], $data['regiao'], $data['tipo'], $data['obs'] ?? '']);
                 $mapa_id = $pdo->lastInsertId();
                 $stmt_quadra = $pdo->prepare("INSERT INTO quadras (mapa_id, numero) VALUES (?, ?)");
                 for ($i = (int)$data['quadra_inicio']; $i <= (int)$data['quadra_fim']; $i++) $stmt_quadra->execute([$mapa_id, $i]);
@@ -117,8 +117,8 @@ function handle_post_unified($pdo) {
                 $mapa_id = $data['id'] ?? null;
                 if (!$mapa_id || empty($data['identificador']) || !isset($data['quadra_inicio']) || !isset($data['quadra_fim'])) throw new Exception('Dados insuficientes para edição.', 400);
                 $pdo->beginTransaction();
-                $sql = "UPDATE mapas SET identificador = ?, quadra_inicio = ?, quadra_fim = ?, regiao = ?, tipo = ? WHERE id = ?";
-                $pdo->prepare($sql)->execute([$data['identificador'], $data['quadra_inicio'], $data['quadra_fim'], $data['regiao'], $data['tipo'], $mapa_id]);
+                $sql = "UPDATE mapas SET identificador = ?, quadra_inicio = ?, quadra_fim = ?, regiao = ?, tipo = ?, obs = ? WHERE id = ?";
+                $pdo->prepare($sql)->execute([$data['identificador'], $data['quadra_inicio'], $data['quadra_fim'], $data['regiao'], $data['tipo'], $data['obs'] ?? '', $mapa_id]);
                 $pdo->prepare("DELETE FROM quadras WHERE mapa_id = ?")->execute([$mapa_id]);
                 $stmt_quadra = $pdo->prepare("INSERT INTO quadras (mapa_id, numero) VALUES (?, ?)");
                 for ($i = (int)$data['quadra_inicio']; $i <= (int)$data['quadra_fim']; $i++) $stmt_quadra->execute([$mapa_id, $i]);

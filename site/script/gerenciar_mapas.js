@@ -8,16 +8,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const entregarModalElement = document.getElementById('entregarModal');
     const entregarModal = new bootstrap.Modal(entregarModalElement);
     const entregarModalLabel = document.getElementById('entregarModalLabel');
-    
+
     // Selects do Modal de Entrega
     const selectDirigentes = document.getElementById('entregar_dirigente_id');
     const selectGrupos = document.getElementById('entregar_grupo_id');
-    
+
     const historicoMapaModalElement = document.getElementById("historicoMapaModal");
     const historicoMapaModal = new bootstrap.Modal(historicoMapaModalElement);
     const historicoMapaIdentificadorSpan = document.getElementById("historico_mapa_identificador");
     const historicoTableBody = document.getElementById("historico-table-body");
-    
+
     // Filtros DOM
     const filtroOrdenacaoMenu = document.getElementById('filtroOrdenacaoBtn').nextElementSibling;
     const filtroOrdenacaoBtnIcon = document.querySelector('#filtroOrdenacaoBtn i');
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const filtroDirigenteBtnIcon = document.querySelector('#filtroDirigenteBtn i');
     const filtroRegiaoMenu = document.getElementById("filtroRegiaoMenu");
     const filtroRegiaoBtnIcon = document.querySelector("#filtroRegiaoBtn i");
-    
+
     // Novo Filtro Tipo
     const filtroTipoBtnIcon = document.querySelector("#filtroTipoBtn i");
     const filtroTipoMenu = document.getElementById("filtroTipoMenu");
@@ -41,12 +41,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmacaoTitle = document.getElementById('confirmacaoModalTitle');
     const confirmacaoBody = document.getElementById('confirmacaoModalBody');
     const btnConfirmarAcao = document.getElementById('btnConfirmarAcao');
+    const mapaObsInput = document.getElementById('mapa_obs');
+    const obsCharCount = document.getElementById('obs-char-count');
+
+    // Contador de caracteres para Observações
+    if (mapaObsInput && obsCharCount) {
+        mapaObsInput.addEventListener('input', () => {
+            const count = mapaObsInput.value.length;
+            obsCharCount.textContent = `${count}/150`;
+            obsCharCount.classList.toggle('text-danger', count >= 150);
+        });
+    }
 
     // Estado da Aplicação
     let filtroDirigenteId = null;
     let filtroRegiao = null;
     let filtrosTipoSelecionados = new Set();
-    
+
     let sortOrder = 'id';
     let editMode = false;
     let editId = null;
@@ -140,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     filtrosTipoSelecionados.delete(tipo);
                 }
-                carregarMapas(true, false); 
+                carregarMapas(true, false);
             });
             listaCheckboxesTipos.appendChild(div);
         });
@@ -148,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- CARREGAMENTO PRINCIPAL ---
 
-    let cacheMapas = null; 
+    let cacheMapas = null;
 
     const carregarMapas = async (manterVisual = false, fetchNovo = true) => {
         const scrollPos = window.scrollY;
@@ -166,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cacheMapas = await response.json();
                 popularFiltroDirigentes(cacheMapas);
                 popularFiltroRegioes(cacheMapas);
-                popularFiltroTipos(cacheMapas); 
+                popularFiltroTipos(cacheMapas);
             }
 
             mapas = [...cacheMapas];
@@ -185,20 +196,20 @@ document.addEventListener('DOMContentLoaded', () => {
             filtroOrdenacaoBtnIcon.classList.toggle("text-secondary", sortOrder === 'id' || sortOrder.includes('tipo'));
 
             if (sortOrder === 'asc') {
-                mapas.sort((a, b) => a.identificador.localeCompare(b.identificador, undefined, {numeric: true}));
+                mapas.sort((a, b) => a.identificador.localeCompare(b.identificador, undefined, { numeric: true }));
             } else if (sortOrder === 'desc') {
-                mapas.sort((a, b) => b.identificador.localeCompare(a.identificador, undefined, {numeric: true}));
+                mapas.sort((a, b) => b.identificador.localeCompare(a.identificador, undefined, { numeric: true }));
             } else if (sortOrder === 'tipo_asc') {
                 mapas.sort((a, b) => {
                     const tipoA = a.tipo || "";
                     const tipoB = b.tipo || "";
-                    return tipoA.localeCompare(tipoB) || a.identificador.localeCompare(b.identificador, undefined, {numeric: true});
+                    return tipoA.localeCompare(tipoB) || a.identificador.localeCompare(b.identificador, undefined, { numeric: true });
                 });
             } else if (sortOrder === 'tipo_desc') {
                 mapas.sort((a, b) => {
                     const tipoA = a.tipo || "";
                     const tipoB = b.tipo || "";
-                    return tipoB.localeCompare(tipoA) || a.identificador.localeCompare(b.identificador, undefined, {numeric: true});
+                    return tipoB.localeCompare(tipoA) || a.identificador.localeCompare(b.identificador, undefined, { numeric: true });
                 });
             } else {
                 mapas.sort((a, b) => a.id - b.id);
@@ -206,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let newHtml = '';
             if (mapas.length === 0) {
-                newHtml = `<tr><td colspan="8" class="text-center">Nenhum mapa encontrado com os filtros aplicados.</td></tr>`; 
+                newHtml = `<tr><td colspan="8" class="text-center">Nenhum mapa encontrado com os filtros aplicados.</td></tr>`;
             } else {
                 mapas.forEach(mapa => {
                     let status, acaoEntregarResgatar, diasComDirigenteBadge, responsavelNome;
@@ -216,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (mapa.dirigente_id || mapa.grupo_id) {
                         status = `<span class="badge bg-warning">Em Uso</span>`;
                         acaoEntregarResgatar = `<button class="${baseBtnClass} btn-info btn-resgatar" data-id="${mapa.id}" title="Resgatar Mapa"><i class="fas fa-undo-alt"></i></button>`;
-                        
+
                         const dias = mapa.dias_com_dirigente;
                         let corBadge = 'success';
                         if (dias > 30) corBadge = 'warning';
@@ -235,9 +246,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         diasComDirigenteBadge = `<span class="badge bg-secondary">---</span>`;
                         responsavelNome = '---';
                     }
-                    
+
                     const quadraRange = mapa.quadra_inicio && mapa.quadra_fim ? `${mapa.quadra_inicio} - ${mapa.quadra_fim}` : 'N/D';
-                    
+
                     const row = `<tr>
                             <td data-label="Identificador" class="card-title-cell fw-bold">${mapa.identificador}</td>
                             <td data-label="Região">${mapa.regiao || 'N/D'}</td>
@@ -267,39 +278,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.scrollTo(0, scrollPos);
             }
 
-        } catch (error) { 
+        } catch (error) {
             console.error("Falha ao carregar mapas:", error.message);
-            tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger"><b>Erro ao carregar mapas.</b><br><small>${error.message}</small></td></tr>`; 
+            tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger"><b>Erro ao carregar mapas.</b><br><small>${error.message}</small></td></tr>`;
         }
     };
-    
+
     // --- LÓGICA DE EVENTOS DE FILTRO ---
 
-    filtroOrdenacaoMenu.addEventListener("click", (e) => { 
-        e.preventDefault(); 
-        const target = e.target.closest("a.dropdown-item"); 
-        if (target && target.dataset.sort) { 
-            sortOrder = target.dataset.sort; 
-            carregarMapas(true, false); 
-        } 
+    filtroOrdenacaoMenu.addEventListener("click", (e) => {
+        e.preventDefault();
+        const target = e.target.closest("a.dropdown-item");
+        if (target && target.dataset.sort) {
+            sortOrder = target.dataset.sort;
+            carregarMapas(true, false);
+        }
     });
 
-    filtroDirigenteMenu.addEventListener("click", (e) => { 
-        e.preventDefault(); 
-        const target = e.target.closest("a.dropdown-item"); 
-        if (target) { 
-            filtroDirigenteId = target.dataset.id ? parseInt(target.dataset.id, 10) : null; 
-            carregarMapas(true, false); 
-        } 
+    filtroDirigenteMenu.addEventListener("click", (e) => {
+        e.preventDefault();
+        const target = e.target.closest("a.dropdown-item");
+        if (target) {
+            filtroDirigenteId = target.dataset.id ? parseInt(target.dataset.id, 10) : null;
+            carregarMapas(true, false);
+        }
     });
 
-    filtroRegiaoMenu.addEventListener("click", (e) => { 
-        e.preventDefault(); 
-        const target = e.target.closest("a.dropdown-item"); 
-        if (target) { 
-            filtroRegiao = target.dataset.regiao || null; 
-            carregarMapas(true, false); 
-        } 
+    filtroRegiaoMenu.addEventListener("click", (e) => {
+        e.preventDefault();
+        const target = e.target.closest("a.dropdown-item");
+        if (target) {
+            filtroRegiao = target.dataset.regiao || null;
+            carregarMapas(true, false);
+        }
     });
 
     filtroTipoMenu.addEventListener("click", (e) => {
@@ -323,12 +334,16 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("mapa_quadra_fim").value = mapa.quadra_fim;
             document.getElementById("mapa_regiao").value = mapa.regiao || "";
             document.getElementById("mapa_tipo").value = mapa.tipo || "";
+            if (mapaObsInput) {
+                mapaObsInput.value = mapa.obs || "";
+                mapaObsInput.dispatchEvent(new Event('input'));
+            }
             editMode = true;
             editId = id;
             mapaModalLabel.textContent = 'Editar Mapa';
             mapaModal.show();
-        } catch (error) { 
-            mostrarFeedback('Erro', 'Não foi possível carregar os dados: ' + error.message, 'danger'); 
+        } catch (error) {
+            mostrarFeedback('Erro', 'Não foi possível carregar os dados: ' + error.message, 'danger');
         }
     };
 
@@ -372,17 +387,18 @@ document.addEventListener('DOMContentLoaded', () => {
             quadra_fim: document.getElementById("mapa_quadra_fim").value,
             regiao: document.getElementById("mapa_regiao").value,
             tipo: document.getElementById("mapa_tipo").value,
+            obs: mapaObsInput ? mapaObsInput.value : "",
         };
-        
-        if (!data.identificador || !data.quadra_inicio || !data.quadra_fim) { 
-            mostrarFeedback('Atenção', 'Preencha identificador e quadras.', 'warning'); 
-            return; 
+
+        if (!data.identificador || !data.quadra_inicio || !data.quadra_fim) {
+            mostrarFeedback('Atenção', 'Preencha identificador e quadras.', 'warning');
+            return;
         }
-        if (parseInt(data.quadra_fim) < parseInt(data.quadra_inicio)) { 
-            mostrarFeedback('Atenção', 'A quadra final deve ser maior ou igual à inicial.', 'warning'); 
-            return; 
+        if (parseInt(data.quadra_fim) < parseInt(data.quadra_inicio)) {
+            mostrarFeedback('Atenção', 'A quadra final deve ser maior ou igual à inicial.', 'warning');
+            return;
         }
-        
+
         const url = `${API_BASE_URL}/mapas_api.php`;
         if (editMode) {
             data.action = 'edit_details';
@@ -392,10 +408,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error(await handleApiError(response));
             mapaModal.hide();
-            carregarMapas(true); 
+            carregarMapas(true);
             mostrarFeedback('Sucesso', `Mapa <b>${data.identificador}</b> salvo!`, 'success');
-        } catch (error) { 
-            mostrarFeedback('Erro', error.message, 'danger'); 
+        } catch (error) {
+            mostrarFeedback('Erro', error.message, 'danger');
         }
     });
 
@@ -406,9 +422,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const dirigentes = await response.json();
             selectDirigentes.innerHTML = '<option value="">Selecione...</option>';
             dirigentes.forEach(d => selectDirigentes.innerHTML += `<option value="${d.id}">${d.nome}</option>`);
-        } catch (error) { 
-            selectDirigentes.innerHTML = '<option value="">Erro ao carregar</option>'; 
-            mostrarFeedback('Erro', error.message, 'danger'); 
+        } catch (error) {
+            selectDirigentes.innerHTML = '<option value="">Erro ao carregar</option>';
+            mostrarFeedback('Erro', error.message, 'danger');
         }
     };
 
@@ -426,7 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- LÓGICA DE EXCLUSIVIDADE MÚTUA (DIRIGENTE OU GRUPO) ---
-    
+
     // Se selecionar dirigente, limpa o grupo
     selectDirigentes.addEventListener('change', () => {
         if (selectDirigentes.value) {
@@ -454,19 +470,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const dataEntrega = document.getElementById('entregar_data').value;
         const mapaId = document.getElementById('entregar_mapa_id').value;
 
-        if ((!dirigenteId && !grupoId) || !dataEntrega) { 
-            mostrarFeedback('Atenção', 'Selecione um Dirigente OU um Grupo, e informe a Data.', 'warning'); 
-            return; 
+        if ((!dirigenteId && !grupoId) || !dataEntrega) {
+            mostrarFeedback('Atenção', 'Selecione um Dirigente OU um Grupo, e informe a Data.', 'warning');
+            return;
         }
 
-        const data = { 
-            action: 'entregar', 
-            mapa_id: mapaId, 
-            dirigente_id: dirigenteId || null, 
+        const data = {
+            action: 'entregar',
+            mapa_id: mapaId,
+            dirigente_id: dirigenteId || null,
             grupo_id: grupoId || null,
-            data_entrega: dataEntrega, 
+            data_entrega: dataEntrega,
         };
-        
+
         try {
             const response = await fetch(`${API_BASE_URL}/mapas_api.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error(await handleApiError(response));
@@ -485,11 +501,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 entregarModalLabel.textContent = `Entregar Mapa: ${target.dataset.identificador}`;
                 document.getElementById('entregar_mapa_id').value = id;
                 document.getElementById('entregar_data').valueAsDate = new Date();
-                
+
                 // Carrega ambas as listas
                 await carregarDirigentesNoModal();
                 await carregarGruposNoModal();
-                
+
                 entregarModal.show();
             } else if (target.classList.contains('btn-resgatar')) {
                 mostrarConfirmacao('Resgatar Mapa', 'Confirmar devolução forçada? Isso removerá o mapa do usuário ou grupo atual.', async () => {

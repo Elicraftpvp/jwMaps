@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,10 +12,12 @@
         /* CSS Específico para corrigir o corte dos Dropdowns */
         .table-responsive-visible {
             overflow-x: auto;
-            overflow-y: visible !important; /* Permite que o dropdown saia da tabela */
-            min-height: 300px; /* Garante altura mínima para dropdown abrir se tabela estiver vazia */
+            overflow-y: visible !important;
+            /* Permite que o dropdown saia da tabela */
+            min-height: 300px;
+            /* Garante altura mínima para dropdown abrir se tabela estiver vazia */
         }
-        
+
         /* Ajuste fino para os checkboxes dentro do dropdown */
         .dropdown-item-checkbox {
             display: flex;
@@ -22,15 +25,18 @@
             padding: 0.25rem 1rem;
             cursor: pointer;
         }
+
         .dropdown-item-checkbox:hover {
             background-color: #f8f9fa;
         }
+
         .dropdown-item-checkbox input {
             margin-right: 10px;
             cursor: pointer;
         }
     </style>
 </head>
+
 <body class="iframe-page">
     <div class="container-fluid">
         <div class="card shadow-sm">
@@ -51,14 +57,21 @@
                                     <div class="d-flex align-items-center gap-2">
                                         <span>Nome do Território</span>
                                         <div class="dropdown">
-                                            <a href="#" role="button" id="filtroOrdenacaoBtn" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-filter text-secondary" title="Ordenar por Identificador"></i>
+                                            <a href="#" role="button" id="filtroOrdenacaoBtn" data-bs-toggle="dropdown"
+                                                aria-expanded="false">
+                                                <i class="fas fa-filter text-secondary"
+                                                    title="Ordenar por Identificador"></i>
                                             </a>
                                             <ul class="dropdown-menu shadow" aria-labelledby="filtroOrdenacaoBtn">
-                                                <li><a class="dropdown-item" href="#" data-sort="id"><strong>Padrão (Criação)</strong></a></li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li><a class="dropdown-item" href="#" data-sort="asc">Ordenar A-Z / 0-9</a></li>
-                                                <li><a class="dropdown-item" href="#" data-sort="desc">Ordenar Z-A / 9-0</a></li>
+                                                <li><a class="dropdown-item" href="#" data-sort="id"><strong>Padrão
+                                                            (Criação)</strong></a></li>
+                                                <li>
+                                                    <hr class="dropdown-divider">
+                                                </li>
+                                                <li><a class="dropdown-item" href="#" data-sort="asc">Ordenar A-Z /
+                                                        0-9</a></li>
+                                                <li><a class="dropdown-item" href="#" data-sort="desc">Ordenar Z-A /
+                                                        9-0</a></li>
                                             </ul>
                                         </div>
                                     </div>
@@ -67,10 +80,12 @@
                                     <div class="d-flex align-items-center gap-2">
                                         <span>Região</span>
                                         <div class="dropdown">
-                                            <a href="#" role="button" id="filtroRegiaoBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <a href="#" role="button" id="filtroRegiaoBtn" data-bs-toggle="dropdown"
+                                                aria-expanded="false">
                                                 <i class="fas fa-filter text-secondary" title="Filtrar por Região"></i>
                                             </a>
-                                            <ul class="dropdown-menu shadow" aria-labelledby="filtroRegiaoBtn" id="filtroRegiaoMenu">
+                                            <ul class="dropdown-menu shadow" aria-labelledby="filtroRegiaoBtn"
+                                                id="filtroRegiaoMenu">
                                                 <!-- Opções carregadas pelo JS -->
                                             </ul>
                                         </div>
@@ -80,17 +95,27 @@
                                     <div class="d-flex align-items-center gap-2">
                                         <span>Tipo</span>
                                         <div class="dropdown">
-                                            <a href="#" role="button" id="filtroTipoBtn" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
-                                                <i class="fas fa-filter text-secondary" title="Filtrar e Ordenar por Tipo"></i>
+                                            <a href="#" role="button" id="filtroTipoBtn" data-bs-toggle="dropdown"
+                                                aria-expanded="false" data-bs-auto-close="outside">
+                                                <i class="fas fa-filter text-secondary"
+                                                    title="Filtrar e Ordenar por Tipo"></i>
                                             </a>
-                                            <ul class="dropdown-menu shadow" aria-labelledby="filtroTipoBtn" id="filtroTipoMenu" style="min-width: 200px;">
+                                            <ul class="dropdown-menu shadow" aria-labelledby="filtroTipoBtn"
+                                                id="filtroTipoMenu" style="min-width: 200px;">
                                                 <!-- Ordenação do Tipo -->
-                                                <li><a class="dropdown-item" href="#" data-sort-type="tipo_asc"><i class="fas fa-sort-alpha-down me-2"></i>Ordenar A-Z</a></li>
-                                                <li><a class="dropdown-item" href="#" data-sort-type="tipo_desc"><i class="fas fa-sort-alpha-up me-2"></i>Ordenar Z-A</a></li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li><h6 class="dropdown-header">Filtrar Tipos:</h6></li>
+                                                <li><a class="dropdown-item" href="#" data-sort-type="tipo_asc"><i
+                                                            class="fas fa-sort-alpha-down me-2"></i>Ordenar A-Z</a></li>
+                                                <li><a class="dropdown-item" href="#" data-sort-type="tipo_desc"><i
+                                                            class="fas fa-sort-alpha-up me-2"></i>Ordenar Z-A</a></li>
+                                                <li>
+                                                    <hr class="dropdown-divider">
+                                                </li>
+                                                <li>
+                                                    <h6 class="dropdown-header">Filtrar Tipos:</h6>
+                                                </li>
                                                 <!-- Checkboxes carregados pelo JS -->
-                                                <div id="listaCheckboxesTipos" style="max-height: 200px; overflow-y: auto;"></div>
+                                                <div id="listaCheckboxesTipos"
+                                                    style="max-height: 200px; overflow-y: auto;"></div>
                                             </ul>
                                         </div>
                                     </div>
@@ -101,10 +126,13 @@
                                     <div class="d-flex align-items-center gap-2">
                                         <span>Responsável</span> <!-- Alterado de Dirigente para Responsável -->
                                         <div class="dropdown">
-                                            <a href="#" role="button" id="filtroDirigenteBtn" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-filter text-secondary" title="Filtrar por Dirigente"></i>
+                                            <a href="#" role="button" id="filtroDirigenteBtn" data-bs-toggle="dropdown"
+                                                aria-expanded="false">
+                                                <i class="fas fa-filter text-secondary"
+                                                    title="Filtrar por Dirigente"></i>
                                             </a>
-                                            <ul class="dropdown-menu shadow" aria-labelledby="filtroDirigenteBtn" id="filtroDirigenteMenu">
+                                            <ul class="dropdown-menu shadow" aria-labelledby="filtroDirigenteBtn"
+                                                id="filtroDirigenteMenu">
                                                 <!-- Opções carregadas pelo JS -->
                                             </ul>
                                         </div>
@@ -133,7 +161,8 @@
                     <form id="form-mapa">
                         <div class="mb-3">
                             <label for="mapa_identificador" class="form-label">Nome do Território</label>
-                            <input type="text" class="form-control" id="mapa_identificador" placeholder="Ex: Mapa 01 - Centro" required>
+                            <input type="text" class="form-control" id="mapa_identificador"
+                                placeholder="Ex: Mapa 01 - Centro" required>
                         </div>
                         <div class="row">
                             <div class="col-6 mb-3">
@@ -148,20 +177,30 @@
                         <div class="row">
                             <div class="col-6 mb-3">
                                 <label for="mapa_apt_inicio" class="form-label">Apt Inicial</label>
-                                <input type="number" class="form-control" id="mapa_apt_inicio" min="1" value="1" required>
+                                <input type="number" class="form-control" id="mapa_apt_inicio" min="1" value="1"
+                                    required>
                             </div>
                             <div class="col-6 mb-3">
                                 <label for="mapa_apt_fim" class="form-label">Apt Final</label>
-                                <input type="number" class="form-control" id="mapa_apt_fim" min="1" placeholder="Ex: 6" required>
+                                <input type="number" class="form-control" id="mapa_apt_fim" min="1" placeholder="Ex: 6"
+                                    required>
                             </div>
                         </div>
                         <div class="mb-3">
                             <label for="mapa_regiao" class="form-label">Região</label>
-                            <input type="text" class="form-control" id="mapa_regiao" placeholder="Ex: Centro, Zona Norte">
+                            <input type="text" class="form-control" id="mapa_regiao"
+                                placeholder="Ex: Centro, Zona Norte">
                         </div>
                         <div class="mb-3">
                             <label for="mapa_tipo" class="form-label">Tipo</label>
-                            <input type="text" class="form-control" id="mapa_tipo" placeholder="Ex: Comercial, Residencial">
+                            <input type="text" class="form-control" id="mapa_tipo"
+                                placeholder="Ex: Comercial, Residencial">
+                        </div>
+                        <div class="mb-3">
+                            <label for="mapa_obs" class="form-label">Observações</label>
+                            <textarea class="form-control" id="mapa_obs" maxlength="150" rows="2"
+                                placeholder="Ex: h1 Atenção! - local de caixinha de correio... NÃO USE PARA MARCAÇÕES DE RUAS, NUMEROS OU APARTAMENTOS!"></textarea>
+                            <div class="form-text text-end" id="obs-char-count">0/150</div>
                         </div>
                     </form>
                 </div>
@@ -172,7 +211,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Modal Entregar Mapa -->
     <div class="modal fade" id="entregarModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
@@ -183,7 +222,7 @@
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="entregar_mapa_id">
-                    
+
                     <div class="mb-3">
                         <label for="entregar_dirigente_id" class="form-label">Selecione o Dirigente</label>
                         <select class="form-select" id="entregar_dirigente_id">
@@ -212,13 +251,15 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Modal Histórico do Mapa -->
-    <div class="modal fade" id="historicoMapaModal" tabindex="-1" aria-labelledby="historicoMapaModalLabel" aria-hidden="true">
+    <div class="modal fade" id="historicoMapaModal" tabindex="-1" aria-labelledby="historicoMapaModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="historicoMapaModalLabel">Histórico do Mapa: <span id="historico_mapa_identificador"></span></h5>
+                    <h5 class="modal-title" id="historicoMapaModalLabel">Histórico do Mapa: <span
+                            id="historico_mapa_identificador"></span></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -280,4 +321,5 @@
     <script src="../script/common.js" defer></script>
     <script src="../script/gerenciar_mapas_predio.js" defer></script>
 </body>
+
 </html>

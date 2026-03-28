@@ -116,7 +116,16 @@ function renderizarCard($mapa, $quadras_por_mapa, $total_cards_geral) {
                 <?php endif; ?>
 
                 <div class="card-body">
-                    <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                        <?php if(!empty($mapa['obs'])): ?>
+                        <div class="obs-container mb-3 mt-0" style="border-top: none; padding-top: 0;">
+                            <button type="button" class="btn-obs-toggle" onclick="toggleObs(this)">
+                                <span><i class="fas fa-sticky-note me-2 text-warning"></i> Observações</span>
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <div class="obs-content" data-raw-obs="<?php echo htmlspecialchars($mapa['obs']); ?>"></div>
+                        </div>
+                        <?php endif; ?>
+
                         <label class="form-label fw-bold mt-2">Pessoas Encontradas no Território:</label>
                         
                         <div class="d-flex justify-content-end px-2 pb-1"> 
@@ -156,6 +165,9 @@ function renderizarCard($mapa, $quadras_por_mapa, $total_cards_geral) {
                         </div>
                         <hr>
                         <p class="mb-2"><strong>Recebido em:</strong> <?php echo date('d/m/Y', strtotime($mapa['data_entrega'])); ?></p>
+                        
+
+
                         <div class="d-grid mt-3">
                             <button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Finalizar e Devolver</button>
                         </div>
@@ -246,6 +258,16 @@ function renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
 
                 <div class="card-body">
                     <form class="form-devolver-predio" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                        <?php if(!empty($mapa['obs'])): ?>
+                        <div class="obs-container mb-3 mt-0" style="border-top: none; padding-top: 0;">
+                            <button type="button" class="btn-obs-toggle" onclick="toggleObs(this)">
+                                <span><i class="fas fa-sticky-note me-2 text-warning"></i> Observações</span>
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <div class="obs-content" data-raw-obs="<?php echo htmlspecialchars($mapa['obs']); ?>"></div>
+                        </div>
+                        <?php endif; ?>
+
                         <label class="form-label fw-bold mt-2">Pessoas Encontradas por Bloco:</label>
 
                         <div class="d-flex justify-content-end px-2 pb-1">
@@ -286,6 +308,9 @@ function renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
                         </div>
                         <hr>
                         <p class="mb-2"><strong>Recebido em:</strong> <?php echo date('d/m/Y', strtotime($mapa['data_entrega'])); ?></p>
+                        
+
+
                         <div class="d-grid mt-3">
                             <button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Finalizar e Devolver</button>
                         </div>
@@ -313,7 +338,7 @@ try {
     
     $user_id = $user['id'];
     
-    $sql_mapas = "SELECT m.id, m.identificador, m.data_entrega, m.gdrive_file_id, m.grupo_id, g.nome as nome_grupo
+    $sql_mapas = "SELECT m.id, m.identificador, m.data_entrega, m.gdrive_file_id, m.obs, m.grupo_id, g.nome as nome_grupo
                   FROM mapas m 
                   LEFT JOIN grupos g ON m.grupo_id = g.id
                   WHERE (m.dirigente_id = ? OR m.grupo_id IN (SELECT grupo_id FROM grupo_membros WHERE user_id = ?))
@@ -341,7 +366,7 @@ try {
     }
 
     // Busca mapas de prédio do usuário
-    $sql_predio = "SELECT m.id, m.identificador, m.data_entrega, m.gdrive_file_id, m.grupo_id,
+    $sql_predio = "SELECT m.id, m.identificador, m.data_entrega, m.gdrive_file_id, m.obs, m.grupo_id,
                           g.nome as nome_grupo, m.apt_inicio, m.apt_fim
                    FROM mapas_predio m
                    LEFT JOIN grupos g ON m.grupo_id = g.id
@@ -422,6 +447,20 @@ try {
             .header-icon { font-size: 0.9rem; }
             .card-title i.fa-map-pin, .card-title i.fa-users { font-size: 0.9rem; }
         }
+        
+        /* Estilos para o campo de Observações */
+        .obs-container { margin-top: 1rem; border-top: 1px solid #dee2e6; padding-top: 0.8rem; }
+        .btn-obs-toggle { background: #f8f9fa; border: 1px solid #dee2e6; color: #495057; width: 100%; text-align: left; padding: 10px 15px; border-radius: 8px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
+        .btn-obs-toggle:hover { background: #e9ecef; }
+        .obs-content { display: none; padding: 12px 15px; background: white; border: 1px solid #dee2e6; border-top: none; border-radius: 0 0 8px 8px; font-size: 0.95rem; line-height: 1.4; color: #333; }
+        .btn-obs-toggle.active { border-radius: 8px 8px 0 0; background: #e9ecef; }
+        .obs-content h1, .obs-content h2, .obs-content h3 { font-weight: 700; margin-bottom: 8px; color: #212529; }
+        .obs-content h1 { font-size: 1.25rem; }
+        .obs-content h2 { font-size: 1.15rem; }
+        .obs-content h3 { font-size: 1.05rem; }
+        .obs-content ul { padding-left: 20px; margin-bottom: 0; }
+        .obs-content li { margin-bottom: 4px; }
+        .obs-content li:last-child { margin-bottom: 0; }
     </style>
 </head>
 <body>
@@ -518,6 +557,64 @@ try {
     <script src="../script/common.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Função para parsear a observação
+            window.parseObs = (text) => {
+                let html = text;
+                
+                // h1 Text, h2 Text, h3 Text
+                html = html.replace(/^h1\s+(.*)$/gim, '<h1>$1</h1>');
+                html = html.replace(/^h2\s+(.*)$/gim, '<h2>$1</h2>');
+                html = html.replace(/^h3\s+(.*)$/gim, '<h3>$1</h3>');
+                
+                // Bullet points: lines starting with -
+                // First, split by lines or handle with regex
+                let lines = html.split('\n');
+                let inList = false;
+                let finalLines = [];
+                
+                lines.forEach(line => {
+                    let trimmed = line.trim();
+                    if (trimmed.startsWith('-')) {
+                        if (!inList) {
+                            finalLines.push('<ul>');
+                            inList = true;
+                        }
+                        finalLines.push(`<li>${trimmed.substring(1).trim()}</li>`);
+                    } else {
+                        if (inList) {
+                            finalLines.push('</ul>');
+                            inList = false;
+                        }
+                        finalLines.push(line);
+                    }
+                });
+                if (inList) finalLines.push('</ul>');
+                
+                return finalLines.join('<br>').replace(/<br><ul>/g, '<ul>').replace(/<\/ul><br>/g, '</ul>');
+            };
+
+            window.toggleObs = (btn) => {
+                const container = btn.closest('.obs-container');
+                const content = container.querySelector('.obs-content');
+                const icon = btn.querySelector('i.fa-plus, i.fa-minus');
+                
+                const isOpening = content.style.display !== 'block';
+                
+                if (isOpening) {
+                    if (!content.dataset.parsed) {
+                        content.innerHTML = parseObs(content.dataset.rawObs);
+                        content.dataset.parsed = "true";
+                    }
+                    content.style.display = 'block';
+                    btn.classList.add('active');
+                    if(icon) { icon.classList.replace('fa-plus', 'fa-minus'); }
+                } else {
+                    content.style.display = 'none';
+                    btn.classList.remove('active');
+                    if(icon) { icon.classList.replace('fa-minus', 'fa-plus'); }
+                }
+            };
+
             const API_BASE_URL = '.'; 
             const saveTimeouts = {};
             const pendingDeltas = {};
