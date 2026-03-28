@@ -204,6 +204,15 @@ function renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
                         <?php if ($isGroup): ?>
                             <span class="badge bg-white text-dark group-tag" style="opacity: 0.9;"><?php echo htmlspecialchars($mapa['nome_grupo']); ?></span>
                         <?php endif; ?>
+                        <button class="btn btn-light btn-sm btn-share-map border-0"
+                                style="background: rgba(255,255,255,0.2); color: white;"
+                                data-mapa-id="<?php echo $mapa['id']; ?>"
+                                data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>"
+                                data-is-group="<?php echo $isGroup ? '1' : '0'; ?>"
+                                data-is-predio="1"
+                                title="Compartilhar temporariamente">
+                            <i class="fas fa-share-alt"></i>
+                        </button>
                         <i class="fas fa-chevron-down header-icon"></i>
                     </div>
                 </h5>
@@ -214,6 +223,14 @@ function renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
                     <div class="pdf-preview-container">
                         <img src="<?php echo $url_jpg; ?>" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
                         <button class="btn btn-predio-color btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                            <i class="fas fa-expand-alt me-1"></i> Expandir
+                        </button>
+                    </div>
+                <?php elseif (!empty($mapa['gdrive_file_id'])): ?>
+                    <?php $pdf_embed_url = "https://drive.google.com/file/d/" . $mapa['gdrive_file_id'] . "/preview"; ?>
+                    <div class="pdf-preview-container">
+                        <iframe src="<?php echo $pdf_embed_url; ?>" style="width:100%;height:100%;border:none;"></iframe>
+                        <button class="btn btn-predio-color btn-sm btn-expand" onclick="window.open('<?php echo $pdf_embed_url; ?>', '_blank')">
                             <i class="fas fa-expand-alt me-1"></i> Expandir
                         </button>
                     </div>
@@ -390,6 +407,8 @@ try {
         .section-divider::before, .section-divider::after { content: ''; flex: 1; border-bottom: 1px solid #bfdcf0; }
         .section-divider:not(:empty)::before { margin-right: .5em; }
         .section-divider:not(:empty)::after { margin-left: .5em; }
+        .section-divider-predio { color: #E91E63 !important; }
+        .section-divider-predio::before, .section-divider-predio::after { border-bottom: 1px solid #f48fb1 !important; }
         .modal-fullscreen .modal-content { background-color: black; }
         .modal-fullscreen .modal-header { position: absolute; top: 0; left: 0; width: 100%; background: rgba(0, 0, 0, 0.6); border-bottom: none; z-index: 9999; padding: 15px 20px; }
         .modal-fullscreen .modal-title { color: white; font-size: 1.1rem; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
@@ -410,15 +429,15 @@ try {
         <div class="container-fluid"><span class="navbar-brand"><i class="fas fa-map-marked-alt me-2"></i>Mapas de <?php echo htmlspecialchars($user['nome']); ?></span></div>
     </nav>
     <div class="container-fluid">
-        <?php if (empty($mapas)): ?>
+        <?php if (empty($mapas) && empty($mapas_predio)): ?>
             <div class="alert alert-info text-center w-100">Nenhum mapa atribuído a você ou seus grupos.</div>
         <?php else: ?>
             <?php if (!empty($mapas_individuais)): ?>
                 <div class="masonry-layout" id="container-mapas-individuais">
                     <?php 
-                    $total_mapas_geral = count($mapas);
+                    $total_global = count($mapas) + count($mapas_predio);
                     foreach ($mapas_individuais as $mapa): 
-                        renderizarCard($mapa, $quadras_por_mapa, $total_mapas_geral);
+                        renderizarCard($mapa, $quadras_por_mapa, $total_global);
                     endforeach; 
                     ?>
                 </div>
@@ -427,9 +446,9 @@ try {
                 <div class="section-divider"><i class="fas fa-users me-2"></i> Mapas para Finais de Semana</div>
                 <div class="masonry-layout" id="container-mapas-grupo">
                     <?php 
-                    $total_mapas_geral = count($mapas);
+                    $total_global = count($mapas) + count($mapas_predio);
                     foreach ($mapas_grupo as $mapa): 
-                        renderizarCard($mapa, $quadras_por_mapa, $total_mapas_geral);
+                        renderizarCard($mapa, $quadras_por_mapa, $total_global);
                     endforeach; 
                     ?>
                 </div>
@@ -438,9 +457,9 @@ try {
                 <div class="section-divider section-divider-predio"><i class="fas fa-building me-2"></i> Mapas de Prédios</div>
                 <div class="masonry-layout" id="container-mapas-predio">
                     <?php
-                    $total_geral_predio = count($mapas_predio);
+                    $total_global = count($mapas) + count($mapas_predio);
                     foreach ($mapas_predio as $mapa):
-                        renderizarCardPredio($mapa, $blocos_por_mapa, $total_geral_predio);
+                        renderizarCardPredio($mapa, $blocos_por_mapa, $total_global);
                     endforeach;
                     ?>
                 </div>
@@ -533,11 +552,12 @@ try {
                     const mapaId = btnShare.dataset.mapaId;
                     const mapaNome = btnShare.dataset.mapaNome;
                     const isGroup = btnShare.dataset.isGroup === '1';
+                    const isPredio = btnShare.dataset.isPredio === '1';
                     
                     document.getElementById('shareMapName').textContent = mapaNome;
                     
                     const btnConfirmShare = document.getElementById('btnConfirmShare');
-                    btnConfirmShare.className = 'btn ' + (isGroup ? 'btn-group-color' : 'btn-primary');
+                    btnConfirmShare.className = 'btn ' + (isPredio ? 'btn-predio-color' : (isGroup ? 'btn-group-color' : 'btn-primary'));
                     
                     btnConfirmShare.onclick = async () => {
                         const btnOriginalText = btnConfirmShare.innerHTML;
@@ -547,7 +567,8 @@ try {
                         const mins = document.getElementById('shareDurationSelect').value;
                         
                         try {
-                            const resp = await fetch(`${API_BASE_URL}/mapas_api.php`, { 
+                            const shareApi = isPredio ? `${API_BASE_URL}/mapas_predio_api.php` : `${API_BASE_URL}/mapas_api.php`;
+                            const resp = await fetch(shareApi, { 
                                 method: 'POST', 
                                 headers: { 'Content-Type': 'application/json' }, 
                                 body: JSON.stringify({ action: 'gerar_compartilhamento', mapa_id: mapaId, minutos: mins }) 
