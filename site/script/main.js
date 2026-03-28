@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         menuItems = [
             // Dashboard é o primeiro e ativo por padrão
             { href: 'pages/dashboard.html', icon: 'fas fa-tachometer-alt', text: 'Dashboard', active: true },
-            { href: 'pages/gerenciar_mapas.html', icon: 'fas fa-map', text: 'Gerenciar Mapas' },
+            { href: 'pages/gerenciar_mapas.html', icon: 'fas fa-map', text: 'Mapas e Territorios' },
             { href: 'pages/gerenciar_mapas_predio.html', icon: 'fas fa-building', text: 'Mapas de Predios' },
             { href: 'pages/dirigentes.html', icon: 'fas fa-user-cog', text: 'Gerenciar Usuarios' },
             { href: 'pages/gerenciar_grupos.html', icon: 'fas fa-users-cog', text: 'Gerenciar Grupos' },
