@@ -1,229 +1,381 @@
 <?php
 // site/backend/vista_dirigente.php
-session_start(); // INICIA A SESSÃO para saber quem está logado
+session_start();
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
-
 require_once 'conexao.php';
 
-// 1. Pega o ID do dirigente da SESSÃO.
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);
-    die("<h1>Acesso Negado</h1><p>Você precisa estar logado para ver esta página.</p>");
-}
-$dirigente_id = $_SESSION['user_id'];
-
-try {
-    // 2. Busca o nome do dirigente para mostrar no título.
-    $stmt_user = $pdo->prepare("SELECT nome FROM users WHERE id = ?");
-    $stmt_user->execute([$dirigente_id]);
-    $dirigente = $stmt_user->fetch();
-    if (!$dirigente) {
-        http_response_code(404);
-        die("<h1>Dirigente com ID $dirigente_id não encontrado.</h1>");
-    }
-    
-    // 3. Busca os mapas do dirigente logado (tanto os individuais atribuídos diretamente a ele, quanto os dos grupos que participa)
-    $stmt_mapas = $pdo->prepare(
-        "SELECT m.id, m.identificador, m.data_entrega, m.gdrive_file_id, m.grupo_id, g.nome as nome_grupo 
-         FROM mapas m
-         LEFT JOIN grupos g ON m.grupo_id = g.id
-         WHERE (m.dirigente_id = ? OR m.grupo_id IN (SELECT grupo_id FROM grupo_membros WHERE user_id = ?))
-         ORDER BY m.identificador ASC"
-    );
-    $stmt_mapas->execute([$dirigente_id, $dirigente_id]);
-    $mapas = $stmt_mapas->fetchAll(PDO::FETCH_ASSOC);
-
-    // Separar Mapas em Individuais e Grupos
-    // Busca mapas prediais do dirigente
-    $stmt_mapas_predio = $pdo->prepare(
-        "SELECT m.id, m.identificador, m.data_entrega, m.gdrive_file_id, m.grupo_id, g.nome as nome_grupo,
-                m.apt_inicio, m.apt_fim
-         FROM mapas_predio m
-         LEFT JOIN grupos g ON m.grupo_id = g.id
-         WHERE (m.dirigente_id = ? OR m.grupo_id IN (SELECT grupo_id FROM grupo_membros WHERE user_id = ?))
-         ORDER BY m.identificador ASC"
-    );
-    $stmt_mapas_predio->execute([$dirigente_id, $dirigente_id]);
-    $mapas_predio = $stmt_mapas_predio->fetchAll(PDO::FETCH_ASSOC);
-
-    $mapas_individuais =[];
-    $mapas_grupo = [];
-    foreach ($mapas as $m) {
-        $m['is_predio'] = false;
-        if (!empty($m['grupo_id'])) {
-            $mapas_grupo[] = $m;
-        } else {
-            $mapas_individuais[] = $m;
-        }
-    }
-
-    $mapas_predio_list = [];
-    foreach ($mapas_predio as $mp) {
-        $mp['is_predio'] = true;
-        $mapas_predio_list[] = $mp;
-    }
-
-    // 4. Busca todas as quadras para os mapas encontrados
-    $quadras_por_mapa =[];
-    $blocos_por_mapa = [];
-    if (!empty($mapas_predio)) {
-        $mp_ids = array_column($mapas_predio, 'id');
-        $pl = implode(',', array_fill(0, count($mp_ids), '?'));
-        $stmt_blocos = $pdo->prepare(
-            "SELECT id, mapa_id, numero, pessoas_faladas 
-             FROM blocos 
-             WHERE mapa_id IN ($pl) 
-             ORDER BY numero ASC"
-        );
-        $stmt_blocos->execute($mp_ids);
-        $blocos_data = $stmt_blocos->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($blocos_data as $bloco) {
-            $blocos_por_mapa[$bloco['mapa_id']][] = $bloco;
-        }
-    }
-    
-    if (!empty($mapas)) {
-        $mapa_ids = array_column($mapas, 'id');
-        $placeholders = implode(',', array_fill(0, count($mapa_ids), '?'));
-        
-        $stmt_quadras = $pdo->prepare(
-            "SELECT id, mapa_id, numero, pessoas_faladas 
-             FROM quadras 
-             WHERE mapa_id IN ($placeholders) 
-             ORDER BY numero ASC"
-        );
-        $stmt_quadras->execute($mapa_ids);
-        $quadras_data = $stmt_quadras->fetchAll(PDO::FETCH_ASSOC);
-        
-        foreach ($quadras_data as $quadra) {
-            $quadras_por_mapa[$quadra['mapa_id']][] = $quadra;
-        }
-    }
-} catch (PDOException $e) {
-    http_response_code(500);
-    die("Erro ao conectar ou consultar o banco de dados: " . $e->getMessage());
-}
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+$domainName = $_SERVER['HTTP_HOST'];
+$path = (strpos($_SERVER['REQUEST_URI'], '/jwMaps') !== false) ? "/jwMaps/" : "/";
+$baseUrl = $protocol . $domainName . $path;
 
 /**
- * Função auxiliar para renderizar o card do mapa para o dirigente.
- * Reutiliza a mesma estrutura de layout atual da vista_dirigente.php.
+ * Renderiza a tela de erro com a identidade visual completa.
  */
-function renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards) {
-    $isGroup = !empty($mapa['grupo_id']);
-    $isPredio = isset($mapa['is_predio']) && $mapa['is_predio'];
-    $soma_pessoas = 0;
-    
-    $max_apts = "";
-    $label_apts = "";
-    if ($isPredio && isset($mapa['apt_inicio']) && isset($mapa['apt_fim'])) {
-        $calc_max = ((int)$mapa['apt_fim'] - (int)$mapa['apt_inicio']) + 1;
-        $max_apts = 'max="' . $calc_max . '" data-max-val="' . $calc_max . '"';
-        $label_apts = ' (Máx: ' . $calc_max . ')';
-    }
-    $header_class = $isPredio ? 'card-header-predio' : ($isGroup ? 'card-header-group' : 'bg-primary');
-    $icon_class = $isPredio ? 'fa-building' : ($isGroup ? 'fa-users' : 'fa-map-pin');
-    $btn_expand = $isPredio ? 'btn-predio-color' : ($isGroup ? 'btn-group-color' : 'btn-primary');
-    if (isset($quadras_por_mapa[$mapa['id']])) {
-        foreach ($quadras_por_mapa[$mapa['id']] as $q) {
-            $soma_pessoas += (int)$q['pessoas_faladas'];
-        }
-    }
-    
-    // Só colapsa se houver mais de 1 mapa E a soma for 0
-    $classe_inicial = ($total_cards > 1 && $soma_pessoas == 0) ? 'collapsed' : '';
+function exibirErroFatal($titulo, $mensagem, $baseUrl) {
     ?>
-    <div class="col-lg-6 mb-4 card-container-wrapper" id="mapa-card-<?php echo $mapa['id']; ?>">
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Aviso do Sistema</title>
+        <link rel="icon" type="image/png" href="<?php echo $baseUrl; ?>site/images/map.png">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+        <style>
+            body { background-color: #f0f2f5; height: 100vh; display: flex; align-items: center; justify-content: center; font-family: system-ui, sans-serif; margin: 0; }
+            .error-card { background: white; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); max-width: 420px; width: 90%; text-align: center; overflow: hidden; animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1); border-top: 5px solid #dc3545; }
+            .error-header { padding: 40px 20px 10px 20px; }
+            .icon-wrapper { width: 80px; height: 80px; background: #fff5f5; color: #dc3545; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; font-size: 2.5rem; animation: pulse 2s infinite; }
+            .error-body { padding: 10px 30px 40px 30px; }
+            .error-title { font-weight: 700; color: #212529; margin-bottom: 10px; font-size: 1.5rem; }
+            .error-text { color: #6c757d; font-size: 1rem; line-height: 1.5; }
+            @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); } }
+        </style>
+    </head>
+    <body>
+        <div class="error-card">
+            <div class="error-header">
+                <div class="icon-wrapper"><i class="fas fa-exclamation-triangle"></i></div>
+                <h1 class="error-title"><?php echo $titulo; ?></h1>
+            </div>
+            <div class="error-body"><p class="error-text"><?php echo $mensagem; ?></p></div>
+            <div class="p-3 bg-light border-top">
+                <a href="<?php echo $baseUrl; ?>site/pages/dashboard.html" class="btn btn-primary w-100">Voltar ao Início</a>
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
+if (!isset($_SESSION['user_id'])) {
+    exibirErroFatal("Acesso Negado", "Você precisa estar logado para ver esta página.", $baseUrl);
+}
+$user_id = $_SESSION['user_id'];
+
+/**
+ * Função auxiliar para renderizar o card do mapa HTML.
+ */
+function renderizarCard($mapa, $quadras_por_mapa, $total_cards_geral) {
+    $isGroup = !empty($mapa['grupo_id']);
+    $soma_pessoas = 0;
+    if (isset($quadras_por_mapa[$mapa['id']])) {
+        foreach ($quadras_por_mapa[$mapa['id']] as $q) $soma_pessoas += (int)$q['pessoas_faladas'];
+    }
+    $classe_inicial = ($total_cards_geral > 1 && $soma_pessoas == 0) ? 'collapsed' : '';
+    
+    $nome_identificador = $mapa['identificador'];
+    $url_jpg = "pdfs/" . rawurlencode($nome_identificador) . ".jpg";
+    $url_pdf = "pdfs/" . rawurlencode($nome_identificador) . ".pdf";
+    $caminho_local_jpg = __DIR__ . "/pdfs/" . $nome_identificador . ".jpg";
+    $caminho_local_pdf = __DIR__ . "/pdfs/" . $nome_identificador . ".pdf";
+    ?>
+    
+    <div class="card-container-wrapper" id="mapa-card-<?php echo $mapa['id']; ?>">
         <div class="card shadow-sm <?php echo $classe_inicial; ?>">
-            <div class="card-header <?php echo $header_class; ?> text-white d-flex justify-content-between align-items-center">
+            <div class="card-header <?php echo $isGroup ? 'card-header-group' : 'bg-primary'; ?> text-white d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0 d-flex align-items-center w-100">
-                    <i class="fas <?php echo $icon_class; ?> me-2 flex-shrink-0"></i> 
+                    <i class="fas <?php echo $isGroup ? 'fa-users' : 'fa-map-pin'; ?> me-2 flex-shrink-0"></i> 
                     <span class="map-name flex-grow-1"><?php echo htmlspecialchars($mapa['identificador']); ?></span>
                     
                     <div class="d-flex align-items-center gap-2 flex-shrink-0">
                         <?php if($isGroup): ?>
                             <span class="badge bg-white text-dark group-tag" style="opacity: 0.9;"><?php echo htmlspecialchars($mapa['nome_grupo']); ?></span>
                         <?php endif; ?>
+
+                        <button class="btn btn-light btn-sm btn-share-map border-0" 
+                                style="background: rgba(255,255,255,0.2); color: white;"
+                                data-mapa-id="<?php echo $mapa['id']; ?>" 
+                                data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>"
+                                data-is-group="<?php echo $isGroup ? '1' : '0'; ?>"
+                                title="Compartilhar temporariamente">
+                            <i class="fas fa-share-alt"></i>
+                        </button>
+
                         <i class="fas fa-chevron-down header-icon"></i>
                     </div>
                 </h5>
             </div>
-
-            <!-- Wrapper para o conteúdo colapsável -->
+            
             <div class="card-collapsible-content">
-                <?php
-                // Visualização do GDrive
-                if (!empty($mapa['gdrive_file_id'])):
-                    $pdf_embed_url = "https://drive.google.com/file/d/" . $mapa['gdrive_file_id'] . "/preview";
-                ?>
+                <?php if (file_exists($caminho_local_jpg)): ?>
                     <div class="pdf-preview-container">
-                        <iframe src="<?php echo $pdf_embed_url; ?>"></iframe>
-                        <button class="btn <?php echo $btn_expand; ?> btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-src="<?php echo $pdf_embed_url; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                        <img src="<?php echo $url_jpg; ?>" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                        <button class="btn <?php echo $isGroup ? 'btn-group-color' : 'btn-primary'; ?> btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
                             <i class="fas fa-expand-alt me-1"></i> Expandir
                         </button>
                     </div>
-                <?php else: ?>
-                    <div class="text-center p-3 text-muted border-bottom"><i class="fas fa-exclamation-triangle me-2"></i> Mapa não encontrado no Drive.</div>
+                <?php elseif (!empty($mapa['gdrive_file_id'])): ?>
+                    <?php $pdf_embed_url = "https://drive.google.com/file/d/" . $mapa['gdrive_file_id'] . "/preview"; ?>
+                    <div class="pdf-preview-container">
+                        <iframe src="<?php echo $pdf_embed_url; ?>" style="width:100%;height:100%;border:none;"></iframe>
+                        <button class="btn <?php echo $isGroup ? 'btn-group-color' : 'btn-primary'; ?> btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-src="<?php echo $pdf_embed_url; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                            <i class="fas fa-expand-alt me-1"></i> Expandir
+                        </button>
+                    </div>
                 <?php endif; ?>
 
-                <!-- === BOTÃO DE DOWNLOAD DO PDF === -->
-                <?php
-                    // Nome do arquivo baseado no identificador + .pdf
-                    $nome_arquivo_pdf = $mapa['identificador'] . ".pdf";
-                    // Caminho físico para verificar se existe
-                    $caminho_local_pdf = __DIR__ . "/pdfs/" . $nome_arquivo_pdf;
-                    // URL para o link
-                    $url_download_pdf = "pdfs/" . rawurlencode($nome_arquivo_pdf);
-
-                    if (file_exists($caminho_local_pdf)):
-                ?>
+                <?php if (file_exists($caminho_local_pdf)): ?>
                     <div class="px-3 pt-3">
-                        <a href="<?php echo $url_download_pdf; ?>" class="btn btn-outline-dark w-100" download="<?php echo htmlspecialchars($nome_arquivo_pdf); ?>">
+                        <a href="<?php echo $url_pdf; ?>" class="btn btn-outline-secondary w-100" download="<?php echo htmlspecialchars($nome_identificador . '.pdf'); ?>">
                             <i class="fas fa-file-download me-2"></i> Baixar Mapa em PDF
                         </a>
                     </div>
                 <?php endif; ?>
-                <!-- ============================================== -->
 
                 <div class="card-body">
-                    <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>" data-is-predio="<?php echo $isPredio ? 'true' : 'false'; ?>">
-                        <label class="form-label fw-bold mt-2">Registro por <?php echo $isPredio ? 'Bloco' : 'Quadra'; ?>:</label>
-                        <div class="d-flex justify-content-end px-2 pb-1"> <small class="fw-bold text-muted" style="width: 140px; text-align: center;"><?php echo $isPredio ? 'Aptos' : 'Nº Pessoas'; ?><?php echo $label_apts; ?></small> </div>
+                    <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                        <label class="form-label fw-bold mt-2">Pessoas Encontradas no Território:</label>
+                        
+                        <div class="d-flex justify-content-end px-2 pb-1"> 
+                            <div class="d-flex align-items-center">
+                                <small class="fw-bold text-muted text-center" style="width: 150px;">Nº Pessoas</small>
+                                <div style="width: 32px;"></div>
+                            </div>
+                        </div>
+
                         <div class="list-group list-group-flush mb-3 quadra-list" data-mapa-id="<?php echo $mapa['id']; ?>">
-                        <?php
-                        $lista_itens = $isPredio ? ($blocos_por_mapa[$mapa['id']] ?? []) : ($quadras_por_mapa[$mapa['id']] ?? []);
-                        if (!empty($lista_itens)): foreach ($lista_itens as $quadra): ?>
-                            <div class="list-group-item quadra-item d-flex justify-content-between align-items-center p-2">
-                                <span><?php echo $isPredio ? 'Bloco' : 'Quadra'; ?> <strong><?php echo htmlspecialchars($quadra['numero']); ?></strong></span>
+                        <?php if (isset($quadras_por_mapa[$mapa['id']])): foreach ($quadras_por_mapa[$mapa['id']] as $quadra): ?>
+                            <div class="list-group-item quadra-item d-flex justify-content-between align-items-center py-3 px-2">
+                                <span class="fs-5">Quadra <strong><?php echo $quadra['numero']; ?></strong></span>
                                 <div class="d-flex align-items-center">
-                                    <div class="input-group input-group-sm" style="width: 120px;">
-                                        <button class="btn btn-outline-secondary btn-decrement" type="button">-</button>
-                                        <input type="number" class="form-control text-center quadra-input no-spinners" value="<?php echo htmlspecialchars($quadra['pessoas_faladas']); ?>" data-quadra-id="<?php echo $quadra['id']; ?>" data-is-predio="<?php echo $isPredio ? 'true' : 'false'; ?>" min="0" <?php echo $max_apts; ?> aria-label="Pessoas faladas">
-                                        <button class="btn btn-outline-secondary btn-increment" type="button">+</button>
+                                    <div class="input-group" style="width: 150px;">
+                                        <button class="btn btn-outline-secondary btn-decrement px-3 fw-bold" type="button" style="font-size: 1.2rem;">-</button>
+                                        <input type="number" class="form-control text-center quadra-input no-spinners fw-bold" 
+                                               style="font-size: 1.1rem;"
+                                               value="<?php echo $quadra['pessoas_faladas']; ?>" 
+                                               data-quadra-id="<?php echo $quadra['id']; ?>" 
+                                               data-previous-value="<?php echo $quadra['pessoas_faladas']; ?>" min="0" readonly>
+                                        <button class="btn btn-outline-secondary btn-increment px-3 fw-bold" type="button" style="font-size: 1.2rem;">+</button>
                                     </div>
-                                    <div class="ms-2 d-flex justify-content-center align-items-center" style="width: 24px; height: 24px;" id="status_save_q<?php echo $quadra['id']; ?>"></div>
+                                    <div class="ms-2 d-flex align-items-center justify-content-center" style="width: 24px;" id="status_save_q<?php echo $quadra['id']; ?>"></div>
                                 </div>
                             </div>
                         <?php endforeach; ?>
-                        <div class="list-group-item d-flex justify-content-between align-items-center p-2 border-top fw-bold bg-light"> <span>Total</span> <span class="fs-5" id="total-pessoas-mapa-<?php echo $mapa['id']; ?>"><?php echo $soma_pessoas; ?></span> </div>
-                        <?php else: ?>
-                            <div class="list-group-item text-muted">Nenhuma quadra encontrada para este mapa.</div>
+                        
+                        <div class="list-group-item d-flex justify-content-between align-items-center p-2 border-top fw-bold bg-light"> 
+                            <span class="fs-5">Total</span> 
+                            <div class="d-flex align-items-center">
+                                <span class="fs-5 text-center fw-bold" style="width: 150px;" id="total-pessoas-mapa-<?php echo $mapa['id']; ?>"><?php echo $soma_pessoas; ?></span> 
+                                <div style="width: 32px;"></div>
+                            </div>
+                        </div>
                         <?php endif; ?>
                         </div>
                         <hr>
                         <p class="mb-2"><strong>Recebido em:</strong> <?php echo date('d/m/Y', strtotime($mapa['data_entrega'])); ?></p>
                         <div class="mb-3">
-                            <label for="data_devolucao_<?php echo $mapa['id']; ?>" class="form-label">Data de Devolução:</label>
+                            <label for="data_devolucao_<?php echo $mapa['id']; ?>" class="form-label fw-bold">Data de Devolução:</label>
                             <input type="date" class="form-control" id="data_devolucao_<?php echo $mapa['id']; ?>" value="<?php echo date('Y-m-d'); ?>" required>
                         </div>
-                        <div class="d-grid"><button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Devolver Mapa Completo</button></div>
+                        <div class="d-grid mt-3">
+                            <button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Finalizar e Devolver</button>
+                        </div>
                     </form>
                 </div>
-            </div> <!-- Fim Card Collapsible -->
+            </div>
         </div>
     </div>
     <?php
+}
+
+/**
+ * Renderiza o card de Mapa de Prédio.
+ */
+function renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
+    $isGroup = !empty($mapa['grupo_id']);
+    $soma_pessoas = 0;
+    if (isset($blocos_por_mapa[$mapa['id']])) {
+        foreach ($blocos_por_mapa[$mapa['id']] as $b) $soma_pessoas += (int)$b['pessoas_faladas'];
+    }
+    $classe_inicial = ($total_cards_geral > 1 && $soma_pessoas == 0) ? 'collapsed' : '';
+
+    $max_apts = '';
+    $label_max = '';
+    if (isset($mapa['apt_inicio']) && isset($mapa['apt_fim'])) {
+        $calc_max = ((int)$mapa['apt_fim'] - (int)$mapa['apt_inicio']) + 1;
+        $max_apts = 'max="' . $calc_max . '" data-max-val="' . $calc_max . '"';
+        $label_max = ' (Máx: ' . $calc_max . ')';
+    }
+
+    $nome_identificador = $mapa['identificador'];
+    $url_jpg = "pdfs/" . rawurlencode($nome_identificador) . ".jpg";
+    $url_pdf = "pdfs/" . rawurlencode($nome_identificador) . ".pdf";
+    $caminho_local_jpg = __DIR__ . "/pdfs/" . $nome_identificador . ".jpg";
+    $caminho_local_pdf = __DIR__ . "/pdfs/" . $nome_identificador . ".pdf";
+    ?>
+
+    <div class="card-container-wrapper" id="mapa-card-p<?php echo $mapa['id']; ?>">
+        <div class="card shadow-sm <?php echo $classe_inicial; ?>">
+            <div class="card-header card-header-predio text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 d-flex align-items-center w-100">
+                    <i class="fas fa-building me-2 flex-shrink-0"></i>
+                    <span class="map-name flex-grow-1"><?php echo htmlspecialchars($mapa['identificador']); ?></span>
+                    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                        <?php if ($isGroup): ?>
+                            <span class="badge bg-white text-dark group-tag" style="opacity: 0.9;"><?php echo htmlspecialchars($mapa['nome_grupo']); ?></span>
+                        <?php endif; ?>
+                        <button class="btn btn-light btn-sm btn-share-map border-0"
+                                style="background: rgba(255,255,255,0.2); color: white;"
+                                data-mapa-id="<?php echo $mapa['id']; ?>"
+                                data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>"
+                                data-is-group="<?php echo $isGroup ? '1' : '0'; ?>"
+                                data-is-predio="1"
+                                title="Compartilhar temporariamente">
+                            <i class="fas fa-share-alt"></i>
+                        </button>
+                        <i class="fas fa-chevron-down header-icon"></i>
+                    </div>
+                </h5>
+            </div>
+
+            <div class="card-collapsible-content">
+                <?php if (file_exists($caminho_local_jpg)): ?>
+                    <div class="pdf-preview-container">
+                        <img src="<?php echo $url_jpg; ?>" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                        <button class="btn btn-predio-color btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                            <i class="fas fa-expand-alt me-1"></i> Expandir
+                        </button>
+                    </div>
+                <?php elseif (!empty($mapa['gdrive_file_id'])): ?>
+                    <?php $pdf_embed_url = "https://drive.google.com/file/d/" . $mapa['gdrive_file_id'] . "/preview"; ?>
+                    <div class="pdf-preview-container">
+                        <iframe src="<?php echo $pdf_embed_url; ?>" style="width:100%;height:100%;border:none;"></iframe>
+                        <button class="btn btn-predio-color btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-src="<?php echo $pdf_embed_url; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                            <i class="fas fa-expand-alt me-1"></i> Expandir
+                        </button>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (file_exists($caminho_local_pdf)): ?>
+                    <div class="px-3 pt-3">
+                        <a href="<?php echo $url_pdf; ?>" class="btn btn-outline-secondary w-100" download="<?php echo htmlspecialchars($nome_identificador . '.pdf'); ?>">
+                            <i class="fas fa-file-download me-2"></i> Baixar Mapa em PDF
+                        </a>
+                    </div>
+                <?php endif; ?>
+
+                <div class="card-body">
+                    <form class="form-devolver-predio" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                        <label class="form-label fw-bold mt-2">Pessoas Encontradas por Bloco:</label>
+
+                        <div class="d-flex justify-content-end px-2 pb-1">
+                            <div class="d-flex align-items-center">
+                                <small class="fw-bold text-muted text-center" style="width: 150px;">Aptos<?php echo $label_max; ?></small>
+                                <div style="width: 32px;"></div>
+                            </div>
+                        </div>
+
+                        <div class="list-group list-group-flush mb-3 bloco-list" data-mapa-id="<?php echo $mapa['id']; ?>">
+                        <?php if (isset($blocos_por_mapa[$mapa['id']])): foreach ($blocos_por_mapa[$mapa['id']] as $bloco): ?>
+                            <div class="list-group-item quadra-item d-flex justify-content-between align-items-center py-3 px-2">
+                                <span class="fs-5">Bloco <strong><?php echo htmlspecialchars($bloco['numero']); ?></strong></span>
+                                <div class="d-flex align-items-center">
+                                    <div class="input-group" style="width: 150px;">
+                                        <button class="btn btn-outline-secondary btn-decrement-bloco px-3 fw-bold" type="button" style="font-size: 1.2rem;">-</button>
+                                        <input type="number" class="form-control text-center bloco-input no-spinners fw-bold"
+                                               style="font-size: 1.1rem;"
+                                               value="<?php echo $bloco['pessoas_faladas']; ?>"
+                                               data-bloco-id="<?php echo $bloco['id']; ?>"
+                                               data-previous-value="<?php echo $bloco['pessoas_faladas']; ?>"
+                                               min="0" <?php echo $max_apts; ?> readonly>
+                                        <button class="btn btn-outline-secondary btn-increment-bloco px-3 fw-bold" type="button" style="font-size: 1.2rem;">+</button>
+                                    </div>
+                                    <div class="ms-2 d-flex align-items-center justify-content-center" style="width: 24px;" id="status_save_b<?php echo $bloco['id']; ?>"></div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+
+                        <div class="list-group-item d-flex justify-content-between align-items-center p-2 border-top fw-bold bg-light">
+                            <span class="fs-5">Total</span>
+                            <div class="d-flex align-items-center">
+                                <span class="fs-5 text-center fw-bold" style="width: 150px;" id="total-pessoas-predio-<?php echo $mapa['id']; ?>"><?php echo $soma_pessoas; ?></span>
+                                <div style="width: 32px;"></div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        </div>
+                        <hr>
+                        <p class="mb-2"><strong>Recebido em:</strong> <?php echo date('d/m/Y', strtotime($mapa['data_entrega'])); ?></p>
+                        <div class="mb-3">
+                            <label for="data_devolucao_p<?php echo $mapa['id']; ?>" class="form-label fw-bold">Data de Devolução:</label>
+                            <input type="date" class="form-control" id="data_devolucao_p<?php echo $mapa['id']; ?>" value="<?php echo date('Y-m-d'); ?>" required>
+                        </div>
+                        <div class="d-grid mt-3">
+                            <button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Finalizar e Devolver</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+
+try {
+    $stmt_user = $pdo->prepare("SELECT nome FROM users WHERE id = ?");
+    $stmt_user->execute([$user_id]);
+    $user = $stmt_user->fetch();
+
+    if (!$user) {
+        exibirErroFatal("Usuário não encontrado", "Ocorreu um erro ao carregar seu perfil.", $baseUrl);
+    }
+    
+    $sql_mapas = "SELECT m.id, m.identificador, m.data_entrega, m.gdrive_file_id, m.grupo_id, g.nome as nome_grupo
+                  FROM mapas m 
+                  LEFT JOIN grupos g ON m.grupo_id = g.id
+                  WHERE (m.dirigente_id = ? OR m.grupo_id IN (SELECT grupo_id FROM grupo_membros WHERE user_id = ?))
+                  AND m.data_devolucao IS NULL ORDER BY m.identificador ASC";
+    
+    $stmt_mapas = $pdo->prepare($sql_mapas);
+    $stmt_mapas->execute([$user_id, $user_id]);
+    $mapas = $stmt_mapas->fetchAll();
+
+    $mapas_individuais = [];
+    $mapas_grupo = [];
+    foreach ($mapas as $m) {
+        if (!empty($m['grupo_id'])) { $mapas_grupo[] = $m; } else { $mapas_individuais[] = $m; }
+    }
+
+    $quadras_por_mapa = [];
+    if (!empty($mapas)) {
+        $mapa_ids = array_column($mapas, 'id');
+        $placeholders = implode(',', array_fill(0, count($mapa_ids), '?'));
+        $stmt_quadras = $pdo->prepare("SELECT id, mapa_id, numero, pessoas_faladas FROM quadras WHERE mapa_id IN ($placeholders) ORDER BY numero ASC");
+        $stmt_quadras->execute($mapa_ids);
+        foreach ($stmt_quadras->fetchAll() as $quadra) {
+            $quadras_por_mapa[$quadra['mapa_id']][] = $quadra;
+        }
+    }
+
+    $sql_predio = "SELECT m.id, m.identificador, m.data_entrega, m.gdrive_file_id, m.grupo_id,
+                          g.nome as nome_grupo, m.apt_inicio, m.apt_fim
+                   FROM mapas_predio m
+                   LEFT JOIN grupos g ON m.grupo_id = g.id
+                   WHERE (m.dirigente_id = ? OR m.grupo_id IN (SELECT grupo_id FROM grupo_membros WHERE user_id = ?))
+                   AND m.data_devolucao IS NULL ORDER BY m.identificador ASC";
+    $stmt_predio = $pdo->prepare($sql_predio);
+    $stmt_predio->execute([$user_id, $user_id]);
+    $mapas_predio = $stmt_predio->fetchAll();
+
+    $blocos_por_mapa = [];
+    if (!empty($mapas_predio)) {
+        $mp_ids = array_column($mapas_predio, 'id');
+        $pl = implode(',', array_fill(0, count($mp_ids), '?'));
+        $stmt_blocos = $pdo->prepare("SELECT id, mapa_id, numero, pessoas_faladas FROM blocos WHERE mapa_id IN ($pl) ORDER BY numero ASC");
+        $stmt_blocos->execute($mp_ids);
+        foreach ($stmt_blocos->fetchAll() as $b) {
+            $blocos_por_mapa[$b['mapa_id']][] = $b;
+        }
+    }
+} catch (PDOException $e) {
+    exibirErroFatal("Erro no Sistema", "Problema de conexão com o banco de dados.", $baseUrl);
 }
 ?>
 <!DOCTYPE html>
@@ -231,83 +383,51 @@ function renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapas de <?php echo htmlspecialchars($dirigente['nome']); ?></title>
+    <base href="<?php echo $baseUrl; ?>site/backend/">
+    <title>Mapas de <?php echo htmlspecialchars($user['nome']); ?></title>
+    <link rel="icon" type="image/png" href="../images/map.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../style/css.css">
     <style> 
-        .iframe-page { padding: 15px; background-color: var(--content-bg); } 
+        body { padding: 15px; background-color: var(--content-bg); } 
         .quadra-item { border-bottom: 1px solid #eee; }
         .quadra-item:last-child { border-bottom: none; }
-        .no-spinners::-webkit-outer-spin-button,
-        .no-spinners::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .no-spinners::-webkit-outer-spin-button, .no-spinners::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .no-spinners { -moz-appearance: textfield; }
-        
-        .pdf-preview-container {
-            position: relative;
-            height: 300px;
-            background-color: #f0f0f0;
-            border-bottom: 1px solid #dee2e6;
-        }
-        .pdf-preview-container iframe { width: 100%; height: 100%; border: none; }
-        .pdf-preview-container .btn-expand { position: absolute; top: 8px; right: 8px; z-index: 10; }
-
-        #pdfModal .modal-dialog {
-            max-width: 95%;
-            height: 95vh;
-            margin-top: 2.5vh;
-            margin-bottom: 2.5vh;
-        }
-        #pdfModal .modal-content {
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-        #pdfModal .modal-body {
-            flex-grow: 1;
-            padding: 0;
-            overflow: hidden;
-        }
-        #pdfModal iframe { width: 100%; height: 100%; border: none; }
-
-        /* Estilos de Animação e Colapso */
-        .card-collapsible-content {
-            overflow: hidden;
-            transition: max-height 0.4s ease-in-out, opacity 0.4s ease-in-out;
-            max-height: 2000px;
-            opacity: 1;
-        }
-
-        .card.collapsed .card-collapsible-content { max-height: 0; opacity: 0; }
-        .card.card-interativo .card-header { cursor: pointer; user-select: none; }
-
-        /* Estilos para Identidade de Grupos (Trazidos da Vista Pública) */
+        .quadra-input, .bloco-input { padding: 0; background-color: #fff !important; }
         .card-header-group { background-color: #4190be !important; border-color: #4190be !important; }
-        .card-header-predio { background-color: #E91E63 !important; border-color: #E91E63 !important; }
-        .btn-predio-color { background-color: #E91E63 !important; border-color: #E91E63 !important; color: white !important; }
-        .btn-predio-color:hover { background-color: #D81B60 !important; border-color: #D81B60 !important; }
-        
         .btn-group-color { background-color: #4190be !important; border-color: #4190be !important; color: white !important; }
         .btn-group-color:hover { background-color: #357a9e !important; border-color: #357a9e !important; }
-
-        .section-divider {
-            display: flex; align-items: center; text-align: center; color: #4190be;
-            margin: 2rem 0 1.5rem 0; font-weight: 700; text-transform: uppercase;
-            font-size: 0.9rem; letter-spacing: 1px;
-        }
-        .section-divider::before, .section-divider::after {
-            content: ''; flex: 1; border-bottom: 1px solid #bfdcf0;
-        }
-        .section-divider:not(:empty)::before { margin-right: .5em; }
-        .section-divider:not(:empty)::after { margin-left: .5em; }
-
+        .card-header-predio { background-color: #E91E63 !important; border-color: #E91E63 !important; }
+        .btn-predio-color { background-color: #E91E63 !important; border-color: #E91E63 !important; color: white !important; }
+        .btn-predio-color:hover { background-color: #D81B60 !important; }
+        .pdf-preview-container { position: relative; height: 300px; background-color: #e9ecef; border-bottom: 1px solid #dee2e6; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        .pdf-preview-container img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: pointer; }
+        .pdf-preview-container iframe { width: 100%; height: 100%; border: none; }
+        .pdf-preview-container .btn-expand { position: absolute; top: 8px; right: 8px; z-index: 10; }
+        .card-collapsible-content { overflow: hidden; transition: max-height 0.4s ease, opacity 0.4s ease; max-height: 4000px; opacity: 1; }
+        .card.collapsed .card-collapsible-content { max-height: 0; opacity: 0; }
+        .card.card-interativo .card-header { cursor: pointer; user-select: none; }
         .header-icon { transition: transform 0.3s ease; }
         .card.collapsed .header-icon { transform: rotate(-90deg); }
-        .group-tag { font-size: 0.8rem; }
-
-        @media (max-width: 768px) { .iframe-page { zoom: 1.3; } }
-
+        .masonry-layout { column-count: 1; column-gap: 1.5rem; }
+        @media (min-width: 768px) { .masonry-layout { column-count: 2; } }
+        @media (min-width: 1400px) { .masonry-layout { column-count: 3; } }
+        .card-container-wrapper { break-inside: avoid; margin-bottom: 1.5rem; }
+        .section-divider { display: flex; align-items: center; text-align: center; color: #4190be; margin: 2rem 0 1.5rem 0; font-weight: 700; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; }
+        .section-divider::before, .section-divider::after { content: ''; flex: 1; border-bottom: 1px solid #bfdcf0; }
+        .section-divider:not(:empty)::before { margin-right: .5em; }
+        .section-divider:not(:empty)::after { margin-left: .5em; }
+        .section-divider-predio { color: #E91E63 !important; }
+        .section-divider-predio::before, .section-divider-predio::after { border-bottom: 1px solid #f48fb1 !important; }
+        .modal-fullscreen .modal-content { background-color: black; }
+        .modal-fullscreen .modal-header { position: absolute; top: 0; left: 0; width: 100%; background: rgba(0, 0, 0, 0.6); border-bottom: none; z-index: 9999; padding: 15px 20px; }
+        .modal-fullscreen .modal-title { color: white; font-size: 1.1rem; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+        .btn-close-custom { background: none; border: none; color: white; font-size: 1.5rem; opacity: 0.9; transition: transform 0.2s; }
+        .btn-close-custom:hover { opacity: 1; transform: scale(1.1); color: #fff; }
         @media (max-width: 480px) {
+            body { padding: 10px; }
             .card-title { display: flex; flex-wrap: nowrap; align-items: center; width: 100%; }
             .map-name { font-size: 0.95rem; white-space: normal; line-height: 1.2; margin-right: 5px; }
             .group-tag { font-size: 0.6rem !important; max-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -316,343 +436,268 @@ function renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards) {
         }
     </style>
 </head>
-<body class="iframe-page">
-
+<body>
+    <nav class="navbar navbar-dark bg-dark mb-4 rounded shadow-sm">
+        <div class="container-fluid"><span class="navbar-brand"><i class="fas fa-map-marked-alt me-2"></i>Mapas de <?php echo htmlspecialchars($user['nome']); ?></span></div>
+    </nav>
     <div class="container-fluid">
-        <h2 class="mb-4">Mapas de <?php echo htmlspecialchars($dirigente['nome']); ?></h2>
-        
-        <!-- Container de cards -->
-        <div class="row">
-            <?php if (empty($mapas)): ?>
-                <div class="col-12">
-                    <div class="alert alert-info text-center">
-                        <i class="fas fa-info-circle me-2"></i>Este dirigente não possui nenhum mapa atribuído no momento.
-                    </div>
+        <?php if (empty($mapas) && empty($mapas_predio)): ?>
+            <div class="alert alert-info text-center w-100">Nenhum mapa atribuído a você no momento.</div>
+        <?php else: ?>
+            <?php if (!empty($mapas_individuais)): ?>
+                <div class="masonry-layout" id="container-mapas-individuais">
+                    <?php 
+                    $total_global = count($mapas) + count($mapas_predio);
+                    foreach ($mapas_individuais as $mapa): 
+                        renderizarCard($mapa, $quadras_por_mapa, $total_global);
+                    endforeach; 
+                    ?>
                 </div>
-            <?php else: 
-                $total_cards_geral = count($mapas) + count($mapas_predio);
-            ?>
-                
-                <!-- MAPAS INDIVIDUAIS -->
-                <?php if (!empty($mapas_individuais)): ?>
-                    <?php foreach ($mapas_individuais as $mapa): 
-                        renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards_geral);
-                    endforeach; ?>
-                <?php endif; ?>
-
-                <!-- MAPAS DE PREDIO -->
-                <?php if (!empty($mapas_predio_list)): ?>
-                    <div class="col-12">
-                        <div class="section-divider" style="color: #E91E63;">
-                            <i class="fas fa-building me-2"></i> Mapas de Prédios
-                        </div>
-                    </div>
-                    <?php foreach ($mapas_predio_list as $mapa): 
-                        renderizarCardDirigente($mapa, $blocos_por_mapa, $total_cards_geral);
-                    endforeach; ?>
-                <?php endif; ?>
-
-                <!-- MAPAS DE GRUPO -->
-                <?php if (!empty($mapas_grupo)): ?>
-                    <div class="col-12">
-                        <div class="section-divider">
-                            <i class="fas fa-users me-2"></i> Mapas para Finais de Semana
-                        </div>
-                    </div>
-                    <?php foreach ($mapas_grupo as $mapa): 
-                        renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards_geral);
-                    endforeach; ?>
-                <?php endif; ?>
-
             <?php endif; ?>
-        </div>
-    </div>
-
-    <!-- Modal Visualizador de PDF -->
-    <div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-fullscreen-lg-down">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="pdfModalLabel">Visualizador de Mapa</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <?php if (!empty($mapas_grupo)): ?>
+                <div class="section-divider"><i class="fas fa-users me-2"></i> Mapas para Finais de Semana</div>
+                <div class="masonry-layout" id="container-mapas-grupo">
+                    <?php 
+                    $total_global = count($mapas) + count($mapas_predio);
+                    foreach ($mapas_grupo as $mapa): 
+                        renderizarCard($mapa, $quadras_por_mapa, $total_global);
+                    endforeach; 
+                    ?>
                 </div>
-                <div class="modal-body" id="pdf-modal-body"></div>
+            <?php endif; ?>
+            <?php if (!empty($mapas_predio)): ?>
+                <div class="section-divider section-divider-predio"><i class="fas fa-building me-2"></i> Mapas de Prédios</div>
+                <div class="masonry-layout" id="container-mapas-predio">
+                    <?php
+                    $total_global = count($mapas) + count($mapas_predio);
+                    foreach ($mapas_predio as $mapa):
+                        renderizarCardPredio($mapa, $blocos_por_mapa, $total_global);
+                    endforeach;
+                    ?>
+                </div>
+            <?php endif; ?>
+        <?php endif; ?>
+    </div>
+    <!-- Modais -->
+    <div class="modal fade" id="pdfModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content bg-black">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="pdfModalTitle">Visualizador</h5>
+                    <button type="button" class="btn-close-custom" data-bs-dismiss="modal" aria-label="Close"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body p-0 d-flex justify-content-center align-items-center bg-black" id="modal-viewer-body">
+                    <!-- Conteúdo dinâmico (imagem ou iframe) -->
+                </div>
             </div>
         </div>
     </div>
-
-    <!-- Modais Gerais (Feedback e Confirmação) -->
     <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="feedbackModalTitle">Aviso</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="feedbackModalBody"></div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                </div>
-            </div>
-        </div>
+        <div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="feedbackModalTitle">Aviso</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="feedbackModalBody"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button></div></div></div>
     </div>
-
     <div class="modal fade" id="confirmacaoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Confirmação</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="confirmacaoModalBody"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="btnConfirmarAcao">Confirmar</button></div></div></div>
+    </div>
+    <div class="modal fade" id="shareModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="confirmacaoModalTitle">Confirmação</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title">Compartilhar Mapa <b id="shareMapName"></b></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body" id="confirmacaoModalBody">Tem certeza?</div>
+                <div class="modal-body">
+                    <p class="mb-3 text-muted">Gera um link temporário para que outra pessoa possa acessar esse mapa sem precisar ter conta.</p>
+                    <div class="form-group mb-0">
+                        <label for="shareDurationSelect" class="form-label fw-bold">Tempo de Validade do Link</label>
+                        <select class="form-select" id="shareDurationSelect">
+                            <option value="30">30 Minutos</option>
+                            <option value="60">1 Hora</option>
+                            <option value="90" selected>1 Hora e 30 Minutos</option>
+                            <option value="120">2 Horas</option>
+                            <option value="180">3 Horas</option>
+                            <option value="240">4 Horas</option>
+                            <option value="360">6 Horas</option>
+                            <option value="720">12 Horas</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="btnConfirmarAcao">Confirmar</button>
+                    <button type="button" id="btnConfirmShare" class="btn btn-primary">Gerar Link</button>
                 </div>
             </div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../script/common.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const API_BASE_URL = '.'; 
-        const saveTimeouts = {};
+        document.addEventListener('DOMContentLoaded', () => {
+            const API_BASE_URL = '.'; 
+            const saveTimeouts = {};
+            const pendingDeltas = {};
+            const feedbackModal = new bootstrap.Modal(document.getElementById('feedbackModal'));
+            const confirmacaoModal = new bootstrap.Modal(document.getElementById('confirmacaoModal'));
+            const shareModalObj = new bootstrap.Modal(document.getElementById('shareModal'));
+            const btnConfirmarAcao = document.getElementById('btnConfirmarAcao');
 
-        // Inicialização dos Modais
-        const feedbackModalElement = document.getElementById('feedbackModal');
-        const feedbackModal = new bootstrap.Modal(feedbackModalElement);
-        const feedbackTitle = document.getElementById('feedbackModalTitle');
-        const feedbackBody = document.getElementById('feedbackModalBody');
-
-        const confirmacaoModalElement = document.getElementById('confirmacaoModal');
-        const confirmacaoModal = new bootstrap.Modal(confirmacaoModalElement);
-        const confirmacaoTitle = document.getElementById('confirmacaoModalTitle');
-        const confirmacaoBody = document.getElementById('confirmacaoModalBody');
-        const btnConfirmarAcao = document.getElementById('btnConfirmarAcao');
-
-        // --- FUNÇÕES AUXILIARES VISUAIS ---
-
-        const mostrarFeedback = (titulo, mensagem, tipo = 'primary') => {
-            feedbackTitle.textContent = titulo;
-            feedbackBody.innerHTML = mensagem;
-            const header = feedbackModalElement.querySelector('.modal-header');
-            
-            header.className = 'modal-header';
-            header.classList.add(`bg-${tipo}`, 'text-white');
-            
-            const btnClose = header.querySelector('.btn-close');
-            if (tipo !== 'light' && tipo !== 'warning') {
-                btnClose.classList.add('btn-close-white');
-            } else {
-                btnClose.classList.remove('btn-close-white');
-            }
-            feedbackModal.show();
-        };
-
-        const mostrarConfirmacao = (titulo, mensagem, callbackConfirmacao) => {
-            confirmacaoTitle.textContent = titulo;
-            confirmacaoBody.innerHTML = mensagem;
-            
-            btnConfirmarAcao.onclick = () => {
-                confirmacaoModal.hide();
-                callbackConfirmacao();
+            const mostrarFeedback = (titulo, mensagem, tipo = 'primary') => {
+                document.getElementById('feedbackModalTitle').textContent = titulo;
+                document.getElementById('feedbackModalBody').innerHTML = mensagem;
+                document.querySelector('#feedbackModal .modal-header').className = `modal-header bg-${tipo} text-white`;
+                feedbackModal.show();
             };
-            
-            confirmacaoModal.show();
-        };
-
-        // --- LÓGICA DE COLAPSO DOS CARDS ---
-        const gerenciarColapsoCards = () => {
-            const wrappers = document.querySelectorAll('.card-container-wrapper');
-            const totalMapas = wrappers.length;
-            const podeColapsar = totalMapas > 1;
-
-            wrappers.forEach(wrapper => {
-                const card = wrapper.querySelector('.card');
-                if (podeColapsar) {
-                    card.classList.add('card-interativo');
-                } else {
-                    card.classList.remove('card-interativo');
-                    card.classList.remove('collapsed'); 
-                    const icon = card.querySelector('.header-icon');
-                    if (icon) icon.style.display = 'none';
-                }
-            });
-        };
-
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.card-header')) {
-                const card = e.target.closest('.card');
-                if (card && card.classList.contains('card-interativo')) {
-                    card.classList.toggle('collapsed');
-                }
-            }
-        });
-
-        gerenciarColapsoCards();
-
-        // --- LÓGICA DA PÁGINA ---
-
-        const saveQuadra = async (quadraId, valor, statusDiv, isPredio = false) => {
-            statusDiv.innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span>';
-            const apiUrl = isPredio ? `${API_BASE_URL}/mapas_predio_api.php` : `${API_BASE_URL}/mapas_api.php`;
-            const action = isPredio ? 'update_bloco' : 'update_quadra';
-            const bodyKey = isPredio ? 'bloco_id' : 'quadra_id';
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action, [bodyKey]: quadraId, pessoas_faladas: parseInt(valor) })
+            const mostrarConfirmacao = (titulo, mensagem, callback) => {
+                document.getElementById('confirmacaoModalBody').innerHTML = mensagem;
+                btnConfirmarAcao.onclick = () => { confirmacaoModal.hide(); callback(); };
+                confirmacaoModal.show();
+            };
+            const gerenciarColapsoCards = () => {
+                const wrappers = document.querySelectorAll('.card-container-wrapper');
+                const totalMapas = wrappers.length;
+                wrappers.forEach(wrapper => {
+                    const card = wrapper.querySelector('.card');
+                    if (totalMapas > 1) { card.classList.add('card-interativo'); } else { card.classList.remove('card-interativo', 'collapsed'); const icon = card.querySelector('.header-icon'); if (icon) icon.style.display = 'none'; }
                 });
+            };
+            document.addEventListener('click', (e) => {
+                const header = e.target.closest('.card-header');
+                const btnShare = e.target.closest('.btn-share-map');
+                if (btnShare) {
+                    e.stopPropagation();
+                    const mapaId = btnShare.dataset.mapaId;
+                    const mapaNome = btnShare.dataset.mapaNome;
+                    const isGroup = btnShare.dataset.isGroup === '1';
+                    const isPredio = btnShare.dataset.isPredio === '1';
+                    
+                    document.getElementById('shareMapName').textContent = mapaNome;
+                    const btnConfirmShare = document.getElementById('btnConfirmShare');
+                    btnConfirmShare.className = 'btn ' + (isPredio ? 'btn-predio-color' : (isGroup ? 'btn-group-color' : 'btn-primary'));
+                    
+                    btnConfirmShare.onclick = async () => {
+                        btnConfirmShare.innerHTML = '<span class="spinner-border spinner-border-sm"></span>...';
+                        btnConfirmShare.disabled = true;
+                        const mins = document.getElementById('shareDurationSelect').value;
+                        try {
+                            const shareApi = isPredio ? `${API_BASE_URL}/mapas_predio_api.php` : `${API_BASE_URL}/mapas_api.php`;
+                            const resp = await fetch(shareApi, { 
+                                method: 'POST', 
+                                headers: { 'Content-Type': 'application/json' }, 
+                                body: JSON.stringify({ action: 'gerar_compartilhamento', mapa_id: mapaId, minutos: mins }) 
+                            });
+                            const res = await resp.json();
+                            if(res.success) {
+                                shareModalObj.hide();
+                                const currentOrigin = window.location.origin;
+                                let shareUrlPath = window.location.pathname;
+                                // Ajuste para o path da vista compartilhada
+                                shareUrlPath = shareUrlPath.substring(0, shareUrlPath.lastIndexOf('/') + 1) + `vista_compartilhada.php?s=${res.token}`;
+                                const shareLink = currentOrigin + shareUrlPath;
 
-                if (!response.ok) {
-                    throw new Error(`Erro na rede: ${response.status} ${response.statusText}`);
+                                const copyHtml = `
+                                    <div class="mt-2 text-center">
+                                        <p class="mb-3 text-muted">Link de acesso temporário:</p>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="copyShareLink" value="${shareLink}" readonly>
+                                            <button class="btn btn-primary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('copyShareLink').value); this.innerHTML='Copiado!';">Copiar</button>
+                                        </div>
+                                    </div>
+                                `;
+                                mostrarFeedback('Compartilhamento Gerado!', copyHtml, 'success');
+                            }
+                        } catch (err) { mostrarFeedback('Erro', 'Falha ao gerar link.'); }
+                        finally { btnConfirmShare.innerHTML = 'Gerar Link'; btnConfirmShare.disabled = false; }
+                    };
+                    shareModalObj.show();
+                    return;
                 }
+                if (header) { const card = header.closest('.card'); if (card.classList.contains('card-interativo')) card.classList.toggle('collapsed'); }
+            });
+            gerenciarColapsoCards();
 
-                const result = await response.json();
-                
-                if (result.status === 'success') {
+            // --- LÓGICA DE SALVAMENTO ---
+            const saveItem = async (id, delta, isPredio, statusDiv) => {
+                statusDiv.innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span>';
+                const api = isPredio ? `${API_BASE_URL}/mapas_predio_api.php` : `${API_BASE_URL}/mapas_api.php`;
+                const action = isPredio ? 'update_bloco_increment' : 'update_quadra_increment';
+                const key = isPredio ? 'bloco_id' : 'quadra_id';
+                try {
+                    await fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, [key]: id, delta }) });
                     statusDiv.innerHTML = '<i class="fas fa-check text-success"></i>';
-                    setTimeout(() => { 
-                        if (statusDiv.innerHTML.includes('fa-check')) {
-                            statusDiv.innerHTML = ''; 
-                        }
-                    }, 2000);
-                } else { 
-                    throw new Error(result.message || 'A API retornou um erro inesperado.'); 
-                }
-            } catch (error) {
-                console.error('Erro ao salvar:', error);
-                statusDiv.innerHTML = '<i class="fas fa-times text-danger"></i>';
-            }
-        };
+                    setTimeout(() => { statusDiv.innerHTML = ''; }, 2000);
+                } catch (e) { statusDiv.innerHTML = '<i class="fas fa-times text-danger"></i>'; }
+            };
 
-        document.querySelectorAll('.quadra-input').forEach(input => {
-            input.addEventListener('input', (e) => {
-                const quadraId = e.target.dataset.quadraId;
-                const isPredio = e.target.dataset.isPredio === 'true';
-                const statusDiv = document.getElementById(`status_save_q${quadraId}`);
-                const maxVal = e.target.dataset.maxVal ? parseInt(e.target.dataset.maxVal) : null;
-                let valor = parseInt(e.target.value) || 0;
-
-                // Enforce max for prédio
-                if (maxVal !== null && valor > maxVal) {
-                    valor = maxVal;
-                    e.target.value = maxVal;
-                }
-                
-                if (saveTimeouts[quadraId]) clearTimeout(saveTimeouts[quadraId]);
-                
-                statusDiv.innerHTML = '<small class="text-muted">...</small>';
-
-                saveTimeouts[quadraId] = setTimeout(() => {
-                    saveQuadra(quadraId, valor, statusDiv, isPredio);
-                }, 800);
-
-                updateTotal(e.target.closest('.quadra-list'));
-            });
-        });
-        
-        document.querySelectorAll('.btn-increment').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const input = e.target.closest('.input-group').querySelector('.quadra-input');
+            const handleInput = (e, isPredio) => {
+                const input = e.target;
+                const itemId = isPredio ? input.dataset.blocoId : input.dataset.quadraId;
                 const maxVal = input.dataset.maxVal ? parseInt(input.dataset.maxVal) : null;
-                const current = parseInt(input.value || 0);
-                if (maxVal === null || current < maxVal) {
-                    input.value = current + 1;
-                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                let val = parseInt(input.value) || 0;
+                if (maxVal !== null && val > maxVal) { val = maxVal; input.value = val; }
+                const diff = val - (parseInt(input.dataset.previousValue) || 0);
+                if (diff !== 0) {
+                    pendingDeltas[itemId] = (pendingDeltas[itemId] || 0) + diff;
+                    input.dataset.previousValue = val;
+                    clearTimeout(saveTimeouts[itemId]);
+                    const statusId = isPredio ? `status_save_b${itemId}` : `status_save_q${itemId}`;
+                    saveTimeouts[itemId] = setTimeout(() => {
+                        const delta = pendingDeltas[itemId];
+                        pendingDeltas[itemId] = 0;
+                        saveItem(itemId, delta, isPredio, document.getElementById(statusId));
+                    }, 800);
+                    let total = 0;
+                    const list = input.closest('.list-group');
+                    list.querySelectorAll('input').forEach(i => total += (parseInt(i.value) || 0));
+                    const totalId = isPredio ? `total-pessoas-predio-${list.dataset.mapaId}` : `total-pessoas-mapa-${list.dataset.mapaId}`;
+                    const targetTotal = document.getElementById(totalId);
+                    if (targetTotal) targetTotal.textContent = total;
                 }
+            };
+
+            document.querySelectorAll('.quadra-input').forEach(i => i.addEventListener('input', (e) => handleInput(e, false)));
+            document.querySelectorAll('.bloco-input').forEach(i => i.addEventListener('input', (e) => handleInput(e, true)));
+
+            document.querySelectorAll('.btn-increment, .btn-increment-bloco').forEach(b => b.onclick = (e) => { 
+                const i = e.target.closest('.input-group').querySelector('input'); 
+                const maxVal = i.dataset.maxVal ? parseInt(i.dataset.maxVal) : null;
+                if (maxVal === null || (parseInt(i.value)||0) < maxVal) { i.value = (parseInt(i.value)||0)+1; i.dispatchEvent(new Event('input')); }
             });
-        });
-        
-        document.querySelectorAll('.btn-decrement').forEach(btn => {
-            btn.addEventListener('click', (e) => { const input = e.target.closest('.input-group').querySelector('.quadra-input'); const currentValue = parseInt(input.value || 0); if (currentValue > 0) { input.value = currentValue - 1; input.dispatchEvent(new Event('input', { bubbles: true })); } });
-        });
-        
-        const updateTotal = (quadraList) => { const mapaId = quadraList.dataset.mapaId; let total = 0; quadraList.querySelectorAll('.quadra-input').forEach(input => { total += parseInt(input.value) || 0; }); document.getElementById(`total-pessoas-mapa-${mapaId}`).textContent = total; };
-        
-        document.querySelectorAll('.form-devolver').forEach(form => {
-            form.addEventListener('submit', (e) => {
+            document.querySelectorAll('.btn-decrement, .btn-decrement-bloco').forEach(b => b.onclick = (e) => { 
+                const i = e.target.closest('.input-group').querySelector('input'); 
+                if(parseInt(i.value)>0){ i.value = parseInt(i.value)-1; i.dispatchEvent(new Event('input')); }
+            });
+
+            // --- DEVOLUÇÃO ---
+            const handleDevolver = (e, isPredio) => {
                 e.preventDefault();
                 const mapaId = e.target.dataset.mapaId;
-                const mapaNome = e.target.dataset.mapaNome;
-                const isPredio = e.target.dataset.isPredio === 'true';
-                const dataDevolucao = document.getElementById(`data_devolucao_${mapaId}`).value;
-                const apiUrl = isPredio ? `${API_BASE_URL}/mapas_predio_api.php` : `${API_BASE_URL}/mapas_api.php`;
-                
-                if (!dataDevolucao) { mostrarFeedback('Atenção', 'Por favor, selecione a data de devolução.', 'warning'); return; }
+                const dataId = isPredio ? `data_devolucao_p${mapaId}` : `data_devolucao_${mapaId}`;
+                const dataDev = document.getElementById(dataId).value;
+                mostrarConfirmacao('Finalizar Mapa', `Deseja devolver <b>${e.target.dataset.mapaNome}</b>?`, async () => {
+                    const api = isPredio ? `${API_BASE_URL}/mapas_predio_api.php` : `${API_BASE_URL}/mapas_api.php`;
+                    try {
+                        const resp = await fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'devolver', mapa_id: mapaId, data_devolucao: dataDev }) });
+                        const res = await resp.json();
+                        if (res.message) location.reload();
+                        else mostrarFeedback('Erro', res.error || 'Falha ao devolver.');
+                    } catch (e) { mostrarFeedback('Erro', 'Falha ao devolver.'); }
+                });
+            };
+            document.querySelectorAll('.form-devolver').forEach(f => f.onsubmit = (e) => handleDevolver(e, false));
+            document.querySelectorAll('.form-devolver-predio').forEach(f => f.onsubmit = (e) => handleDevolver(e, true));
 
-                mostrarConfirmacao(
-                    'Confirmar Devolução',
-                    `Tem certeza que deseja devolver o mapa <strong>${mapaNome}</strong> na data <strong>${dataDevolucao}</strong>?<br><br>Ele será removido da sua lista.`,
-                    async () => {
-                        const btn = e.target.querySelector('button[type="submit"]');
-                        const originalText = btn.innerHTML;
-                        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
-                        btn.disabled = true;
-                        try {
-                            const response = await fetch(apiUrl, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ action: 'devolver', mapa_id: mapaId, data_devolucao: dataDevolucao })
-                            });
-                            
-                            if (!response.ok) {
-                                const errorData = await response.json().catch(() => null);
-                                throw new Error(errorData?.message || `Erro na rede: ${response.statusText}`);
-                            }
-
-                            const result = await response.json();
-
-                            if (result.message) { 
-                                mostrarFeedback('Sucesso', 'Mapa devolvido com sucesso!', 'success'); 
-                                
-                                const cardWrapper = document.getElementById(`mapa-card-${mapaId}`);
-                                cardWrapper.style.transition = 'opacity 0.5s';
-                                cardWrapper.style.opacity = '0';
-                                
-                                setTimeout(() => {
-                                    cardWrapper.remove();
-                                    gerenciarColapsoCards();
-                                    if(document.querySelectorAll('.card').length === 0) location.reload();
-                                }, 500);
-                            } else { 
-                                throw new Error(result.message || 'A API retornou uma resposta inesperada.'); 
-                            }
-                        } catch (error) { 
-                            console.error('Erro ao devolver mapa:', error); 
-                            mostrarFeedback('Erro', 'Erro ao devolver o mapa: ' + error.message, 'danger'); 
-                            btn.innerHTML = originalText; 
-                            btn.disabled = false; 
-                        }
-                    }
-                );
+            // --- MODAL VIEWER ---
+            document.getElementById('pdfModal').addEventListener('show.bs.modal', (e) => { 
+                const btn = e.relatedTarget; 
+                const body = document.getElementById('modal-viewer-body');
+                body.innerHTML = '';
+                if (btn.dataset.imgSrc) {
+                    body.innerHTML = `<img src="${btn.dataset.imgSrc}" style="max-width:100%; max-height:100%; object-fit:contain;">`;
+                } else if (btn.dataset.pdfSrc) {
+                    body.innerHTML = `<iframe src="${btn.dataset.pdfSrc}" style="width:100%;height:100%;border:none;"></iframe>`;
+                }
+                document.getElementById('pdfModalTitle').textContent = btn.dataset.pdfTitle || 'Visualizador'; 
             });
         });
-
-        const pdfModal = document.getElementById('pdfModal');
-        if (pdfModal) {
-            pdfModal.addEventListener('show.bs.modal', (event) => {
-                const button = event.relatedTarget;
-                const pdfSrc = button.getAttribute('data-pdf-src');
-                const pdfTitle = button.getAttribute('data-pdf-title');
-                
-                pdfModal.querySelector('.modal-title').textContent = pdfTitle;
-                const modalBody = pdfModal.querySelector('#pdf-modal-body');
-                modalBody.innerHTML = ''; 
-
-                if (pdfSrc) {
-                    const iframe = document.createElement('iframe');
-                    iframe.src = pdfSrc;
-                    modalBody.appendChild(iframe);
-                } else {
-                    modalBody.innerHTML = '<div class="alert alert-danger m-3">URL do PDF não encontrada.</div>';
-                }
-            });
-        }
-    });
     </script>
 </body>
 </html>
