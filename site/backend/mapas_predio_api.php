@@ -242,7 +242,7 @@ function handle_post_unified($pdo) {
             
             case 'update_bloco':
                 // chamado pela vista_dirigente para mapas de prédio
-                $bloco_id = $data['bloco_id'] ?? null;
+                $bloco_id = $data['bloco_id'] ?? $data['quadra_id'] ?? null;
                 if (!$bloco_id || !isset($data['pessoas_faladas'])) throw new Exception('Dados insuficientes.', 400);
                 $pdo->prepare("UPDATE blocos SET pessoas_faladas = GREATEST(0, ?) WHERE id = ?")->execute([$data['pessoas_faladas'], $bloco_id]);
                 echo json_encode(['status' => 'success']);
@@ -250,24 +250,9 @@ function handle_post_unified($pdo) {
 
             case 'update_bloco_increment':
                 // chamado pela vista_publica para mapas de prédio (sistema de deltas)
-                if (!isset($data['bloco_id']) || !isset($data['delta'])) throw new Exception('Dados insuficientes.', 400);
-                $pdo->prepare("UPDATE blocos SET pessoas_faladas = GREATEST(0, CAST(pessoas_faladas AS SIGNED) + ?) WHERE id = ?")->execute([(int)$data['delta'], $data['bloco_id']]);
-                echo json_encode(['status' => 'success']);
-                break;
-
-            case 'update_quadra':
-                if (!isset($data['quadra_id']) || !isset($data['pessoas_faladas'])) throw new Exception('Dados insuficientes.', 400);
-                $sql = "UPDATE blocos SET pessoas_faladas = GREATEST(0, ?) WHERE id = ?";
-                $pdo->prepare($sql)->execute([$data['pessoas_faladas'], $data['quadra_id']]);
-                echo json_encode(['status' => 'success']);
-                break;
-
-            case 'update_quadra_increment':
-                if (!isset($data['quadra_id']) || !isset($data['delta'])) throw new Exception('Dados insuficientes.', 400);
-                $sql = "UPDATE blocos 
-                        SET pessoas_faladas = GREATEST(0, CAST(pessoas_faladas AS SIGNED) + ?) 
-                        WHERE id = ?";
-                $pdo->prepare($sql)->execute([(int)$data['delta'], $data['quadra_id']]);
+                $bloco_id = $data['bloco_id'] ?? $data['quadra_id'] ?? null;
+                if (!$bloco_id || !isset($data['delta'])) throw new Exception('Dados insuficientes.', 400);
+                $pdo->prepare("UPDATE blocos SET pessoas_faladas = GREATEST(0, CAST(pessoas_faladas AS SIGNED) + ?) WHERE id = ?")->execute([(int)$data['delta'], $bloco_id]);
                 echo json_encode(['status' => 'success']);
                 break;
 

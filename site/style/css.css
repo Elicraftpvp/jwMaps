@@ -600,6 +600,16 @@ body.iframe-page {
 }
 
 
+/* 4. BADGE DE PRÉDIO (Rosa) - Estilo solicitado para distinção visual */
+.mapa-predio-badge {
+    background-color: #f8bbd0; /* Rosa claro pastel */
+    color: #880e4f; /* Rosa escuro para o texto */
+    border: 1px solid #f06292;
+    font-size: 0.9rem;
+    padding: 0.6em 1em;
+    font-weight: 500;
+}
+
 /* CONTAINER DOS MAPAS DISPONÍVEIS - O SEU CÓDIGO ORIGINAL */
 #lista-mapas-disponiveis {
     display: flex;
