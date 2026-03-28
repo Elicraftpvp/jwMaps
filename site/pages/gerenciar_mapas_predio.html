@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapas de Prédios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="../style/css.css">
+    <style>
+        /* CSS Específico para corrigir o corte dos Dropdowns */
+        .table-responsive-visible {
+            overflow-x: auto;
+            overflow-y: visible !important; /* Permite que o dropdown saia da tabela */
+            min-height: 300px; /* Garante altura mínima para dropdown abrir se tabela estiver vazia */
+        }
+        
+        /* Ajuste fino para os checkboxes dentro do dropdown */
+        .dropdown-item-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 0.25rem 1rem;
+            cursor: pointer;
+        }
+        .dropdown-item-checkbox:hover {
+            background-color: #f8f9fa;
+        }
+        .dropdown-item-checkbox input {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="iframe-page">
+    <div class="container-fluid">
+        <div class="card shadow-sm">
+            <div class="card-header card-header-icon">
+                <h4 class="mb-0"><i class="fas fa-building card-title-icon"></i> Mapas de Prédios</h4>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#mapaModal" disabled>
+                        <i class="fas fa-plus-circle me-2"></i> Adicionar Mapa
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive table-responsive-visible">
+                    <table class="table table-hover align-middle table-responsive-cards">
+                        <thead class="table-light">
+                            <tr>
+                                <th>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>Nome do Território</span>
+                                        <div class="dropdown">
+                                            <a href="#" role="button" id="filtroOrdenacaoBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-filter text-secondary" title="Ordenar por Identificador"></i>
+                                            </a>
+                                            <ul class="dropdown-menu shadow" aria-labelledby="filtroOrdenacaoBtn">
+                                                <li><a class="dropdown-item" href="#" data-sort="id"><strong>Padrão (Criação)</strong></a></li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li><a class="dropdown-item" href="#" data-sort="asc">Ordenar A-Z / 0-9</a></li>
+                                                <li><a class="dropdown-item" href="#" data-sort="desc">Ordenar Z-A / 9-0</a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </th>
+                                <th>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>Região</span>
+                                        <div class="dropdown">
+                                            <a href="#" role="button" id="filtroRegiaoBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-filter text-secondary" title="Filtrar por Região"></i>
+                                            </a>
+                                            <ul class="dropdown-menu shadow" aria-labelledby="filtroRegiaoBtn" id="filtroRegiaoMenu">
+                                                <!-- Opções carregadas pelo JS -->
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </th>
+                                <th>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>Tipo</span>
+                                        <div class="dropdown">
+                                            <a href="#" role="button" id="filtroTipoBtn" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                                                <i class="fas fa-filter text-secondary" title="Filtrar e Ordenar por Tipo"></i>
+                                            </a>
+                                            <ul class="dropdown-menu shadow" aria-labelledby="filtroTipoBtn" id="filtroTipoMenu" style="min-width: 200px;">
+                                                <!-- Ordenação do Tipo -->
+                                                <li><a class="dropdown-item" href="#" data-sort-type="tipo_asc"><i class="fas fa-sort-alpha-down me-2"></i>Ordenar A-Z</a></li>
+                                                <li><a class="dropdown-item" href="#" data-sort-type="tipo_desc"><i class="fas fa-sort-alpha-up me-2"></i>Ordenar Z-A</a></li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li><h6 class="dropdown-header">Filtrar Tipos:</h6></li>
+                                                <!-- Checkboxes carregados pelo JS -->
+                                                <div id="listaCheckboxesTipos" style="max-height: 200px; overflow-y: auto;"></div>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </th>
+                                <th>Blocos</th>
+                                <th>Status</th>
+                                <th>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>Responsável</span> <!-- Alterado de Dirigente para Responsável -->
+                                        <div class="dropdown">
+                                            <a href="#" role="button" id="filtroDirigenteBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-filter text-secondary" title="Filtrar por Dirigente"></i>
+                                            </a>
+                                            <ul class="dropdown-menu shadow" aria-labelledby="filtroDirigenteBtn" id="filtroDirigenteMenu">
+                                                <!-- Opções carregadas pelo JS -->
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </th>
+                                <th class="text-center">Tempo</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mapas-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Adicionar/Editar Mapa -->
+    <div class="modal fade" id="mapaModal" tabindex="-1" aria-labelledby="mapaModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="mapaModalLabel">Adicionar Novo Mapa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-mapa">
+                        <div class="mb-3">
+                            <label for="mapa_identificador" class="form-label">Nome do Território</label>
+                            <input type="text" class="form-control" id="mapa_identificador" placeholder="Ex: Mapa 01 - Centro" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label for="mapa_bloco_inicio" class="form-label">Bloco Inicial</label>
+                                <input type="text" class="form-control" id="mapa_bloco_inicio" required>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label for="mapa_bloco_fim" class="form-label">Bloco Final</label>
+                                <input type="text" class="form-control" id="mapa_bloco_fim" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label for="mapa_apt_inicio" class="form-label">Apt Inicial</label>
+                                <input type="number" class="form-control" id="mapa_apt_inicio" min="1" value="1" required>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label for="mapa_apt_fim" class="form-label">Apt Final</label>
+                                <input type="number" class="form-control" id="mapa_apt_fim" min="1" placeholder="Ex: 6" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="mapa_regiao" class="form-label">Região</label>
+                            <input type="text" class="form-control" id="mapa_regiao" placeholder="Ex: Centro, Zona Norte">
+                        </div>
+                        <div class="mb-3">
+                            <label for="mapa_tipo" class="form-label">Tipo</label>
+                            <input type="text" class="form-control" id="mapa_tipo" placeholder="Ex: Comercial, Residencial">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="salvar-mapa-btn">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Entregar Mapa -->
+    <div class="modal fade" id="entregarModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="entregarModalLabel">Entregar Mapa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="entregar_mapa_id">
+                    
+                    <div class="mb-3">
+                        <label for="entregar_dirigente_id" class="form-label">Selecione o Dirigente</label>
+                        <select class="form-select" id="entregar_dirigente_id">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="entregar_grupo_id" class="form-label">Selecione o Grupo</label>
+                        <select class="form-select" id="entregar_grupo_id">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <label for="entregar_data" class="form-label">Data de Entrega</label>
+                        <input type="date" class="form-control" id="entregar_data" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" id="confirmar-entrega-btn">Confirmar Entrega</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Histórico do Mapa -->
+    <div class="modal fade" id="historicoMapaModal" tabindex="-1" aria-labelledby="historicoMapaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="historicoMapaModalLabel">Histórico do Mapa: <span id="historico_mapa_identificador"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Dirigente</th>
+                                    <th>Entrega</th>
+                                    <th>Devolução</th>
+                                    <th>Pessoas Faladas</th>
+                                    <th>Detalhes Blocos</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historico-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modais Gerais (Feedback e Confirmação) -->
+    <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="feedbackModalTitle">Aviso</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="feedbackModalBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmacaoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmacaoModalTitle">Confirmação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="confirmacaoModalBody">Tem certeza?</div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnConfirmarAcao">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
+    <script src="../script/common.js" defer></script>
+    <script src="../script/gerenciar_mapas_predio.js" defer></script>
+</body>
+</html>

@@ -38,25 +38,54 @@ $share_token = htmlspecialchars($_GET['s'] ?? '');
 if (empty($share_token)) exibirErroFatal("Link Inválido", "Acesse através de um link válido.", $baseUrl);
 
 try {
-    $stmt_share = $pdo->prepare("
-        SELECT c.expira_em, u.nome as dirigente_nome, m.*, g.nome as nome_grupo
-        FROM compartilhamentos c
-        JOIN mapas m ON c.mapa_id = m.id
-        JOIN users u ON m.dirigente_id = u.id
-        LEFT JOIN grupos g ON m.grupo_id = g.id
-        WHERE c.token = ? AND c.expira_em > NOW()
-    ");
-    $stmt_share->execute([$share_token]);
-    $mapa = $stmt_share->fetch();
+    // 1. Busca os detalhes básicos do compartilhamento
+    $stmt_c = $pdo->prepare("SELECT mapa_id, tipo, expira_em FROM compartilhamentos WHERE token = ? AND expira_em > NOW()");
+    $stmt_c->execute([$share_token]);
+    $c_data = $stmt_c->fetch();
 
-    if (!$mapa) exibirErroFatal("Link Expirado", "Este acesso não é mais válido ou expirou.", $baseUrl);
+    if (!$c_data) exibirErroFatal("Link Expirado", "Este acesso não é mais válido ou expirou.", $baseUrl);
 
-    $stmt_quadras = $pdo->prepare("SELECT id, numero, pessoas_faladas FROM quadras WHERE mapa_id = ? ORDER BY numero ASC");
-    $stmt_quadras->execute([$mapa['id']]);
-    $quadras = $stmt_quadras->fetchAll();
+    $mapa_id = $c_data['mapa_id'];
+    $tipo_compartilhamento = $c_data['tipo']; // 'normal' ou 'predio'
+
+    if ($tipo_compartilhamento === 'predio') {
+        $stmt_mapa = $pdo->prepare("
+            SELECT m.*, u.nome as dirigente_nome, g.nome as nome_grupo
+            FROM mapas_predio m
+            LEFT JOIN users u ON m.dirigente_id = u.id
+            LEFT JOIN grupos g ON m.grupo_id = g.id
+            WHERE m.id = ?
+        ");
+        $stmt_items = $pdo->prepare("SELECT id, numero, pessoas_faladas FROM blocos WHERE mapa_id = ? ORDER BY numero ASC");
+        $label_item = "Bloco";
+        $api_url = "./mapas_predio_api.php";
+        $api_action = "update_bloco_increment";
+        $api_id_field = "bloco_id";
+    } else {
+        $stmt_mapa = $pdo->prepare("
+            SELECT m.*, u.nome as dirigente_nome, g.nome as nome_grupo
+            FROM mapas m
+            LEFT JOIN users u ON m.dirigente_id = u.id
+            LEFT JOIN grupos g ON m.grupo_id = g.id
+            WHERE m.id = ?
+        ");
+        $stmt_items = $pdo->prepare("SELECT id, numero, pessoas_faladas FROM quadras WHERE mapa_id = ? ORDER BY numero ASC");
+        $label_item = "Quadra";
+        $api_url = "./mapas_api.php";
+        $api_action = "update_quadra_increment";
+        $api_id_field = "quadra_id";
+    }
+
+    $stmt_mapa->execute([$mapa_id]);
+    $mapa = $stmt_mapa->fetch();
+
+    if (!$mapa) exibirErroFatal("Não Encontrado", "O território associado não foi encontrado.", $baseUrl);
+
+    $stmt_items->execute([$mapa_id]);
+    $items = $stmt_items->fetchAll();
 
     $soma_pessoas = 0;
-    foreach ($quadras as $q) $soma_pessoas += (int)$q['pessoas_faladas'];
+    foreach ($items as $item) $soma_pessoas += (int)$item['pessoas_faladas'];
 
     $url_jpg = "pdfs/" . rawurlencode($mapa['identificador']) . ".jpg";
     $url_pdf = "pdfs/" . rawurlencode($mapa['identificador']) . ".pdf";
@@ -64,10 +93,14 @@ try {
     
     $isGroup = !empty($mapa['grupo_id']);
     $agora = new DateTime();
-    $expira = new DateTime($mapa['expira_em']);
+    $expira = new DateTime($c_data['expira_em']);
     $segundos_restantes = $expira->getTimestamp() - $agora->getTimestamp();
     if ($segundos_restantes < 0) $segundos_restantes = 0;
-} catch (PDOException $e) { exibirErroFatal("Erro", "Falha na conexão.", $baseUrl); }
+
+    // Nome de quem compartilhou (Prioriza Dirigente, cai para Grupo se for mapa só de grupo)
+    $quem_compartilhou = $mapa['dirigente_nome'] ?? ($mapa['nome_grupo'] ?? 'Território');
+
+} catch (PDOException $e) { exibirErroFatal("Erro", "Falha na conexão: " . $e->getMessage(), $baseUrl); }
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -94,7 +127,7 @@ try {
     <div class="container-fluid">
         <div class="share-banner">
             <i class="fas fa-layer-group me-2"></i> 
-            <?php echo htmlspecialchars($mapa['dirigente_nome']); ?> compartilhou <?php echo htmlspecialchars($mapa['identificador']); ?> 
+            <?php echo htmlspecialchars($quem_compartilhou); ?> compartilhou <?php echo htmlspecialchars($mapa['identificador']); ?> 
             restando <span id="timer" class="badge bg-custom-share">--:--</span>
         </div>
 
@@ -110,23 +143,27 @@ try {
             <div class="pdf-preview-container">
                 <img src="<?php echo $url_jpg; ?>" data-bs-toggle="modal" data-bs-target="#pdfModal">
             </div>
+            <?php elseif (!empty($mapa['gdrive_file_id'])): ?>
+            <div class="pdf-preview-container">
+                <iframe src="https://drive.google.com/file/d/<?php echo $mapa['gdrive_file_id']; ?>/preview" style="width:100%;height:100%;border:none;"></iframe>
+            </div>
             <?php endif; ?>
 
             <div class="card-body">
                 <label class="form-label fw-bold">Pessoas Encontradas:</label>
                 <div class="list-group list-group-flush mb-3">
-                    <?php foreach ($quadras as $q): ?>
+                    <?php foreach ($items as $item): ?>
                     <div class="list-group-item d-flex justify-content-between align-items-center px-1">
-                        <span>Quadra <b><?php echo $q['numero']; ?></b></span>
+                        <span><?php echo $label_item; ?> <b><?php echo $item['numero']; ?></b></span>
                         <div class="d-flex align-items-center">
                             <div class="input-group" style="width: 140px;">
                                 <button class="btn btn-outline-secondary btn-dec" type="button">-</button>
                                 <input type="number" class="form-control text-center q-input no-spinners fw-bold" 
-                                       value="<?php echo $q['pessoas_faladas']; ?>" 
-                                       data-id="<?php echo $q['id']; ?>" data-prev="<?php echo $q['pessoas_faladas']; ?>" readonly>
+                                       value="<?php echo $item['pessoas_faladas']; ?>" 
+                                       data-id="<?php echo $item['id']; ?>" data-prev="<?php echo $item['pessoas_faladas']; ?>" readonly>
                                 <button class="btn btn-outline-secondary btn-inc" type="button">+</button>
                             </div>
-                            <div class="ms-1" id="st_<?php echo $q['id']; ?>" style="width: 20px;"></div>
+                            <div class="ms-1" id="st_<?php echo $item['id']; ?>" style="width: 20px;"></div>
                         </div>
                     </div>
                     <?php endforeach; ?>
@@ -180,7 +217,11 @@ try {
                 const delta = pending[id]; if (!delta) return; pending[id] = 0;
                 stDiv.innerHTML = '<span class="spinner-border spinner-border-sm text-custom-share"></span>';
                 try {
-                    await fetch('./mapas_api.php', { method: 'POST', body: JSON.stringify({ action: 'update_quadra_increment', quadra_id: id, delta: delta }) });
+                    await fetch('<?php echo $api_url; ?>', { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: '<?php echo $api_action; ?>', <?php echo $api_id_field; ?>: id, delta: delta }) 
+                    });
                     stDiv.innerHTML = '<i class="fas fa-check text-success"></i>';
                     setTimeout(() => stDiv.innerHTML = '', 1500);
                 } catch (e) { stDiv.innerHTML = 'x'; }

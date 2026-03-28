@@ -27,7 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
         menuItems = [
             // Dashboard é o primeiro e ativo por padrão
             { href: 'pages/dashboard.html', icon: 'fas fa-tachometer-alt', text: 'Dashboard', active: true },
-            { href: 'pages/gerenciar_mapas.html', icon: 'fas fa-map', text: 'Gerenciar Mapas' },
+            { href: 'pages/gerenciar_mapas.html', icon: 'fas fa-map', text: 'Mapas e Territorios' },
+            { href: 'pages/gerenciar_mapas_predio.html', icon: 'fas fa-building', text: 'Mapas de Predios' },
             { href: 'pages/dirigentes.html', icon: 'fas fa-user-cog', text: 'Gerenciar Usuarios' },
             { href: 'pages/gerenciar_grupos.html', icon: 'fas fa-users-cog', text: 'Gerenciar Grupos' },
             // MODIFICAÇÃO: Adicionado "Meus Mapas" para o Admin
@@ -56,11 +57,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if ((userPermissoes & PERM_CAMPANHA) === PERM_CAMPANHA) {
             hasAccess = true;
             // Adiciona apenas se ainda não existirem, para evitar duplicatas caso uma futura permissão os inclua
-            if (!menuItems.some(item => item.href.includes('gerenciar_mapas'))) {
-                 menuItems.push({ href: 'pages/gerenciar_mapas.html', icon: 'fas fa-map', text: 'Gerenciar Mapas' });
+            if (!menuItems.some(item => item.href.includes('gerenciar_mapas.html'))) {
+                menuItems.push({ href: 'pages/gerenciar_mapas.html', icon: 'fas fa-map', text: 'Gerenciar Mapas' });
+            }
+            if (!menuItems.some(item => item.href.includes('gerenciar_mapas_predio.html'))) {
+                menuItems.push({ href: 'pages/gerenciar_mapas_predio.html', icon: 'fas fa-building', text: 'Mapas de Predios' });
             }
             if (!menuItems.some(item => item.href.includes('controle'))) {
-                 menuItems.push({ href: 'pages/controle.html', icon: 'fas fa-history', text: 'Controle' });
+                menuItems.push({ href: 'pages/controle.html', icon: 'fas fa-history', text: 'Controle' });
             }
         }
 
@@ -99,14 +103,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuMobile = document.getElementById('menu-principal-mobile');
     if (menuDesktop) menuDesktop.innerHTML = menuHTML;
     if (menuMobile) menuMobile.innerHTML = menuHTML;
-    
+
     // Lógica de UI para links ativos e logout
     const allNavLinks = document.querySelectorAll('.nav-link');
     const sidebarMobileElement = document.getElementById('sidebarMobile');
     const sidebarMobileInstance = bootstrap.Offcanvas.getInstance(sidebarMobileElement) || new bootstrap.Offcanvas(sidebarMobileElement);
-    
+
     allNavLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
+        link.addEventListener('click', function (e) {
             if (this.id === 'logout-btn') {
                 e.preventDefault();
                 sessionStorage.removeItem('user');
@@ -116,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.getAttribute('target') === 'contentFrame') {
                 // Remove 'active' de todos
                 allNavLinks.forEach(l => l.classList.remove('active'));
-                
+
                 // Adiciona 'active' no link clicado (tanto no desktop quanto no mobile)
                 const href = this.getAttribute('href');
                 document.querySelectorAll(`.nav-link[href="${href}"]`).forEach(matchingLink => matchingLink.classList.add('active'));

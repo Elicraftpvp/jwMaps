@@ -57,7 +57,7 @@ function handle_get($pdo, $id, $recurso) {
 
         if ($recurso === 'history' && $id) {
             $sql = "SELECT h.*, u.nome as dirigente_nome 
-                    FROM historico_mapas h 
+                    FROM historico_mapas_predio h 
                     JOIN users u ON h.dirigente_id = u.id 
                     WHERE h.mapa_id = ? 
                     ORDER BY h.data_devolucao DESC, h.id DESC";
@@ -68,16 +68,16 @@ function handle_get($pdo, $id, $recurso) {
         }
 
         if ($id) {
-            $stmt = $pdo->prepare("SELECT id, identificador, quadra_inicio, quadra_fim, regiao, tipo, grupo_id FROM mapas WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT id, identificador, bloco_inicio, bloco_fim, apt_inicio, apt_fim, regiao, tipo, grupo_id FROM mapas_predio WHERE id = ?");
             $stmt->execute([$id]);
             echo json_encode($stmt->fetch(PDO::FETCH_ASSOC));
         } else {
             // Atualizado para buscar também o nome do grupo
-            $sql = "SELECT m.id, m.identificador, m.quadra_inicio, m.quadra_fim, m.regiao, m.tipo, 
+            $sql = "SELECT m.id, m.identificador, m.bloco_inicio, m.bloco_fim, m.apt_inicio, m.apt_fim, m.regiao, m.tipo, 
                     m.dirigente_id, m.grupo_id, m.data_entrega, 
                     u.nome as dirigente_nome, g.nome as grupo_nome,
                     DATEDIFF(CURDATE(), m.data_entrega) as dias_com_dirigente
-                    FROM mapas m 
+                    FROM mapas_predio m 
                     LEFT JOIN users u ON m.dirigente_id = u.id 
                     LEFT JOIN grupos g ON m.grupo_id = g.id
                     ORDER BY m.id";
@@ -100,28 +100,28 @@ function handle_post_unified($pdo) {
     try {
         switch ($action) {
             case 'create':
-                if (empty($data['identificador']) || !isset($data['quadra_inicio']) || !isset($data['quadra_fim'])) throw new Exception('Identificador e quadras são obrigatórios.', 400);
+                if (empty($data['identificador']) || !isset($data['bloco_inicio']) || !isset($data['bloco_fim']) || !isset($data['apt_inicio']) || !isset($data['apt_fim'])) throw new Exception('Identificador, blocos e apts são obrigatórios.', 400);
                 $pdo->beginTransaction();
-                $sql = "INSERT INTO mapas (identificador, quadra_inicio, quadra_fim, regiao, tipo) VALUES (?, ?, ?, ?, ?)";
+                $sql = "INSERT INTO mapas_predio (identificador, bloco_inicio, bloco_fim, apt_inicio, apt_fim, regiao, tipo) VALUES (?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $pdo->prepare($sql);
-                $stmt->execute([$data['identificador'], $data['quadra_inicio'], $data['quadra_fim'], $data['regiao'], $data['tipo']]);
+                $stmt->execute([$data['identificador'], $data['bloco_inicio'], $data['bloco_fim'], $data['apt_inicio'], $data['apt_fim'], $data['regiao'], $data['tipo']]);
                 $mapa_id = $pdo->lastInsertId();
-                $stmt_quadra = $pdo->prepare("INSERT INTO quadras (mapa_id, numero) VALUES (?, ?)");
-                for ($i = (int)$data['quadra_inicio']; $i <= (int)$data['quadra_fim']; $i++) $stmt_quadra->execute([$mapa_id, $i]);
+                $stmt_quadra = $pdo->prepare("INSERT INTO blocos (mapa_id, numero) VALUES (?, ?)");
+                $b_ini = $data['bloco_inicio']; $b_fim = $data['bloco_fim']; if (is_numeric($b_ini) && is_numeric($b_fim)) { for ($i = (int)$b_ini; $i <= (int)$b_fim; $i++) $stmt_quadra->execute([$mapa_id, $i]); } else { for ($i = $b_ini; $i <= $b_fim; $i++) { $stmt_quadra->execute([$mapa_id, $i]); if ($i === $b_fim) break; } }
                 $pdo->commit();
                 http_response_code(201);
-                echo json_encode(['message' => 'Mapa e quadras criados com sucesso!']);
+                echo json_encode(['message' => 'Mapa e blocos criados com sucesso!']);
                 break;
 
             case 'edit_details':
                 $mapa_id = $data['id'] ?? null;
-                if (!$mapa_id || empty($data['identificador']) || !isset($data['quadra_inicio']) || !isset($data['quadra_fim'])) throw new Exception('Dados insuficientes para edição.', 400);
+                if (!$mapa_id || empty($data['identificador']) || !isset($data['bloco_inicio']) || !isset($data['bloco_fim']) || !isset($data['apt_inicio']) || !isset($data['apt_fim'])) throw new Exception('Dados insuficientes para edição.', 400);
                 $pdo->beginTransaction();
-                $sql = "UPDATE mapas SET identificador = ?, quadra_inicio = ?, quadra_fim = ?, regiao = ?, tipo = ? WHERE id = ?";
-                $pdo->prepare($sql)->execute([$data['identificador'], $data['quadra_inicio'], $data['quadra_fim'], $data['regiao'], $data['tipo'], $mapa_id]);
-                $pdo->prepare("DELETE FROM quadras WHERE mapa_id = ?")->execute([$mapa_id]);
-                $stmt_quadra = $pdo->prepare("INSERT INTO quadras (mapa_id, numero) VALUES (?, ?)");
-                for ($i = (int)$data['quadra_inicio']; $i <= (int)$data['quadra_fim']; $i++) $stmt_quadra->execute([$mapa_id, $i]);
+                $sql = "UPDATE mapas_predio SET identificador = ?, bloco_inicio = ?, bloco_fim = ?, apt_inicio = ?, apt_fim = ?, regiao = ?, tipo = ? WHERE id = ?";
+                $pdo->prepare($sql)->execute([$data['identificador'], $data['bloco_inicio'], $data['bloco_fim'], $data['apt_inicio'], $data['apt_fim'], $data['regiao'], $data['tipo'], $mapa_id]);
+                $pdo->prepare("DELETE FROM blocos WHERE mapa_id = ?")->execute([$mapa_id]);
+                $stmt_quadra = $pdo->prepare("INSERT INTO blocos (mapa_id, numero) VALUES (?, ?)");
+                $b_ini = $data['bloco_inicio']; $b_fim = $data['bloco_fim']; if (is_numeric($b_ini) && is_numeric($b_fim)) { for ($i = (int)$b_ini; $i <= (int)$b_fim; $i++) $stmt_quadra->execute([$mapa_id, $i]); } else { for ($i = $b_ini; $i <= $b_fim; $i++) { $stmt_quadra->execute([$mapa_id, $i]); if ($i === $b_fim) break; } }
                 $pdo->commit();
                 echo json_encode(['message' => 'Mapa atualizado com sucesso!']);
                 break;
@@ -137,23 +137,23 @@ function handle_post_unified($pdo) {
 
                 $pdo->beginTransaction();
 
-                $stmt_check = $pdo->prepare("SELECT dirigente_id, grupo_id, data_entrega FROM mapas WHERE id = ?");
+                $stmt_check = $pdo->prepare("SELECT dirigente_id, grupo_id, data_entrega FROM mapas_predio WHERE id = ?");
                 $stmt_check->execute([$data['mapa_id']]);
                 $mapa_atual = $stmt_check->fetch(PDO::FETCH_ASSOC);
 
                 // Lógica de Histórico: Apenas salva se havia um DIRIGENTE anterior responsável
                 // Se estava com grupo e vai para outro, não gera histórico pessoal
                 if ($mapa_atual && !empty($mapa_atual['dirigente_id']) && $mapa_atual['dirigente_id'] != ($data['dirigente_id'] ?? null)) {
-                    $stmt_quadras = $pdo->prepare("SELECT numero, pessoas_faladas FROM quadras WHERE mapa_id = ?");
-                    $stmt_quadras->execute([$data['mapa_id']]);
-                    $quadras_data = $stmt_quadras->fetchAll(PDO::FETCH_ASSOC);
-                    $dados_quadras_json = json_encode($quadras_data);
+                    $stmt_blocos = $pdo->prepare("SELECT numero, pessoas_faladas FROM blocos WHERE mapa_id = ?");
+                    $stmt_blocos->execute([$data['mapa_id']]);
+                    $blocos_data = $stmt_blocos->fetchAll(PDO::FETCH_ASSOC);
+                    $dados_blocos_json = json_encode($blocos_data);
                     
                     $total_faladas_historico = 0;
                     $data_devolucao_hist = date('Y-m-d');
 
-                    $sql_hist = "INSERT INTO historico_mapas 
-                                (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_quadras) 
+                    $sql_hist = "INSERT INTO historico_mapas_predio 
+                                (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_blocos) 
                                 VALUES (?, ?, ?, ?, ?, ?)";
                     
                     $pdo->prepare($sql_hist)->execute([
@@ -162,7 +162,7 @@ function handle_post_unified($pdo) {
                         $mapa_atual['data_entrega'], 
                         $data_devolucao_hist,        
                         $total_faladas_historico,    
-                        $dados_quadras_json
+                        $dados_blocos_json
                     ]);
                 }
 
@@ -171,7 +171,7 @@ function handle_post_unified($pdo) {
                 $novoGrupoId = $temGrupo ? $data['grupo_id'] : NULL;
 
                 // Atualiza o mapa com o novo dono (Dirigente OU Grupo)
-                $sql_update = "UPDATE mapas SET dirigente_id = ?, grupo_id = ?, data_entrega = ?, data_devolucao = NULL WHERE id = ?";
+                $sql_update = "UPDATE mapas_predio SET dirigente_id = ?, grupo_id = ?, data_entrega = ?, data_devolucao = NULL WHERE id = ?";
                 $pdo->prepare($sql_update)->execute([$novoDirigenteId, $novoGrupoId, $data['data_entrega'], $data['mapa_id']]);
                 
                 $pdo->commit();
@@ -183,27 +183,27 @@ function handle_post_unified($pdo) {
                 
                 $pdo->beginTransaction();
                 
-                $stmt_mapa = $pdo->prepare("SELECT dirigente_id, data_entrega FROM mapas WHERE id = ?");
+                $stmt_mapa = $pdo->prepare("SELECT dirigente_id, data_entrega FROM mapas_predio WHERE id = ?");
                 $stmt_mapa->execute([$data['mapa_id']]);
                 $mapa_atual = $stmt_mapa->fetch(PDO::FETCH_ASSOC);
 
                 if ($mapa_atual && !empty($mapa_atual['dirigente_id'])) {
-                    $stmt_quadras = $pdo->prepare("SELECT numero, pessoas_faladas FROM quadras WHERE mapa_id = ?");
-                    $stmt_quadras->execute([$data['mapa_id']]);
-                    $quadras_data = $stmt_quadras->fetchAll(PDO::FETCH_ASSOC);
+                    $stmt_blocos = $pdo->prepare("SELECT numero, pessoas_faladas FROM blocos WHERE mapa_id = ?");
+                    $stmt_blocos->execute([$data['mapa_id']]);
+                    $blocos_data = $stmt_blocos->fetchAll(PDO::FETCH_ASSOC);
                     
-                    $total_faladas = array_sum(array_column($quadras_data, 'pessoas_faladas'));
-                    $dados_quadras_json = json_encode($quadras_data);
+                    $total_faladas = array_sum(array_column($blocos_data, 'pessoas_faladas'));
+                    $dados_blocos_json = json_encode($blocos_data);
                     
                     $data_devolucao_hoje = date('Y-m-d');
                     
-                    $sql_hist = "INSERT INTO historico_mapas (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_quadras) VALUES (?, ?, ?, ?, ?, ?)";
-                    $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['data_entrega'], $data_devolucao_hoje, $total_faladas, $dados_quadras_json]);
+                    $sql_hist = "INSERT INTO historico_mapas_predio (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_blocos) VALUES (?, ?, ?, ?, ?, ?)";
+                    $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['data_entrega'], $data_devolucao_hoje, $total_faladas, $dados_blocos_json]);
                 }
 
-                // Reseta dirigente, grupo e quadras
-                $pdo->prepare("UPDATE mapas SET dirigente_id = NULL, grupo_id = NULL, data_entrega = NULL, data_devolucao = NULL WHERE id = ?")->execute([$data['mapa_id']]);
-                $pdo->prepare("UPDATE quadras SET pessoas_faladas = 0 WHERE mapa_id = ?")->execute([$data['mapa_id']]);
+                // Reseta dirigente, grupo e blocos
+                $pdo->prepare("UPDATE mapas_predio SET dirigente_id = NULL, grupo_id = NULL, data_entrega = NULL, data_devolucao = NULL WHERE id = ?")->execute([$data['mapa_id']]);
+                $pdo->prepare("UPDATE blocos SET pessoas_faladas = 0 WHERE mapa_id = ?")->execute([$data['mapa_id']]);
                 
                 $pdo->commit();
                 echo json_encode(['message' => 'Mapa devolvido e contabilizado.']);
@@ -213,46 +213,46 @@ function handle_post_unified($pdo) {
                 if (empty($data['mapa_id']) || empty($data['data_devolucao'])) throw new Exception('Dados insuficientes.', 400);
                 $pdo->beginTransaction();
                 
-                $stmt_mapa = $pdo->prepare("SELECT dirigente_id, data_entrega FROM mapas WHERE id = ?");
+                $stmt_mapa = $pdo->prepare("SELECT dirigente_id, data_entrega FROM mapas_predio WHERE id = ?");
                 $stmt_mapa->execute([$data['mapa_id']]);
                 $mapa_atual = $stmt_mapa->fetch(PDO::FETCH_ASSOC);
                 
                 if (!$mapa_atual) throw new Exception("Mapa não encontrado.");
                 
-                $stmt_quadras = $pdo->prepare("SELECT numero, pessoas_faladas FROM quadras WHERE mapa_id = ?");
-                $stmt_quadras->execute([$data['mapa_id']]);
-                $quadras_data = $stmt_quadras->fetchAll(PDO::FETCH_ASSOC);
+                $stmt_blocos = $pdo->prepare("SELECT numero, pessoas_faladas FROM blocos WHERE mapa_id = ?");
+                $stmt_blocos->execute([$data['mapa_id']]);
+                $blocos_data = $stmt_blocos->fetchAll(PDO::FETCH_ASSOC);
                 
-                $total_faladas = array_sum(array_column($quadras_data, 'pessoas_faladas'));
-                $dados_quadras_json = json_encode($quadras_data);
+                $total_faladas = array_sum(array_column($blocos_data, 'pessoas_faladas'));
+                $dados_blocos_json = json_encode($blocos_data);
                 
                 // Se houver dirigente associado, registra no histórico
                 if (!empty($mapa_atual['dirigente_id'])) {
-                    $sql_hist = "INSERT INTO historico_mapas (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_quadras) VALUES (?, ?, ?, ?, ?, ?)";
-                    $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['data_entrega'], $data['data_devolucao'], $total_faladas, $dados_quadras_json]);
+                    $sql_hist = "INSERT INTO historico_mapas_predio (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_blocos) VALUES (?, ?, ?, ?, ?, ?)";
+                    $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['data_entrega'], $data['data_devolucao'], $total_faladas, $dados_blocos_json]);
                 }
                 
                 // Reseta vínculo com dirigente e grupo ao finalizar
-                $pdo->prepare("UPDATE mapas SET dirigente_id = NULL, grupo_id = NULL, data_entrega = NULL, data_devolucao = NULL WHERE id = ?")->execute([$data['mapa_id']]);
-                $pdo->prepare("UPDATE quadras SET pessoas_faladas = 0 WHERE mapa_id = ?")->execute([$data['mapa_id']]);
+                $pdo->prepare("UPDATE mapas_predio SET dirigente_id = NULL, grupo_id = NULL, data_entrega = NULL, data_devolucao = NULL WHERE id = ?")->execute([$data['mapa_id']]);
+                $pdo->prepare("UPDATE blocos SET pessoas_faladas = 0 WHERE mapa_id = ?")->execute([$data['mapa_id']]);
                 
                 $pdo->commit();
                 echo json_encode(['message' => 'Mapa devolvido e contabilizado com sucesso!']);
                 break;
             
-            case 'update_quadra':
-                if (!isset($data['quadra_id']) || !isset($data['pessoas_faladas'])) throw new Exception('Dados insuficientes.', 400);
-                $sql = "UPDATE quadras SET pessoas_faladas = GREATEST(0, ?) WHERE id = ?";
-                $pdo->prepare($sql)->execute([$data['pessoas_faladas'], $data['quadra_id']]);
+            case 'update_bloco':
+                // chamado pela vista_dirigente para mapas de prédio
+                $bloco_id = $data['bloco_id'] ?? $data['quadra_id'] ?? null;
+                if (!$bloco_id || !isset($data['pessoas_faladas'])) throw new Exception('Dados insuficientes.', 400);
+                $pdo->prepare("UPDATE blocos SET pessoas_faladas = GREATEST(0, ?) WHERE id = ?")->execute([$data['pessoas_faladas'], $bloco_id]);
                 echo json_encode(['status' => 'success']);
                 break;
 
-            case 'update_quadra_increment':
-                if (!isset($data['quadra_id']) || !isset($data['delta'])) throw new Exception('Dados insuficientes.', 400);
-                $sql = "UPDATE quadras 
-                        SET pessoas_faladas = GREATEST(0, CAST(pessoas_faladas AS SIGNED) + ?) 
-                        WHERE id = ?";
-                $pdo->prepare($sql)->execute([(int)$data['delta'], $data['quadra_id']]);
+            case 'update_bloco_increment':
+                // chamado pela vista_publica para mapas de prédio (sistema de deltas)
+                $bloco_id = $data['bloco_id'] ?? $data['quadra_id'] ?? null;
+                if (!$bloco_id || !isset($data['delta'])) throw new Exception('Dados insuficientes.', 400);
+                $pdo->prepare("UPDATE blocos SET pessoas_faladas = GREATEST(0, CAST(pessoas_faladas AS SIGNED) + ?) WHERE id = ?")->execute([(int)$data['delta'], $bloco_id]);
                 echo json_encode(['status' => 'success']);
                 break;
 
@@ -265,7 +265,7 @@ function handle_post_unified($pdo) {
 
                 $token = substr(bin2hex(random_bytes(16)), 0, 8);
                 $expira_em = date('Y-m-d H:i:s', strtotime("+$minutos minutes"));
-                $sql = "INSERT INTO compartilhamentos (mapa_id, tipo, token, expira_em) VALUES (?, 'normal', ?, ?)";
+                $sql = "INSERT INTO compartilhamentos (mapa_id, tipo, token, expira_em) VALUES (?, 'predio', ?, ?)";
                 $pdo->prepare($sql)->execute([$data['mapa_id'], $token, $expira_em]);
                 echo json_encode(['success' => true, 'token' => $token]);
                 break;
@@ -283,9 +283,9 @@ function handle_delete($pdo, $id) {
     if (!$id) throw new Exception('ID obrigatório.', 400);
     try {
         $pdo->beginTransaction();
-        $pdo->prepare("DELETE FROM quadras WHERE mapa_id = ?")->execute([$id]);
-        $pdo->prepare("DELETE FROM historico_mapas WHERE mapa_id = ?")->execute([$id]);
-        $pdo->prepare("DELETE FROM mapas WHERE id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM blocos WHERE mapa_id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM historico_mapas_predio WHERE mapa_id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM mapas_predio WHERE id = ?")->execute([$id]);
         $pdo->commit();
         echo json_encode(['message' => 'Deletado com sucesso.']);
     } catch (PDOException $e) {
@@ -294,3 +294,4 @@ function handle_delete($pdo, $id) {
     }
 }
 ?>
+

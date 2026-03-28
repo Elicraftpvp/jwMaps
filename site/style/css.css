@@ -1,32 +1,33 @@
 /* Estilos Globais com o Novo Tema Verde */
 :root {
-  --primary-color: #51BE41;
-  --primary-hover-color: #87F66C;
-  --secondary-color: #6c757d;
-  --warning-color: #ffc107;
-  --danger-color: #dc3545;
-  --info-color: #0dcaf0;
-  --light-gray: #f8f9fa;
-  --dark-gray: #343a40;
-  --sidebar-bg: #212529;
-  --sidebar-link-color: #adb5bd;
-  --sidebar-link-hover: #ffffff;
-  --content-bg: #f0f2f5; 
+    --primary-color: #51BE41;
+    --primary-hover-color: #87F66C;
+    --secondary-color: #6c757d;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #0dcaf0;
+    --light-gray: #f8f9fa;
+    --dark-gray: #343a40;
+    --sidebar-bg: #212529;
+    --sidebar-link-color: #adb5bd;
+    --sidebar-link-hover: #ffffff;
+    --content-bg: #f0f2f5;
 }
 
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  background-color: var(--content-bg);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: var(--content-bg);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 /* Estrutura Principal */
 .wrapper {
-  display: flex;
-  width: 100%;
-  height: 100vh;
+    display: flex;
+    width: 100%;
+    height: 100vh;
 }
 
 #content {
@@ -37,85 +38,104 @@ html, body {
 }
 
 .content-frame {
-  flex-grow: 1; 
-  width: 100%;
-  border: none;
+    flex-grow: 1;
+    width: 100%;
+    border: none;
 }
 
 
 /* Sidebar para DESKTOP (Estilos de Estrutura) */
 .sidebar {
-  width: 260px;
-  min-width: 260px;
-  background-color: var(--sidebar-bg);
-  color: white;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
+    width: 260px;
+    min-width: 260px;
+    background-color: var(--sidebar-bg);
+    color: white;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    height: 100vh;
 }
 
 .sidebar-header {
-  padding: 20px;
-  text-align: center;
-  border-bottom: 1px solid #495057;
-  flex-shrink: 0;
+    padding: 20px;
+    text-align: center;
+    border-bottom: 1px solid #495057;
+    flex-shrink: 0;
 }
 
 #menu-principal-desktop {
     flex-grow: 1;
+    padding-bottom: 60px;
 }
 
 .offcanvas-body {
     display: flex;
     flex-direction: column;
     padding: 0;
+    padding-bottom: 60px;
 }
 
 #menu-principal-mobile {
     flex-grow: 1;
 }
 
-#menu-principal-desktop > .nav-item:last-child,
-#menu-principal-mobile > .nav-item:last-child {
-    margin-top: auto;
+#menu-principal-desktop>.nav-item:last-child,
+#menu-principal-mobile>.nav-item:last-child {
+    margin-top: 0 !important;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background-color: var(--sidebar-bg);
 }
 
-#menu-principal-desktop > .nav-item:last-child .nav-link,
-#menu-principal-mobile > .nav-item:last-child .nav-link {
+#menu-principal-desktop>.nav-item:last-child .nav-link,
+#menu-principal-mobile>.nav-item:last-child .nav-link {
     border-top: 1px solid #495057;
 }
 
+#menu-principal-desktop>.nav-item:last-child .nav-link:hover,
+#menu-principal-mobile>.nav-item:last-child .nav-link:hover {
+    background-color: var(--danger-color) !important;
+    color: white !important;
+    border-left-color: #b02a37 !important;
+}
+
 .sidebar-header h3 {
-  color: white;
-  font-weight: 600;
-  font-size: 1.2rem;
+    color: white;
+    font-weight: 600;
+    font-size: 1.2rem;
 }
 
-.sidebar .nav-link, .offcanvas .nav-link {
-  color: var(--sidebar-link-color);
-  padding: 15px 20px;
-  font-size: 1rem;
-  transition: all 0.2s;
-  border-left: 4px solid transparent;
+.sidebar .nav-link,
+.offcanvas .nav-link {
+    color: var(--sidebar-link-color);
+    padding: 15px 20px;
+    font-size: 1rem;
+    transition: all 0.2s;
+    border-left: 4px solid transparent;
 }
 
-.sidebar .nav-link:hover, .offcanvas .nav-link:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--sidebar-link-hover);
-  border-left: 4px solid var(--primary-color);
+.sidebar .nav-link:hover,
+.offcanvas .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--sidebar-link-hover);
+    border-left: 4px solid var(--primary-color);
 }
 
-.sidebar .nav-link.active, .offcanvas .nav-link.active {
-  background-color: var(--primary-color);
-  color: white;
-  font-weight: 500;
-  border-left: 4px solid var(--primary-color);
+.sidebar .nav-link.active,
+.offcanvas .nav-link.active {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 500;
+    border-left: 4px solid var(--primary-color);
 }
 
-.sidebar .nav-link i, .offcanvas .nav-link i {
-  margin-right: 15px;
-  width: 20px;
-  text-align: center;
+.sidebar .nav-link i,
+.offcanvas .nav-link i {
+    margin-right: 15px;
+    width: 20px;
+    text-align: center;
 }
 
 /* ================================================================== */
@@ -166,8 +186,10 @@ html, body {
 
 /* Estilo para cada "badge" de mapa disponível */
 .mapa-disponivel-badge {
-    background-color: #e9f5e7; /* Verde bem claro */
-    color: #2a6e2c; /* Verde escuro para o texto */
+    background-color: #e9f5e7;
+    /* Verde bem claro */
+    color: #2a6e2c;
+    /* Verde escuro para o texto */
     border: 1px solid #a3d9a3;
     font-size: 0.9rem;
     padding: 0.6em 1em;
@@ -183,7 +205,8 @@ html, body {
 }
 
 .planilha-dirigentes-table td {
-    padding: 0.5rem; /* Espaçamento ao redor do badge */
+    padding: 0.5rem;
+    /* Espaçamento ao redor do badge */
     border-bottom: 1px solid #dee2e6;
     vertical-align: middle;
     text-align: center;
@@ -193,9 +216,11 @@ html, body {
     display: flex;
     flex-wrap: wrap;
     gap: 5px;
-    min-height: 30px; /* Garante que o container seja visível para o drop */
+    min-height: 30px;
+    /* Garante que o container seja visível para o drop */
     padding: 5px;
-    border: 1px dashed #ccc; /* Visual para indicar que é uma área de drop */
+    border: 1px dashed #ccc;
+    /* Visual para indicar que é uma área de drop */
     border-radius: 0.375rem;
     align-items: center;
     justify-content: flex-start;
@@ -212,7 +237,8 @@ html, body {
 }
 
 .planilha-dirigentes-table tbody td:first-child {
-    text-align: left; /* Alinha o nome do dirigente à esquerda */
+    text-align: left;
+    /* Alinha o nome do dirigente à esquerda */
     font-weight: 500;
     padding-left: 1rem;
 }
@@ -222,8 +248,10 @@ html, body {
 /* 1. CLASSE BASE: Define o TAMANHO e a FORMA */
 .mapa-badge {
     display: inline-block;
-    width: 95%; /* Ocupa quase toda a célula para visual uniforme */
-    max-width: 100px; /* Evita que fiquem grandes demais em telas largas */
+    width: 95%;
+    /* Ocupa quase toda a célula para visual uniforme */
+    max-width: 100px;
+    /* Evita que fiquem grandes demais em telas largas */
     font-size: 0.9rem;
     padding: 0.6em 1em;
     font-weight: 500;
@@ -238,7 +266,8 @@ html, body {
     background-color: #e9f5e7;
     color: #2a6e2c;
     border-color: #a3d9a3;
-    width: auto; /* Para a lista de disponíveis, a largura é automática */
+    width: auto;
+    /* Para a lista de disponíveis, a largura é automática */
 }
 
 /* 3. MODIFICADOR: Cor para mapas na planilha/atribuídos (Amarelo) */
@@ -274,45 +303,164 @@ html, body {
 /* ================================================================== */
 
 .login-container {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--content-bg);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--content-bg);
 }
-.login-card { width: 100%; max-width: 400px; }
+
+.login-card {
+    width: 100%;
+    max-width: 400px;
+}
+
 body.iframe-page {
-  padding: 25px;
-  background-color: var(--content-bg);
+    padding: 25px;
+    background-color: var(--content-bg);
 }
-.btn-primary { background-color: var(--primary-color); border-color: var(--primary-color); }
-.btn-primary:hover { background-color: var(--primary-hover-color); border-color: var(--primary-hover-color); color: var(--dark-gray); }
-.bg-primary { background-color: var(--primary-color) !important; }
-.text-primary { color: var(--primary-color) !important; }
-.btn-info { background-color: var(--info-color); border-color: var(--info-color); }
-.card-header-icon { display: flex; justify-content: space-between; align-items: center; }
-.card-title-icon { margin-right: 10px; }
-.table-hover tbody tr:hover { background-color: #e9ecef; }
-.table td .btn { margin-right: 5px; }
-.badge { font-size: 0.8rem; padding: 0.5em 0.7em; font-weight: 500; }
-.pdf-viewer-container { position: relative; cursor: pointer; overflow: hidden; background-color: #e9ecef; }
-.pdf-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); color: white; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; font-weight: bold; opacity: 0; transition: opacity 0.3s ease; }
-.pdf-viewer-container:hover .pdf-overlay { opacity: 1; }
-#pdf-modal .modal-dialog { max-width: 95vw; }
-.pdf-mobile-link { display: none; }
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover-color);
+    border-color: var(--primary-hover-color);
+    color: var(--dark-gray);
+}
+
+.bg-primary {
+    background-color: var(--primary-color) !important;
+}
+
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+.btn-info {
+    background-color: var(--info-color);
+    border-color: var(--info-color);
+}
+
+.card-header-icon {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-title-icon {
+    margin-right: 10px;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #e9ecef;
+}
+
+.table td .btn {
+    margin-right: 5px;
+}
+
+.badge {
+    font-size: 0.8rem;
+    padding: 0.5em 0.7em;
+    font-weight: 500;
+}
+
+.pdf-viewer-container {
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+    background-color: #e9ecef;
+}
+
+.pdf-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.pdf-viewer-container:hover .pdf-overlay {
+    opacity: 1;
+}
+
+#pdf-modal .modal-dialog {
+    max-width: 95vw;
+}
+
+.pdf-mobile-link {
+    display: none;
+}
+
 @media (max-width: 991.98px) {
-  #sidebar { display: none !important; }
-  .pdf-desktop-viewer { display: none !important; }
-  .pdf-mobile-link { display: block !important; }
+    #sidebar {
+        display: none !important;
+    }
+
+    .pdf-desktop-viewer {
+        display: none !important;
+    }
+
+    .pdf-mobile-link {
+        display: block !important;
+    }
 }
-html, body.iframe-page { height: 100%; }
-body.iframe-page { display: flex; flex-direction: column; }
-.iframe-page .container-fluid { flex-grow: 1; display: flex; flex-direction: column; }
-.row-deck { display: flex; flex-wrap: wrap; flex-grow: 1; }
-.row-deck > [class*='col-'] { display: flex; flex-direction: column; }
-.card.h-100 { flex: 1 1 auto; display: flex; flex-direction: column; }
-.card-body-scrollable { flex-grow: 1; overflow-y: auto; padding: 0; }
-.card-body-scrollable .list-group-item { padding-left: 1.25rem; padding-right: 1.25rem; }
+
+html,
+body.iframe-page {
+    height: 100%;
+}
+
+body.iframe-page {
+    display: flex;
+    flex-direction: column;
+}
+
+.iframe-page .container-fluid {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.row-deck {
+    display: flex;
+    flex-wrap: wrap;
+    flex-grow: 1;
+}
+
+.row-deck>[class*='col-'] {
+    display: flex;
+    flex-direction: column;
+}
+
+.card.h-100 {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.card-body-scrollable {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.card-body-scrollable .list-group-item {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+}
 
 
 /* --- ESTRUTURA DA TABELA DE DIRIGENTES --- */
@@ -330,7 +478,8 @@ body.iframe-page { display: flex; flex-direction: column; }
 }
 
 .planilha-dirigentes-table td {
-    padding: 0.5rem; /* Espaçamento ao redor do badge */
+    padding: 0.5rem;
+    /* Espaçamento ao redor do badge */
     border-bottom: 1px solid #dee2e6;
     vertical-align: middle;
     text-align: center;
@@ -346,13 +495,15 @@ body.iframe-page { display: flex; flex-direction: column; }
 
 /* 1. CLASSE BASE: Define o TAMANHO e a FORMA (sem cor, sem largura fixa) */
 .mapa-badge {
-    display: inline-block; /* Permite que o tamanho se ajuste ao conteúdo */
+    display: inline-block;
+    /* Permite que o tamanho se ajuste ao conteúdo */
     font-size: 0.9rem;
     padding: 0.6em 1em;
     font-weight: 500;
     border-radius: 0.375rem;
     border: 1px solid transparent;
-    white-space: nowrap; /* Evita que o texto quebre em duas linhas */
+    white-space: nowrap;
+    /* Evita que o texto quebre em duas linhas */
 }
 
 /* 2. MODIFICADOR: Cor para mapas disponíveis (Verde) */
@@ -415,8 +566,10 @@ body.iframe-page { display: flex; flex-direction: column; }
 
 /* 1. BADGE DISPONÍVEL (Verde) - O SEU CÓDIGO ORIGINAL */
 .mapa-disponivel-badge {
-    background-color: #e9f5e7; /* Verde bem claro */
-    color: #2a6e2c; /* Verde escuro para o texto */
+    background-color: #e9f5e7;
+    /* Verde bem claro */
+    color: #2a6e2c;
+    /* Verde escuro para o texto */
     border: 1px solid #a3d9a3;
     font-size: 0.9rem;
     padding: 0.6em 1em;
@@ -425,12 +578,17 @@ body.iframe-page { display: flex; flex-direction: column; }
 
 /* 2. BADGE ATRIBUÍDO (Amarelo) - CLONE DO ESTILO ACIMA COM CORES DIFERENTES */
 .mapa-atribuido-badge {
-    background-color: #fff9c4; /* Amarelo bem claro */
-    color: #5c5306; /* Amarelo escuro para o texto */
+    background-color: #fff9c4;
+    /* Amarelo bem claro */
+    color: #5c5306;
+    /* Amarelo escuro para o texto */
     border: 1px solid #fce28b;
-    font-size: 0.9rem; /* EXATAMENTE IGUAL */
-    padding: 0.6em 1em; /* EXATAMENTE IGUAL */
-    font-weight: 500; /* EXATAMENTE IGUAL */
+    font-size: 0.9rem;
+    /* EXATAMENTE IGUAL */
+    padding: 0.6em 1em;
+    /* EXATAMENTE IGUAL */
+    font-weight: 500;
+    /* EXATAMENTE IGUAL */
 }
 
 /* 3. DESTAQUE: Sobrescreve a cor amarela padrão com uma mais forte */
@@ -441,6 +599,16 @@ body.iframe-page { display: flex; flex-direction: column; }
     color: var(--dark-gray);
 }
 
+
+/* 4. BADGE DE PRÉDIO (Rosa) - Estilo solicitado para distinção visual */
+.mapa-predio-badge {
+    background-color: #f8bbd0; /* Rosa claro pastel */
+    color: #880e4f; /* Rosa escuro para o texto */
+    border: 1px solid #f06292;
+    font-size: 0.9rem;
+    padding: 0.6em 1em;
+    font-weight: 500;
+}
 
 /* CONTAINER DOS MAPAS DISPONÍVEIS - O SEU CÓDIGO ORIGINAL */
 #lista-mapas-disponiveis {
@@ -455,6 +623,7 @@ body.iframe-page { display: flex; flex-direction: column; }
 /* ================================================================== */
 
 @media (max-width: 767.98px) {
+
     /* Esconde o cabeçalho da tabela em telas pequenas */
     .table-responsive-cards thead {
         display: none;
@@ -475,23 +644,26 @@ body.iframe-page { display: flex; flex-direction: column; }
         border-radius: .375rem;
         background-color: #fff;
     }
-    
+
     .table-responsive-cards td {
         padding: 0.75rem 1rem;
         border: none;
         border-bottom: 1px solid #e9ecef;
-        text-align: right; /* Alinha o conteúdo à direita */
+        text-align: right;
+        /* Alinha o conteúdo à direita */
         position: relative;
-        min-height: 45px; /* Altura mínima para melhor toque */
+        min-height: 45px;
+        /* Altura mínima para melhor toque */
     }
 
     .table-responsive-cards tr td:last-child {
         border-bottom: 0;
     }
-    
+
     /* Adiciona o label (título da coluna) antes do conteúdo da célula */
     .table-responsive-cards td:before {
-        content: attr(data-label); /* Pega o texto do atributo data-label */
+        content: attr(data-label);
+        /* Pega o texto do atributo data-label */
         position: absolute;
         left: 1rem;
         font-weight: bold;
@@ -508,12 +680,17 @@ body.iframe-page { display: flex; flex-direction: column; }
         padding-bottom: 1rem;
         gap: 10px;
     }
+
     .table-responsive-cards td[data-label="Ações"]::before {
-        display: none; /* Esconde o label "Ações:" */
+        display: none;
+        /* Esconde o label "Ações:" */
     }
+
     .table-responsive-cards td[data-label="Ações"] .btn {
-        flex-grow: 1; /* Faz os botões ocuparem o espaço */
-        font-size: 1.1rem; /* Ícones maiores */
+        flex-grow: 1;
+        /* Faz os botões ocuparem o espaço */
+        font-size: 1.1rem;
+        /* Ícones maiores */
     }
 
     /* Ajustes específicos para as páginas */
@@ -527,23 +704,26 @@ body.iframe-page { display: flex; flex-direction: column; }
         width: 100%;
         justify-content: space-between;
     }
-    
+
     /* Estilos para o card principal do mapa */
-    .mapa-card-header, .user-card-header {
-      padding-bottom: 0.5rem !important;
-      border-bottom: 0 !important;
-      text-align: left !important;
+    .mapa-card-header,
+    .user-card-header {
+        padding-bottom: 0.5rem !important;
+        border-bottom: 0 !important;
+        text-align: left !important;
     }
-    
-    .mapa-card-header strong, .user-card-header strong {
-      font-size: 1.2rem;
-      color: var(--dark-gray);
+
+    .mapa-card-header strong,
+    .user-card-header strong {
+        font-size: 1.2rem;
+        color: var(--dark-gray);
     }
-    
-    .mapa-card-header .badge, .user-card-header .badge {
-      font-size: 0.9rem;
-      position: absolute;
-      top: 0.75rem;
-      right: 1rem;
+
+    .mapa-card-header .badge,
+    .user-card-header .badge {
+        font-size: 0.9rem;
+        position: absolute;
+        top: 0.75rem;
+        right: 1rem;
     }
 }
