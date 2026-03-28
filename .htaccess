@@ -2,8 +2,13 @@
 RewriteEngine On
 RewriteBase /
 
-# Regra 1: Link curto para mapas individuais
-RewriteRule ^mapa/([a-zA-Z0-9]+)$ site/backend/vista_publica.php?token=$1 [L,QSA]
+# Regra 1: Link curto para dirigentes (NOVO: amigável)
+RewriteRule ^mapa/([^/]+)/([a-zA-Z0-9]+)$ site/backend/vista_publica.php?slug=$1&token=$2 [L,QSA]
+
+# --- LEGACY: Links antigos de 32 caracteres (remover futuramente) ---
+RewriteRule ^mapa/([a-zA-Z0-9]{32})$ site/backend/vista_publica.php?token=$1 [L,QSA]
+# ---------------------------------------------------------------------
+
 
 # Regra NOVA: Link curto para mapas de GRUPOS
 RewriteRule ^grupo/([a-zA-Z0-9]+)$ site/backend/vista_grupo.php?token=$1 [L,QSA]

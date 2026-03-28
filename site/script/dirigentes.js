@@ -23,6 +23,21 @@ document.addEventListener('DOMContentLoaded', () => {
     let editMode = false;
     let editId = null;
 
+    const getSlug = (nome) => {
+        if (!nome) return 'usuario';
+        const primeiraPalavra = nome.trim().split(/\s+/)[0];
+        return primeiraPalavra.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    };
+
+    const getAppRoot = () => {
+        const href = window.location.href;
+        if (href.includes('/site/')) {
+            return href.split('/site/')[0];
+        }
+        return window.location.origin;
+    };
+    const APP_ROOT = getAppRoot();
+
     // --- FUNÇÕES AUXILIARES DE MODAL ---
 
     const mostrarFeedback = (titulo, mensagem, tipo = 'primary') => {
@@ -118,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     : `<button class="btn btn-sm btn-danger btn-delete" data-id="${u.id}" title="Desativar"><i class="fas fa-trash-alt"></i></button>`;
                 const isDirigente = (u.permissoes & 1) === 1;
                 const linkButton = isDirigente && u.token_acesso
-                    ? `<button class="btn btn-sm btn-info btn-copy-link" data-token="${u.token_acesso}" title="Copiar Link Público"><i class="fas fa-link"></i></button>`
+                    ? `<button class="btn btn-sm btn-info btn-copy-link" data-token="${u.token_acesso}" data-nome="${u.nome}" title="Copiar Link Público"><i class="fas fa-link"></i></button>`
                     : '';
 
                 const row = `<tr class="${rowClass}">
@@ -159,7 +174,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const linkSection = document.getElementById('link-publico-section');
             if ((user.permissoes & 1) === 1) {
                 const linkInput = document.getElementById('user_public_link');
-                const publicUrl = `${window.location.origin}/mapa/${user.token_acesso}`;
+                const slug = getSlug(user.nome);
+                const publicUrl = `${APP_ROOT}/mapa/${slug}/${user.token_acesso}`;
                 linkInput.value = publicUrl;
                 linkSection.classList.remove('d-none');
             } else { linkSection.classList.add('d-none'); }
@@ -250,7 +266,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!response.ok) throw new Error(await handleApiError(response));
                 
                 const result = await response.json();
-                const newUrl = `${window.location.origin}/mapa/${result.novoToken}`;
+                const slug = getSlug(document.getElementById('user_nome').value);
+                const newUrl = `${APP_ROOT}/mapa/${slug}/${result.novoToken}`;
                 
                 // Atualiza o input no modal que está embaixo
                 document.getElementById('user_public_link').value = newUrl;
@@ -338,7 +355,9 @@ document.addEventListener('DOMContentLoaded', () => {
             prepararEdicao(id);
         } else if (target.classList.contains('btn-copy-link')) {
             const token = target.dataset.token;
-            const url = `${window.location.origin}/mapa/${token}`;
+            const nome = target.dataset.nome || '';
+            const slug = getSlug(nome);
+            const url = `${APP_ROOT}/mapa/${slug}/${token}`;
             navigator.clipboard.writeText(url).then(() => {
                 const tooltip = bootstrap.Tooltip.getInstance(target);
                 target.setAttribute('data-bs-original-title', 'Copiado!');

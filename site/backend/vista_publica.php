@@ -397,7 +397,17 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <base href="<?php echo $baseUrl; ?>site/backend/">
     <title>Mapas de <?php echo htmlspecialchars($user['nome']); ?></title>
+    
+    <!-- Meta Tags para Card de Compartilhamento -->
+    <meta property="og:title" content="Mapas de <?php echo htmlspecialchars($user['nome']); ?>">
+    <meta property="og:description" content="Acesse e gerencie seus territórios designados no jwMaps.">
+    <meta property="og:image" content="<?php echo $baseUrl; ?>site/images/link.png">
+    <meta property="og:url" content="<?php echo $protocol . $domainName . $_SERVER['REQUEST_URI']; ?>">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    
     <link rel="icon" type="image/png" href="../images/map.png">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../style/css.css">

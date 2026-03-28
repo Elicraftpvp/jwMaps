@@ -8,13 +8,18 @@ $id = $_GET['id'] ?? null;
 
 // Função auxiliar para gerar um token único
 function gerarTokenUnico($pdo) {
+    $chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     do {
-        $token = bin2hex(random_bytes(16));
+        $token = "";
+        for ($i = 0; $i < 5; $i++) {
+            $token .= $chars[random_int(0, strlen($chars) - 1)];
+        }
         $stmt_token = $pdo->prepare("SELECT id FROM users WHERE token_acesso = ?");
         $stmt_token->execute([$token]);
     } while ($stmt_token->fetch());
     return $token;
 }
+
 
 switch ($method) {
     case 'GET':
