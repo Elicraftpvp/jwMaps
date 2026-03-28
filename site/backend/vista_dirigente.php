@@ -36,9 +36,22 @@ try {
     $mapas = $stmt_mapas->fetchAll(PDO::FETCH_ASSOC);
 
     // Separar Mapas em Individuais e Grupos
+    // Busca mapas prediais do dirigente
+    $stmt_mapas_predio = $pdo->prepare(
+        "SELECT m.id, m.identificador, m.data_entrega, m.gdrive_file_id, m.grupo_id, g.nome as nome_grupo,
+                m.apt_inicio, m.apt_fim
+         FROM mapas_predio m
+         LEFT JOIN grupos g ON m.grupo_id = g.id
+         WHERE (m.dirigente_id = ? OR m.grupo_id IN (SELECT grupo_id FROM grupo_membros WHERE user_id = ?))
+         ORDER BY m.identificador ASC"
+    );
+    $stmt_mapas_predio->execute([$dirigente_id, $dirigente_id]);
+    $mapas_predio = $stmt_mapas_predio->fetchAll(PDO::FETCH_ASSOC);
+
     $mapas_individuais =[];
     $mapas_grupo = [];
     foreach ($mapas as $m) {
+        $m['is_predio'] = false;
         if (!empty($m['grupo_id'])) {
             $mapas_grupo[] = $m;
         } else {
@@ -46,8 +59,31 @@ try {
         }
     }
 
+    $mapas_predio_list = [];
+    foreach ($mapas_predio as $mp) {
+        $mp['is_predio'] = true;
+        $mapas_predio_list[] = $mp;
+    }
+
     // 4. Busca todas as quadras para os mapas encontrados
     $quadras_por_mapa =[];
+    $blocos_por_mapa = [];
+    if (!empty($mapas_predio)) {
+        $mp_ids = array_column($mapas_predio, 'id');
+        $pl = implode(',', array_fill(0, count($mp_ids), '?'));
+        $stmt_blocos = $pdo->prepare(
+            "SELECT id, mapa_id, numero, pessoas_faladas 
+             FROM blocos 
+             WHERE mapa_id IN ($pl) 
+             ORDER BY numero ASC"
+        );
+        $stmt_blocos->execute($mp_ids);
+        $blocos_data = $stmt_blocos->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($blocos_data as $bloco) {
+            $blocos_por_mapa[$bloco['mapa_id']][] = $bloco;
+        }
+    }
+    
     if (!empty($mapas)) {
         $mapa_ids = array_column($mapas, 'id');
         $placeholders = implode(',', array_fill(0, count($mapa_ids), '?'));
@@ -76,7 +112,19 @@ try {
  */
 function renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards) {
     $isGroup = !empty($mapa['grupo_id']);
+    $isPredio = isset($mapa['is_predio']) && $mapa['is_predio'];
     $soma_pessoas = 0;
+    
+    $max_apts = "";
+    $label_apts = "";
+    if ($isPredio && isset($mapa['apt_inicio']) && isset($mapa['apt_fim'])) {
+        $calc_max = ((int)$mapa['apt_fim'] - (int)$mapa['apt_inicio']) + 1;
+        $max_apts = 'max="' . $calc_max . '" data-max-val="' . $calc_max . '"';
+        $label_apts = ' (Máx: ' . $calc_max . ')';
+    }
+    $header_class = $isPredio ? 'card-header-predio' : ($isGroup ? 'card-header-group' : 'bg-primary');
+    $icon_class = $isPredio ? 'fa-building' : ($isGroup ? 'fa-users' : 'fa-map-pin');
+    $btn_expand = $isPredio ? 'btn-predio-color' : ($isGroup ? 'btn-group-color' : 'btn-primary');
     if (isset($quadras_por_mapa[$mapa['id']])) {
         foreach ($quadras_por_mapa[$mapa['id']] as $q) {
             $soma_pessoas += (int)$q['pessoas_faladas'];
@@ -88,9 +136,9 @@ function renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards) {
     ?>
     <div class="col-lg-6 mb-4 card-container-wrapper" id="mapa-card-<?php echo $mapa['id']; ?>">
         <div class="card shadow-sm <?php echo $classe_inicial; ?>">
-            <div class="card-header <?php echo $isGroup ? 'card-header-group' : 'bg-primary'; ?> text-white d-flex justify-content-between align-items-center">
+            <div class="card-header <?php echo $header_class; ?> text-white d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0 d-flex align-items-center w-100">
-                    <i class="fas <?php echo $isGroup ? 'fa-users' : 'fa-map-pin'; ?> me-2 flex-shrink-0"></i> 
+                    <i class="fas <?php echo $icon_class; ?> me-2 flex-shrink-0"></i> 
                     <span class="map-name flex-grow-1"><?php echo htmlspecialchars($mapa['identificador']); ?></span>
                     
                     <div class="d-flex align-items-center gap-2 flex-shrink-0">
@@ -111,7 +159,7 @@ function renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards) {
                 ?>
                     <div class="pdf-preview-container">
                         <iframe src="<?php echo $pdf_embed_url; ?>"></iframe>
-                        <button class="btn <?php echo $isGroup ? 'btn-group-color' : 'btn-primary'; ?> btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-src="<?php echo $pdf_embed_url; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                        <button class="btn <?php echo $btn_expand; ?> btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-src="<?php echo $pdf_embed_url; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
                             <i class="fas fa-expand-alt me-1"></i> Expandir
                         </button>
                     </div>
@@ -139,17 +187,19 @@ function renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards) {
                 <!-- ============================================== -->
 
                 <div class="card-body">
-                    <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
-                        <label class="form-label fw-bold mt-2">Registro por Quadra:</label>
-                        <div class="d-flex justify-content-end px-2 pb-1"> <small class="fw-bold text-muted" style="width: 140px; text-align: center;">Nº Pessoas</small> </div>
+                    <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>" data-is-predio="<?php echo $isPredio ? 'true' : 'false'; ?>">
+                        <label class="form-label fw-bold mt-2">Registro por <?php echo $isPredio ? 'Bloco' : 'Quadra'; ?>:</label>
+                        <div class="d-flex justify-content-end px-2 pb-1"> <small class="fw-bold text-muted" style="width: 140px; text-align: center;"><?php echo $isPredio ? 'Aptos' : 'Nº Pessoas'; ?><?php echo $label_apts; ?></small> </div>
                         <div class="list-group list-group-flush mb-3 quadra-list" data-mapa-id="<?php echo $mapa['id']; ?>">
-                        <?php if (!empty($quadras_por_mapa[$mapa['id']])): foreach ($quadras_por_mapa[$mapa['id']] as $quadra): ?>
+                        <?php
+                        $lista_itens = $isPredio ? ($blocos_por_mapa[$mapa['id']] ?? []) : ($quadras_por_mapa[$mapa['id']] ?? []);
+                        if (!empty($lista_itens)): foreach ($lista_itens as $quadra): ?>
                             <div class="list-group-item quadra-item d-flex justify-content-between align-items-center p-2">
-                                <span>Quadra <strong><?php echo htmlspecialchars($quadra['numero']); ?></strong></span>
+                                <span><?php echo $isPredio ? 'Bloco' : 'Quadra'; ?> <strong><?php echo htmlspecialchars($quadra['numero']); ?></strong></span>
                                 <div class="d-flex align-items-center">
                                     <div class="input-group input-group-sm" style="width: 120px;">
                                         <button class="btn btn-outline-secondary btn-decrement" type="button">-</button>
-                                        <input type="number" class="form-control text-center quadra-input no-spinners" value="<?php echo htmlspecialchars($quadra['pessoas_faladas']); ?>" data-quadra-id="<?php echo $quadra['id']; ?>" min="0" aria-label="Pessoas faladas">
+                                        <input type="number" class="form-control text-center quadra-input no-spinners" value="<?php echo htmlspecialchars($quadra['pessoas_faladas']); ?>" data-quadra-id="<?php echo $quadra['id']; ?>" data-is-predio="<?php echo $isPredio ? 'true' : 'false'; ?>" min="0" <?php echo $max_apts; ?> aria-label="Pessoas faladas">
                                         <button class="btn btn-outline-secondary btn-increment" type="button">+</button>
                                     </div>
                                     <div class="ms-2 d-flex justify-content-center align-items-center" style="width: 24px; height: 24px;" id="status_save_q<?php echo $quadra['id']; ?>"></div>
@@ -233,6 +283,9 @@ function renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards) {
 
         /* Estilos para Identidade de Grupos (Trazidos da Vista Pública) */
         .card-header-group { background-color: #4190be !important; border-color: #4190be !important; }
+        .card-header-predio { background-color: #E91E63 !important; border-color: #E91E63 !important; }
+        .btn-predio-color { background-color: #E91E63 !important; border-color: #E91E63 !important; color: white !important; }
+        .btn-predio-color:hover { background-color: #D81B60 !important; border-color: #D81B60 !important; }
         
         .btn-group-color { background-color: #4190be !important; border-color: #4190be !important; color: white !important; }
         .btn-group-color:hover { background-color: #357a9e !important; border-color: #357a9e !important; }
@@ -277,13 +330,25 @@ function renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards) {
                     </div>
                 </div>
             <?php else: 
-                $total_cards_geral = count($mapas);
+                $total_cards_geral = count($mapas) + count($mapas_predio);
             ?>
                 
                 <!-- MAPAS INDIVIDUAIS -->
                 <?php if (!empty($mapas_individuais)): ?>
                     <?php foreach ($mapas_individuais as $mapa): 
                         renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards_geral);
+                    endforeach; ?>
+                <?php endif; ?>
+
+                <!-- MAPAS DE PREDIO -->
+                <?php if (!empty($mapas_predio_list)): ?>
+                    <div class="col-12">
+                        <div class="section-divider" style="color: #E91E63;">
+                            <i class="fas fa-building me-2"></i> Mapas de Prédios
+                        </div>
+                    </div>
+                    <?php foreach ($mapas_predio_list as $mapa): 
+                        renderizarCardDirigente($mapa, $blocos_por_mapa, $total_cards_geral);
                     endforeach; ?>
                 <?php endif; ?>
 
@@ -430,13 +495,16 @@ function renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards) {
 
         // --- LÓGICA DA PÁGINA ---
 
-        const saveQuadra = async (quadraId, valor, statusDiv) => {
+        const saveQuadra = async (quadraId, valor, statusDiv, isPredio = false) => {
             statusDiv.innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span>';
+            const apiUrl = isPredio ? `${API_BASE_URL}/mapas_predio_api.php` : `${API_BASE_URL}/mapas_api.php`;
+            const action = isPredio ? 'update_bloco' : 'update_quadra';
+            const bodyKey = isPredio ? 'bloco_id' : 'quadra_id';
             try {
-                const response = await fetch(`${API_BASE_URL}/mapas_api.php`, {
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'update_quadra', quadra_id: quadraId, pessoas_faladas: parseInt(valor) })
+                    body: JSON.stringify({ action, [bodyKey]: quadraId, pessoas_faladas: parseInt(valor) })
                 });
 
                 if (!response.ok) {
@@ -464,15 +532,23 @@ function renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards) {
         document.querySelectorAll('.quadra-input').forEach(input => {
             input.addEventListener('input', (e) => {
                 const quadraId = e.target.dataset.quadraId;
+                const isPredio = e.target.dataset.isPredio === 'true';
                 const statusDiv = document.getElementById(`status_save_q${quadraId}`);
-                const valor = e.target.value;
+                const maxVal = e.target.dataset.maxVal ? parseInt(e.target.dataset.maxVal) : null;
+                let valor = parseInt(e.target.value) || 0;
+
+                // Enforce max for prédio
+                if (maxVal !== null && valor > maxVal) {
+                    valor = maxVal;
+                    e.target.value = maxVal;
+                }
                 
                 if (saveTimeouts[quadraId]) clearTimeout(saveTimeouts[quadraId]);
                 
                 statusDiv.innerHTML = '<small class="text-muted">...</small>';
 
                 saveTimeouts[quadraId] = setTimeout(() => {
-                    saveQuadra(quadraId, valor, statusDiv);
+                    saveQuadra(quadraId, valor, statusDiv, isPredio);
                 }, 800);
 
                 updateTotal(e.target.closest('.quadra-list'));
@@ -480,7 +556,15 @@ function renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards) {
         });
         
         document.querySelectorAll('.btn-increment').forEach(btn => {
-            btn.addEventListener('click', (e) => { const input = e.target.closest('.input-group').querySelector('.quadra-input'); input.value = parseInt(input.value || 0) + 1; input.dispatchEvent(new Event('input', { bubbles: true })); });
+            btn.addEventListener('click', (e) => {
+                const input = e.target.closest('.input-group').querySelector('.quadra-input');
+                const maxVal = input.dataset.maxVal ? parseInt(input.dataset.maxVal) : null;
+                const current = parseInt(input.value || 0);
+                if (maxVal === null || current < maxVal) {
+                    input.value = current + 1;
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            });
         });
         
         document.querySelectorAll('.btn-decrement').forEach(btn => {
@@ -494,7 +578,9 @@ function renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards) {
                 e.preventDefault();
                 const mapaId = e.target.dataset.mapaId;
                 const mapaNome = e.target.dataset.mapaNome;
+                const isPredio = e.target.dataset.isPredio === 'true';
                 const dataDevolucao = document.getElementById(`data_devolucao_${mapaId}`).value;
+                const apiUrl = isPredio ? `${API_BASE_URL}/mapas_predio_api.php` : `${API_BASE_URL}/mapas_api.php`;
                 
                 if (!dataDevolucao) { mostrarFeedback('Atenção', 'Por favor, selecione a data de devolução.', 'warning'); return; }
 
@@ -507,7 +593,7 @@ function renderizarCardDirigente($mapa, $quadras_por_mapa, $total_cards) {
                         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
                         btn.disabled = true;
                         try {
-                            const response = await fetch(`${API_BASE_URL}/mapas_api.php`, {
+                            const response = await fetch(apiUrl, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ action: 'devolver', mapa_id: mapaId, data_devolucao: dataDevolucao })

@@ -167,6 +167,119 @@ function renderizarCard($mapa, $quadras_por_mapa, $total_cards_geral) {
     <?php
 }
 
+/**
+ * Renderiza o card de Mapa de Prédio para a vista pública.
+ * Blocos com limite máximo de pessoas = (apt_fim - apt_inicio + 1).
+ */
+function renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
+    $isGroup = !empty($mapa['grupo_id']);
+    $soma_pessoas = 0;
+    if (isset($blocos_por_mapa[$mapa['id']])) {
+        foreach ($blocos_por_mapa[$mapa['id']] as $b) $soma_pessoas += (int)$b['pessoas_faladas'];
+    }
+    $classe_inicial = ($total_cards_geral > 1 && $soma_pessoas == 0) ? 'collapsed' : '';
+
+    $max_apts = '';
+    $label_max = '';
+    if (isset($mapa['apt_inicio']) && isset($mapa['apt_fim'])) {
+        $calc_max = ((int)$mapa['apt_fim'] - (int)$mapa['apt_inicio']) + 1;
+        $max_apts = 'max="' . $calc_max . '" data-max-val="' . $calc_max . '"';
+        $label_max = ' (Máx: ' . $calc_max . ')';
+    }
+
+    $nome_identificador = $mapa['identificador'];
+    $url_jpg = "pdfs/" . rawurlencode($nome_identificador) . ".jpg";
+    $url_pdf = "pdfs/" . rawurlencode($nome_identificador) . ".pdf";
+    $caminho_local_jpg = __DIR__ . "/pdfs/" . $nome_identificador . ".jpg";
+    $caminho_local_pdf = __DIR__ . "/pdfs/" . $nome_identificador . ".pdf";
+    ?>
+
+    <div class="card-container-wrapper" id="mapa-card-p<?php echo $mapa['id']; ?>">
+        <div class="card shadow-sm <?php echo $classe_inicial; ?>">
+            <div class="card-header card-header-predio text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 d-flex align-items-center w-100">
+                    <i class="fas fa-building me-2 flex-shrink-0"></i>
+                    <span class="map-name flex-grow-1"><?php echo htmlspecialchars($mapa['identificador']); ?></span>
+                    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                        <?php if ($isGroup): ?>
+                            <span class="badge bg-white text-dark group-tag" style="opacity: 0.9;"><?php echo htmlspecialchars($mapa['nome_grupo']); ?></span>
+                        <?php endif; ?>
+                        <i class="fas fa-chevron-down header-icon"></i>
+                    </div>
+                </h5>
+            </div>
+
+            <div class="card-collapsible-content">
+                <?php if (file_exists($caminho_local_jpg)): ?>
+                    <div class="pdf-preview-container">
+                        <img src="<?php echo $url_jpg; ?>" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                        <button class="btn btn-predio-color btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                            <i class="fas fa-expand-alt me-1"></i> Expandir
+                        </button>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (file_exists($caminho_local_pdf)): ?>
+                    <div class="px-3 pt-3">
+                        <a href="<?php echo $url_pdf; ?>" class="btn btn-outline-secondary w-100" download="<?php echo htmlspecialchars($nome_identificador . '.pdf'); ?>">
+                            <i class="fas fa-file-download me-2"></i> Baixar Mapa em PDF
+                        </a>
+                    </div>
+                <?php endif; ?>
+
+                <div class="card-body">
+                    <form class="form-devolver-predio" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                        <label class="form-label fw-bold mt-2">Pessoas Encontradas por Bloco:</label>
+
+                        <div class="d-flex justify-content-end px-2 pb-1">
+                            <div class="d-flex align-items-center">
+                                <small class="fw-bold text-muted text-center" style="width: 150px;">Aptos<?php echo $label_max; ?></small>
+                                <div style="width: 32px;"></div>
+                            </div>
+                        </div>
+
+                        <div class="list-group list-group-flush mb-3 bloco-list" data-mapa-id="<?php echo $mapa['id']; ?>">
+                        <?php if (isset($blocos_por_mapa[$mapa['id']])): foreach ($blocos_por_mapa[$mapa['id']] as $bloco): ?>
+                            <div class="list-group-item quadra-item d-flex justify-content-between align-items-center py-3 px-2">
+                                <span class="fs-5">Bloco <strong><?php echo htmlspecialchars($bloco['numero']); ?></strong></span>
+                                <div class="d-flex align-items-center">
+                                    <div class="input-group" style="width: 150px;">
+                                        <button class="btn btn-outline-secondary btn-decrement-bloco px-3 fw-bold" type="button" style="font-size: 1.2rem;">-</button>
+                                        <input type="number" class="form-control text-center bloco-input no-spinners fw-bold"
+                                               style="font-size: 1.1rem;"
+                                               value="<?php echo $bloco['pessoas_faladas']; ?>"
+                                               data-bloco-id="<?php echo $bloco['id']; ?>"
+                                               data-previous-value="<?php echo $bloco['pessoas_faladas']; ?>"
+                                               min="0" <?php echo $max_apts; ?> readonly>
+                                        <button class="btn btn-outline-secondary btn-increment-bloco px-3 fw-bold" type="button" style="font-size: 1.2rem;">+</button>
+                                    </div>
+                                    <div class="ms-2 d-flex align-items-center justify-content-center" style="width: 24px;" id="status_save_b<?php echo $bloco['id']; ?>"></div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+
+                        <div class="list-group-item d-flex justify-content-between align-items-center p-2 border-top fw-bold bg-light">
+                            <span class="fs-5">Total</span>
+                            <div class="d-flex align-items-center">
+                                <span class="fs-5 text-center fw-bold" style="width: 150px;" id="total-pessoas-predio-<?php echo $mapa['id']; ?>"><?php echo $soma_pessoas; ?></span>
+                                <div style="width: 32px;"></div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        </div>
+                        <hr>
+                        <p class="mb-2"><strong>Recebido em:</strong> <?php echo date('d/m/Y', strtotime($mapa['data_entrega'])); ?></p>
+                        <div class="d-grid mt-3">
+                            <button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Finalizar e Devolver</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+
 $token = htmlspecialchars($_GET['token'] ?? '');
 if (empty($token)) {
     exibirErroFatal("Link Inválido", "Solicite um novo link ao servo de Territórios.", $baseUrl);
@@ -209,6 +322,28 @@ try {
             $quadras_por_mapa[$quadra['mapa_id']][] = $quadra;
         }
     }
+
+    // Busca mapas de prédio do usuário
+    $sql_predio = "SELECT m.id, m.identificador, m.data_entrega, m.gdrive_file_id, m.grupo_id,
+                          g.nome as nome_grupo, m.apt_inicio, m.apt_fim
+                   FROM mapas_predio m
+                   LEFT JOIN grupos g ON m.grupo_id = g.id
+                   WHERE (m.dirigente_id = ? OR m.grupo_id IN (SELECT grupo_id FROM grupo_membros WHERE user_id = ?))
+                   AND m.data_devolucao IS NULL";
+    $stmt_predio = $pdo->prepare($sql_predio);
+    $stmt_predio->execute([$user_id, $user_id]);
+    $mapas_predio = $stmt_predio->fetchAll();
+
+    $blocos_por_mapa = [];
+    if (!empty($mapas_predio)) {
+        $mp_ids = array_column($mapas_predio, 'id');
+        $pl = implode(',', array_fill(0, count($mp_ids), '?'));
+        $stmt_blocos = $pdo->prepare("SELECT id, mapa_id, numero, pessoas_faladas FROM blocos WHERE mapa_id IN ($pl) ORDER BY numero ASC");
+        $stmt_blocos->execute($mp_ids);
+        foreach ($stmt_blocos->fetchAll() as $b) {
+            $blocos_por_mapa[$b['mapa_id']][] = $b;
+        }
+    }
 } catch (PDOException $e) {
     exibirErroFatal("Erro no Sistema", "Problema de conexão com o banco de dados.", $baseUrl);
 }
@@ -230,10 +365,15 @@ try {
         .quadra-item:last-child { border-bottom: none; }
         .no-spinners::-webkit-outer-spin-button, .no-spinners::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .no-spinners { -moz-appearance: textfield; }
-        .quadra-input { padding: 0; background-color: #fff !important; }
+        .quadra-input, .bloco-input { padding: 0; background-color: #fff !important; }
         .card-header-group { background-color: #4190be !important; border-color: #4190be !important; }
         .btn-group-color { background-color: #4190be !important; border-color: #4190be !important; color: white !important; }
         .btn-group-color:hover { background-color: #357a9e !important; border-color: #357a9e !important; }
+        .card-header-predio { background-color: #E91E63 !important; border-color: #E91E63 !important; }
+        .btn-predio-color { background-color: #E91E63 !important; border-color: #E91E63 !important; color: white !important; }
+        .btn-predio-color:hover { background-color: #D81B60 !important; }
+        .section-divider-predio { color: #E91E63; }
+        .section-divider-predio::before, .section-divider-predio::after { border-bottom-color: #f48fb1; }
         .pdf-preview-container { position: relative; height: 300px; background-color: #e9ecef; border-bottom: 1px solid #dee2e6; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         .pdf-preview-container img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: pointer; }
         .pdf-preview-container .btn-expand { position: absolute; top: 8px; right: 8px; z-index: 10; }
@@ -291,6 +431,17 @@ try {
                     foreach ($mapas_grupo as $mapa): 
                         renderizarCard($mapa, $quadras_por_mapa, $total_mapas_geral);
                     endforeach; 
+                    ?>
+                </div>
+            <?php endif; ?>
+            <?php if (!empty($mapas_predio)): ?>
+                <div class="section-divider section-divider-predio"><i class="fas fa-building me-2"></i> Mapas de Prédios</div>
+                <div class="masonry-layout" id="container-mapas-predio">
+                    <?php
+                    $total_geral_predio = count($mapas_predio);
+                    foreach ($mapas_predio as $mapa):
+                        renderizarCardPredio($mapa, $blocos_por_mapa, $total_geral_predio);
+                    endforeach;
                     ?>
                 </div>
             <?php endif; ?>
@@ -490,6 +641,76 @@ try {
                 };
             });
             document.getElementById('pdfModal').addEventListener('show.bs.modal', (e) => { const btn = e.relatedTarget; document.getElementById('modal-img').src = btn.dataset.imgSrc; document.getElementById('pdfModalTitle').textContent = btn.dataset.pdfTitle || 'Visualizador'; });
+
+            // --- LÓGICA DOS BLOCOS (MAPAS DE PRÉDIO) ---
+            const pendingBlocoDeltas = {};
+            const saveBloco = async (blocoId, statusDiv) => {
+                const delta = pendingBlocoDeltas[blocoId];
+                if (!delta) return;
+                pendingBlocoDeltas[blocoId] = 0;
+                statusDiv.innerHTML = '<span class="spinner-border spinner-border-sm text-danger"></span>';
+                try {
+                    await fetch(`${API_BASE_URL}/mapas_predio_api.php`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'update_bloco_increment', bloco_id: blocoId, delta: delta })
+                    });
+                    statusDiv.innerHTML = '<i class="fas fa-check text-success"></i>';
+                    setTimeout(() => { statusDiv.innerHTML = ''; }, 2000);
+                } catch (e) { statusDiv.innerHTML = '<i class="fas fa-times text-danger"></i>'; }
+            };
+
+            document.querySelectorAll('.bloco-input').forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const bId = e.target.dataset.blocoId;
+                    const maxVal = e.target.dataset.maxVal ? parseInt(e.target.dataset.maxVal) : null;
+                    let currentVal = parseInt(e.target.value) || 0;
+
+                    // Enforce max
+                    if (maxVal !== null && currentVal > maxVal) {
+                        currentVal = maxVal;
+                        e.target.value = maxVal;
+                    }
+
+                    const diff = currentVal - (parseInt(e.target.dataset.previousValue) || 0);
+                    if (diff !== 0) {
+                        pendingBlocoDeltas[bId] = (pendingBlocoDeltas[bId] || 0) + diff;
+                        e.target.dataset.previousValue = currentVal;
+                        clearTimeout(saveTimeouts[bId]);
+                        saveTimeouts[bId] = setTimeout(() => saveBloco(bId, document.getElementById(`status_save_b${bId}`)), 800);
+                        let total = 0;
+                        e.target.closest('.bloco-list').querySelectorAll('.bloco-input').forEach(i => total += (parseInt(i.value) || 0));
+                        document.getElementById(`total-pessoas-predio-${e.target.closest('.bloco-list').dataset.mapaId}`).textContent = total;
+                    }
+                });
+            });
+
+            document.querySelectorAll('.btn-increment-bloco').forEach(b => b.onclick = (e) => {
+                const i = e.target.closest('.input-group').querySelector('.bloco-input');
+                const maxVal = i.dataset.maxVal ? parseInt(i.dataset.maxVal) : null;
+                const current = parseInt(i.value) || 0;
+                if (maxVal === null || current < maxVal) { i.value = current + 1; i.dispatchEvent(new Event('input')); }
+            });
+            document.querySelectorAll('.btn-decrement-bloco').forEach(b => b.onclick = (e) => {
+                const i = e.target.closest('.input-group').querySelector('.bloco-input');
+                if (parseInt(i.value) > 0) { i.value = parseInt(i.value) - 1; i.dispatchEvent(new Event('input')); }
+            });
+
+            document.querySelectorAll('.form-devolver-predio').forEach(form => {
+                form.onsubmit = (e) => {
+                    e.preventDefault();
+                    mostrarConfirmacao('Finalizar Mapa de Prédio', `Deseja devolver <b>${e.target.dataset.mapaNome}</b>?`, async () => {
+                        try {
+                            await fetch(`${API_BASE_URL}/mapas_predio_api.php`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ action: 'devolver', mapa_id: e.target.dataset.mapaId, data_devolucao: new Date().toISOString().split('T')[0] })
+                            });
+                            location.reload();
+                        } catch (e) { mostrarFeedback('Erro', 'Falha ao devolver.'); }
+                    });
+                };
+            });
         });
     </script>
 </body>

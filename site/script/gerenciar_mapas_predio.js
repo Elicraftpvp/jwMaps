@@ -236,13 +236,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         responsavelNome = '---';
                     }
                     
-                    const blocoRange = mapa.bloco_inicio && mapa.bloco_fim ? `${mapa.bloco_inicio} - ${mapa.bloco_fim}` : 'N/D';
+                    const blocoRange = mapa.bloco_inicio && mapa.bloco_fim ? `${mapa.bloco_inicio} a ${mapa.bloco_fim}` : 'N/D';
+                    const aptRange = mapa.apt_inicio && mapa.apt_fim ? `${mapa.apt_inicio} a ${mapa.apt_fim}` : 'N/D';
                     
                     const row = `<tr>
                             <td data-label="Identificador" class="card-title-cell fw-bold">${mapa.identificador}</td>
                             <td data-label="Região">${mapa.regiao || 'N/D'}</td>
                             <td data-label="Tipo">${mapa.tipo || 'N/D'}</td>
-                            <td data-label="Blocos">${blocoRange}</td>
+                            <td data-label="Blocos"><b>B:</b> ${blocoRange}<br><b>Apt:</b> ${aptRange}</td>
                             <td data-label="Status">${status}</td>
                             <td data-label="Responsável">${responsavelNome}</td>
                             <td data-label="Tempo" class="text-center">${diasComDirigenteBadge}</td>
@@ -321,6 +322,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('mapa_identificador').value = mapa.identificador;
             document.getElementById("mapa_bloco_inicio").value = mapa.bloco_inicio;
             document.getElementById("mapa_bloco_fim").value = mapa.bloco_fim;
+            document.getElementById("mapa_apt_inicio").value = mapa.apt_inicio || 1;
+            document.getElementById("mapa_apt_fim").value = mapa.apt_fim || "";
             document.getElementById("mapa_regiao").value = mapa.regiao || "";
             document.getElementById("mapa_tipo").value = mapa.tipo || "";
             editMode = true;
@@ -370,16 +373,18 @@ document.addEventListener('DOMContentLoaded', () => {
             identificador: document.getElementById('mapa_identificador').value,
             bloco_inicio: document.getElementById('mapa_bloco_inicio').value,
             bloco_fim: document.getElementById("mapa_bloco_fim").value,
+            apt_inicio: document.getElementById("mapa_apt_inicio").value,
+            apt_fim: document.getElementById("mapa_apt_fim").value,
             regiao: document.getElementById("mapa_regiao").value,
             tipo: document.getElementById("mapa_tipo").value,
         };
         
-        if (!data.identificador || !data.bloco_inicio || !data.bloco_fim) { 
-            mostrarFeedback('Atenção', 'Preencha identificador e blocos.', 'warning'); 
+        if (!data.identificador || !data.bloco_inicio || !data.bloco_fim || !data.apt_inicio || !data.apt_fim) { 
+            mostrarFeedback('Atenção', 'Preencha identificador, blocos e apartamentos.', 'warning'); 
             return; 
         }
-        if (parseInt(data.bloco_fim) < parseInt(data.bloco_inicio)) { 
-            mostrarFeedback('Atenção', 'A quadra final deve ser maior ou igual à inicial.', 'warning'); 
+        if (parseInt(data.apt_fim) < parseInt(data.apt_inicio)) { 
+            mostrarFeedback('Atenção', 'O apartamento final deve ser maior ou igual ao inicial.', 'warning'); 
             return; 
         }
         

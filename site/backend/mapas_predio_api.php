@@ -68,12 +68,12 @@ function handle_get($pdo, $id, $recurso) {
         }
 
         if ($id) {
-            $stmt = $pdo->prepare("SELECT id, identificador, bloco_inicio, bloco_fim, regiao, tipo, grupo_id FROM mapas_predio WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT id, identificador, bloco_inicio, bloco_fim, apt_inicio, apt_fim, regiao, tipo, grupo_id FROM mapas_predio WHERE id = ?");
             $stmt->execute([$id]);
             echo json_encode($stmt->fetch(PDO::FETCH_ASSOC));
         } else {
             // Atualizado para buscar também o nome do grupo
-            $sql = "SELECT m.id, m.identificador, m.bloco_inicio, m.bloco_fim, m.regiao, m.tipo, 
+            $sql = "SELECT m.id, m.identificador, m.bloco_inicio, m.bloco_fim, m.apt_inicio, m.apt_fim, m.regiao, m.tipo, 
                     m.dirigente_id, m.grupo_id, m.data_entrega, 
                     u.nome as dirigente_nome, g.nome as grupo_nome,
                     DATEDIFF(CURDATE(), m.data_entrega) as dias_com_dirigente
@@ -100,14 +100,14 @@ function handle_post_unified($pdo) {
     try {
         switch ($action) {
             case 'create':
-                if (empty($data['identificador']) || !isset($data['bloco_inicio']) || !isset($data['bloco_fim'])) throw new Exception('Identificador e blocos são obrigatórios.', 400);
+                if (empty($data['identificador']) || !isset($data['bloco_inicio']) || !isset($data['bloco_fim']) || !isset($data['apt_inicio']) || !isset($data['apt_fim'])) throw new Exception('Identificador, blocos e apts são obrigatórios.', 400);
                 $pdo->beginTransaction();
-                $sql = "INSERT INTO mapas_predio (identificador, bloco_inicio, bloco_fim, regiao, tipo) VALUES (?, ?, ?, ?, ?)";
+                $sql = "INSERT INTO mapas_predio (identificador, bloco_inicio, bloco_fim, apt_inicio, apt_fim, regiao, tipo) VALUES (?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $pdo->prepare($sql);
-                $stmt->execute([$data['identificador'], $data['bloco_inicio'], $data['bloco_fim'], $data['regiao'], $data['tipo']]);
+                $stmt->execute([$data['identificador'], $data['bloco_inicio'], $data['bloco_fim'], $data['apt_inicio'], $data['apt_fim'], $data['regiao'], $data['tipo']]);
                 $mapa_id = $pdo->lastInsertId();
                 $stmt_quadra = $pdo->prepare("INSERT INTO blocos (mapa_id, numero) VALUES (?, ?)");
-                for ($i = (int)$data['bloco_inicio']; $i <= (int)$data['bloco_fim']; $i++) $stmt_quadra->execute([$mapa_id, $i]);
+                $b_ini = $data['bloco_inicio']; $b_fim = $data['bloco_fim']; if (is_numeric($b_ini) && is_numeric($b_fim)) { for ($i = (int)$b_ini; $i <= (int)$b_fim; $i++) $stmt_quadra->execute([$mapa_id, $i]); } else { for ($i = $b_ini; $i <= $b_fim; $i++) { $stmt_quadra->execute([$mapa_id, $i]); if ($i === $b_fim) break; } }
                 $pdo->commit();
                 http_response_code(201);
                 echo json_encode(['message' => 'Mapa e blocos criados com sucesso!']);
@@ -115,13 +115,13 @@ function handle_post_unified($pdo) {
 
             case 'edit_details':
                 $mapa_id = $data['id'] ?? null;
-                if (!$mapa_id || empty($data['identificador']) || !isset($data['bloco_inicio']) || !isset($data['bloco_fim'])) throw new Exception('Dados insuficientes para edição.', 400);
+                if (!$mapa_id || empty($data['identificador']) || !isset($data['bloco_inicio']) || !isset($data['bloco_fim']) || !isset($data['apt_inicio']) || !isset($data['apt_fim'])) throw new Exception('Dados insuficientes para edição.', 400);
                 $pdo->beginTransaction();
-                $sql = "UPDATE mapas_predio SET identificador = ?, bloco_inicio = ?, bloco_fim = ?, regiao = ?, tipo = ? WHERE id = ?";
-                $pdo->prepare($sql)->execute([$data['identificador'], $data['bloco_inicio'], $data['bloco_fim'], $data['regiao'], $data['tipo'], $mapa_id]);
+                $sql = "UPDATE mapas_predio SET identificador = ?, bloco_inicio = ?, bloco_fim = ?, apt_inicio = ?, apt_fim = ?, regiao = ?, tipo = ? WHERE id = ?";
+                $pdo->prepare($sql)->execute([$data['identificador'], $data['bloco_inicio'], $data['bloco_fim'], $data['apt_inicio'], $data['apt_fim'], $data['regiao'], $data['tipo'], $mapa_id]);
                 $pdo->prepare("DELETE FROM blocos WHERE mapa_id = ?")->execute([$mapa_id]);
                 $stmt_quadra = $pdo->prepare("INSERT INTO blocos (mapa_id, numero) VALUES (?, ?)");
-                for ($i = (int)$data['bloco_inicio']; $i <= (int)$data['bloco_fim']; $i++) $stmt_quadra->execute([$mapa_id, $i]);
+                $b_ini = $data['bloco_inicio']; $b_fim = $data['bloco_fim']; if (is_numeric($b_ini) && is_numeric($b_fim)) { for ($i = (int)$b_ini; $i <= (int)$b_fim; $i++) $stmt_quadra->execute([$mapa_id, $i]); } else { for ($i = $b_ini; $i <= $b_fim; $i++) { $stmt_quadra->execute([$mapa_id, $i]); if ($i === $b_fim) break; } }
                 $pdo->commit();
                 echo json_encode(['message' => 'Mapa atualizado com sucesso!']);
                 break;
@@ -240,6 +240,21 @@ function handle_post_unified($pdo) {
                 echo json_encode(['message' => 'Mapa devolvido e contabilizado com sucesso!']);
                 break;
             
+            case 'update_bloco':
+                // chamado pela vista_dirigente para mapas de prédio
+                $bloco_id = $data['bloco_id'] ?? null;
+                if (!$bloco_id || !isset($data['pessoas_faladas'])) throw new Exception('Dados insuficientes.', 400);
+                $pdo->prepare("UPDATE blocos SET pessoas_faladas = GREATEST(0, ?) WHERE id = ?")->execute([$data['pessoas_faladas'], $bloco_id]);
+                echo json_encode(['status' => 'success']);
+                break;
+
+            case 'update_bloco_increment':
+                // chamado pela vista_publica para mapas de prédio (sistema de deltas)
+                if (!isset($data['bloco_id']) || !isset($data['delta'])) throw new Exception('Dados insuficientes.', 400);
+                $pdo->prepare("UPDATE blocos SET pessoas_faladas = GREATEST(0, CAST(pessoas_faladas AS SIGNED) + ?) WHERE id = ?")->execute([(int)$data['delta'], $data['bloco_id']]);
+                echo json_encode(['status' => 'success']);
+                break;
+
             case 'update_quadra':
                 if (!isset($data['quadra_id']) || !isset($data['pessoas_faladas'])) throw new Exception('Dados insuficientes.', 400);
                 $sql = "UPDATE blocos SET pessoas_faladas = GREATEST(0, ?) WHERE id = ?";
@@ -294,3 +309,4 @@ function handle_delete($pdo, $id) {
     }
 }
 ?>
+
