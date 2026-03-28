@@ -48,8 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mapaObsInput && obsCharCount) {
         mapaObsInput.addEventListener('input', () => {
             const count = mapaObsInput.value.length;
-            obsCharCount.textContent = `${count}/150`;
-            obsCharCount.classList.toggle('text-danger', count >= 150);
+            obsCharCount.textContent = `${count}/500`;
+            obsCharCount.classList.toggle('text-danger', count >= 500);
         });
     }
 
