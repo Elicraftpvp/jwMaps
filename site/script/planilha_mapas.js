@@ -44,6 +44,9 @@ async function carregarDadosDaPlanilha() {
             inicializarDragAndDrop();
         }
 
+        // 5. Inicializar Tooltip de Hover
+        inicializarTooltipHistorico();
+
     } catch (error) {
         console.error('Erro:', error);
         const msgErro = `<tr><td colspan="2" class="text-danger p-4 text-center">Erro ao carregar dados: ${error.message}</td></tr>`;
@@ -80,8 +83,9 @@ function renderizarTabelaDirigentes(todosOsMapas, todosOsDirigentes, tbody) {
 
         mapasDoDirigente.forEach(mapa => {
             const label = mapa.tipo ? `${mapa.identificador} - ${mapa.tipo}` : mapa.identificador;
+            const historicoAttr = mapa.historico ? `data-historico='${JSON.stringify(mapa.historico).replace(/'/g, "&apos;")}'` : "data-historico='[]'";
             // Badge Amarelo/Padrão para Dirigente
-            html += `<span class="badge mapa-atribuido-badge mapa-item" data-mapa-id="${mapa.id}">${label}</span>`;
+            html += `<span class="badge mapa-atribuido-badge mapa-item" data-mapa-id="${mapa.id}" ${historicoAttr}>${label}</span>`;
         });
 
         html += `</div></td>`;
@@ -120,8 +124,9 @@ function renderizarTabelaGrupos(todosOsMapas, todosOsGrupos, tbody) {
 
         mapasDoGrupo.forEach(mapa => {
             const label = mapa.tipo ? `${mapa.identificador} - ${mapa.tipo}` : mapa.identificador;
+            const historicoAttr = mapa.historico ? `data-historico='${JSON.stringify(mapa.historico).replace(/'/g, "&apos;")}'` : "data-historico='[]'";
             // Badge Azul para Grupos
-            html += `<span class="badge mapa-grupo-badge mapa-item" data-mapa-id="${mapa.id}">${label}</span>`;
+            html += `<span class="badge mapa-grupo-badge mapa-item" data-mapa-id="${mapa.id}" ${historicoAttr}>${label}</span>`;
         });
 
         html += `</div></td>`;
@@ -148,7 +153,101 @@ function renderizarMapasDisponiveis(todosOsMapas, container) {
         // Badge Verde para Disponível
         span.className = 'badge mapa-disponivel-badge mapa-item';
         span.setAttribute('data-mapa-id', mapa.id);
+        if (mapa.historico) {
+            span.setAttribute('data-historico', JSON.stringify(mapa.historico));
+        } else {
+            span.setAttribute('data-historico', '[]');
+        }
         span.textContent = mapa.tipo ? `${mapa.identificador} - ${mapa.tipo}` : mapa.identificador;
         container.appendChild(span);
+    });
+}
+
+// ==========================================
+// LÓGICA DO TOOLTIP DE HISTÓRICO FLUTUANTE
+// ==========================================
+function inicializarTooltipHistorico() {
+    let tooltip = document.getElementById('mapa-historico-tooltip');
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'mapa-historico-tooltip';
+        tooltip.className = 'mapa-historico-tooltip';
+        document.body.appendChild(tooltip);
+    }
+
+    document.body.addEventListener('mouseover', function(e) {
+        const target = e.target.closest('.mapa-item');
+        if (!target) return;
+
+        const historicoStr = target.getAttribute('data-historico');
+        if (!historicoStr) return;
+
+        let historico = [];
+        try {
+            historico = JSON.parse(historicoStr);
+        } catch (err) {
+            return;
+        }
+
+        const compStyle = window.getComputedStyle(target);
+        const bgColor = compStyle.backgroundColor;
+        const borderColor = compStyle.borderColor;
+        
+        tooltip.style.borderColor = borderColor;
+        tooltip.style.backgroundColor = bgColor;
+
+        let html = `<div class="tooltip-header" style="border-bottom-color: ${borderColor}">Últimos Usos</div>`;
+        
+        if (historico.length === 0) {
+            html += `<div class="tooltip-empty">Nenhum histórico recente</div>`;
+        } else {
+            historico.forEach(h => {
+                html += `
+                    <div class="tooltip-item">
+                        <span class="tooltip-date">${h.data}</span>
+                        <span class="tooltip-name text-truncate" style="max-width: 120px;" title="${h.nome}">${h.nome}</span>
+                    </div>
+                `;
+            });
+        }
+        tooltip.innerHTML = html;
+
+        // É preciso mostrar o tooltip antes de medir o tamanho
+        tooltip.style.visibility = 'hidden';
+        tooltip.classList.add('show');
+
+        const rect = target.getBoundingClientRect();
+        let topPos = rect.top + window.scrollY - tooltip.offsetHeight - 8;
+        let leftPos = rect.left + window.scrollX + (rect.width / 2) - (tooltip.offsetWidth / 2);
+
+        if (topPos < window.scrollY) {
+            topPos = rect.bottom + window.scrollY + 8;
+        }
+        
+        if (leftPos < 0) leftPos = 10;
+        if (leftPos + tooltip.offsetWidth > window.innerWidth) {
+            leftPos = window.innerWidth - tooltip.offsetWidth - 10;
+        }
+
+        tooltip.style.top = `${topPos}px`;
+        tooltip.style.left = `${leftPos}px`;
+        tooltip.style.visibility = 'visible';
+    });
+
+    document.body.addEventListener('mouseout', function(e) {
+        const target = e.target.closest('.mapa-item');
+        if (!target) return;
+        
+        // Verifica se estamos indo para o tooltip (não fechar se o mouse for pro tooltip)
+        if (e.relatedTarget && e.relatedTarget.closest('#mapa-historico-tooltip')) {
+            return;
+        }
+        
+        tooltip.classList.remove('show');
+    });
+
+    // Permitir fechar o tooltip ao sair dele
+    tooltip.addEventListener('mouseleave', function() {
+        tooltip.classList.remove('show');
     });
 }

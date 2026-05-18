@@ -82,7 +82,36 @@ function handle_get($pdo, $id, $recurso) {
                     LEFT JOIN grupos g ON m.grupo_id = g.id
                     ORDER BY m.id";
             $stmt = $pdo->query($sql);
-            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+            $mapas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Carregar o histórico global de mapas (últimos 3)
+            $sql_hist = "
+                SELECT h.mapa_id, h.data_devolucao, u.nome as dirigente_nome, g.nome as grupo_nome
+                FROM historico_mapas h
+                LEFT JOIN users u ON h.dirigente_id = u.id
+                LEFT JOIN grupos g ON h.grupo_id = g.id
+                ORDER BY h.data_devolucao DESC, h.id DESC
+            ";
+            $stmt_hist = $pdo->query($sql_hist);
+            $all_hist = $stmt_hist->fetchAll(PDO::FETCH_ASSOC);
+            
+            $history_by_map = [];
+            foreach($all_hist as $h) {
+                $mId = $h['mapa_id'];
+                if (!isset($history_by_map[$mId])) $history_by_map[$mId] = [];
+                if (count($history_by_map[$mId]) < 3) {
+                    $history_by_map[$mId][] = [
+                        'data' => date('d/m/Y', strtotime($h['data_devolucao'])),
+                        'nome' => $h['dirigente_nome'] ?: ($h['grupo_nome'] ?: 'Desconhecido')
+                    ];
+                }
+            }
+
+            foreach($mapas as &$m) {
+                $m['historico'] = isset($history_by_map[$m['id']]) ? $history_by_map[$m['id']] : [];
+            }
+
+            echo json_encode($mapas);
         }
     } catch (PDOException $e) {
         throw new Exception('Erro no Banco de Dados: ' . $e->getMessage(), 500);
