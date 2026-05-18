@@ -116,6 +116,7 @@ function renderizarCard($mapa, $quadras_por_mapa, $total_cards_geral) {
                 <?php endif; ?>
 
                 <div class="card-body">
+                    <form class="form-devolver" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
                         <?php if(!empty($mapa['obs'])): ?>
                         <div class="obs-container mb-3 mt-0" style="border-top: none; padding-top: 0;">
                             <button type="button" class="btn-obs-toggle" onclick="toggleObs(this)">
