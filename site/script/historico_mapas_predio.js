@@ -55,7 +55,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const row = `
                     <tr>
                         <td><strong style="color: #E91E63;">${item.mapa_identificador || 'N/A'}</strong></td>
-                        <td>${item.dirigente_nome || 'N/A'}</td>
+                        <td>
+                            ${item.dirigente_nome ? `<i class="fas fa-user text-secondary me-1"></i> ${item.dirigente_nome}` : ''}
+                            ${!item.dirigente_nome && item.grupo_nome ? `<i class="fas fa-users text-info me-1"></i> ${item.grupo_nome}` : ''}
+                            ${!item.dirigente_nome && !item.grupo_nome ? 'N/A' : ''}
+                        </td>
                         <td>${dataEntrega}</td>
                         <td>${dataDevolucao}</td>
                         <td class="text-center fw-bold" title="${detalhes.replace(/"/g, '&quot;')}" data-bs-toggle="tooltip" style="cursor: help;">

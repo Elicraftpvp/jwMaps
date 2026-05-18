@@ -24,10 +24,12 @@ $sql = "
         h.pessoas_faladas_total, 
         h.dados_quadras,
         m.identificador as mapa_identificador, 
-        u.nome as dirigente_nome
+        u.nome as dirigente_nome,
+        g.nome as grupo_nome
     FROM historico_mapas h
     JOIN mapas m ON h.mapa_id = m.id
-    JOIN users u ON h.dirigente_id = u.id
+    LEFT JOIN users u ON h.dirigente_id = u.id
+    LEFT JOIN grupos g ON h.grupo_id = g.id
     WHERE 1=1
 ";
 

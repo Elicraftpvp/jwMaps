@@ -141,9 +141,9 @@ function handle_post_unified($pdo) {
                 $stmt_check->execute([$data['mapa_id']]);
                 $mapa_atual = $stmt_check->fetch(PDO::FETCH_ASSOC);
 
-                // Lógica de Histórico: Apenas salva se havia um DIRIGENTE anterior responsável
+                // Lógica de Histórico: Apenas salva se havia um DIRIGENTE ou GRUPO anterior responsável
                 // Se estava com grupo e vai para outro, não gera histórico pessoal
-                if ($mapa_atual && !empty($mapa_atual['dirigente_id']) && $mapa_atual['dirigente_id'] != ($data['dirigente_id'] ?? null)) {
+                if ($mapa_atual && (!empty($mapa_atual['dirigente_id']) || !empty($mapa_atual['grupo_id'])) && ($mapa_atual['dirigente_id'] != ($data['dirigente_id'] ?? null) || $mapa_atual['grupo_id'] != ($data['grupo_id'] ?? null))) {
                     $stmt_blocos = $pdo->prepare("SELECT numero, pessoas_faladas FROM blocos WHERE mapa_id = ?");
                     $stmt_blocos->execute([$data['mapa_id']]);
                     $blocos_data = $stmt_blocos->fetchAll(PDO::FETCH_ASSOC);
@@ -153,12 +153,13 @@ function handle_post_unified($pdo) {
                     $data_devolucao_hist = date('Y-m-d');
 
                     $sql_hist = "INSERT INTO historico_mapas_predio 
-                                (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_blocos) 
-                                VALUES (?, ?, ?, ?, ?, ?)";
+                                (mapa_id, dirigente_id, grupo_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_blocos) 
+                                VALUES (?, ?, ?, ?, ?, ?, ?)";
                     
                     $pdo->prepare($sql_hist)->execute([
                         $data['mapa_id'], 
                         $mapa_atual['dirigente_id'], 
+                        $mapa_atual['grupo_id'],
                         $mapa_atual['data_entrega'], 
                         $data_devolucao_hist,        
                         $total_faladas_historico,    
@@ -183,11 +184,11 @@ function handle_post_unified($pdo) {
                 
                 $pdo->beginTransaction();
                 
-                $stmt_mapa = $pdo->prepare("SELECT dirigente_id, data_entrega FROM mapas_predio WHERE id = ?");
+                $stmt_mapa = $pdo->prepare("SELECT dirigente_id, grupo_id, data_entrega FROM mapas_predio WHERE id = ?");
                 $stmt_mapa->execute([$data['mapa_id']]);
                 $mapa_atual = $stmt_mapa->fetch(PDO::FETCH_ASSOC);
 
-                if ($mapa_atual && !empty($mapa_atual['dirigente_id'])) {
+                if ($mapa_atual && (!empty($mapa_atual['dirigente_id']) || !empty($mapa_atual['grupo_id']))) {
                     $stmt_blocos = $pdo->prepare("SELECT numero, pessoas_faladas FROM blocos WHERE mapa_id = ?");
                     $stmt_blocos->execute([$data['mapa_id']]);
                     $blocos_data = $stmt_blocos->fetchAll(PDO::FETCH_ASSOC);
@@ -197,8 +198,8 @@ function handle_post_unified($pdo) {
                     
                     $data_devolucao_hoje = date('Y-m-d');
                     
-                    $sql_hist = "INSERT INTO historico_mapas_predio (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_blocos) VALUES (?, ?, ?, ?, ?, ?)";
-                    $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['data_entrega'], $data_devolucao_hoje, $total_faladas, $dados_blocos_json]);
+                    $sql_hist = "INSERT INTO historico_mapas_predio (mapa_id, dirigente_id, grupo_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_blocos) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                    $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['grupo_id'], $mapa_atual['data_entrega'], $data_devolucao_hoje, $total_faladas, $dados_blocos_json]);
                 }
 
                 // Reseta dirigente, grupo e blocos
@@ -213,7 +214,7 @@ function handle_post_unified($pdo) {
                 if (empty($data['mapa_id']) || empty($data['data_devolucao'])) throw new Exception('Dados insuficientes.', 400);
                 $pdo->beginTransaction();
                 
-                $stmt_mapa = $pdo->prepare("SELECT dirigente_id, data_entrega FROM mapas_predio WHERE id = ?");
+                $stmt_mapa = $pdo->prepare("SELECT dirigente_id, grupo_id, data_entrega FROM mapas_predio WHERE id = ?");
                 $stmt_mapa->execute([$data['mapa_id']]);
                 $mapa_atual = $stmt_mapa->fetch(PDO::FETCH_ASSOC);
                 
@@ -226,10 +227,10 @@ function handle_post_unified($pdo) {
                 $total_faladas = array_sum(array_column($blocos_data, 'pessoas_faladas'));
                 $dados_blocos_json = json_encode($blocos_data);
                 
-                // Se houver dirigente associado, registra no histórico
-                if (!empty($mapa_atual['dirigente_id'])) {
-                    $sql_hist = "INSERT INTO historico_mapas_predio (mapa_id, dirigente_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_blocos) VALUES (?, ?, ?, ?, ?, ?)";
-                    $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['data_entrega'], $data['data_devolucao'], $total_faladas, $dados_blocos_json]);
+                // Se houver dirigente ou grupo associado, registra no histórico
+                if (!empty($mapa_atual['dirigente_id']) || !empty($mapa_atual['grupo_id'])) {
+                    $sql_hist = "INSERT INTO historico_mapas_predio (mapa_id, dirigente_id, grupo_id, data_entrega, data_devolucao, pessoas_faladas_total, dados_blocos) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                    $pdo->prepare($sql_hist)->execute([$data['mapa_id'], $mapa_atual['dirigente_id'], $mapa_atual['grupo_id'], $mapa_atual['data_entrega'], $data['data_devolucao'], $total_faladas, $dados_blocos_json]);
                 }
                 
                 // Reseta vínculo com dirigente e grupo ao finalizar
