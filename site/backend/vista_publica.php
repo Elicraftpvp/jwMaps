@@ -577,8 +577,9 @@ try {
                 html = html.replace(/^h2\s+(.*)$/gim, '<h2>$1</h2>');
                 html = html.replace(/^h3\s+(.*)$/gim, '<h3>$1</h3>');
                 
-                // Convert <Nome="URL"> to hyperlink
-                html = html.replace(/<([^=]+)="([^"]+)">/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+                // Convert <"Name"="URL"> or <Name="URL"> to hyperlink
+                html = html.replace(/<"([^\"<>]+)"="([^\"<>]+)">/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+                html = html.replace(/<([^=<>\"]+)="([^\"<>]+)">/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
                 
                 // Bullet points: lines starting with -
                 // First, split by lines or handle with regex
