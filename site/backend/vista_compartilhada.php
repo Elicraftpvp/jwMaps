@@ -121,6 +121,20 @@ try {
         .no-spinners::-webkit-outer-spin-button, .no-spinners::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .pdf-preview-container { position: relative; height: 250px; background-color: #eee; display: flex; justify-content: center; align-items: center; overflow: hidden; border-bottom: 1px solid #ddd; }
         .pdf-preview-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        /* Estilos para o campo de Observações */
+        .obs-container { margin-top: 1rem; border-top: 1px solid #dee2e6; padding-top: 0.8rem; }
+        .btn-obs-toggle { background: #f8f9fa; border: 1px solid #dee2e6; color: #495057; width: 100%; text-align: left; padding: 10px 15px; border-radius: 8px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
+        .btn-obs-toggle:hover { background: #e9ecef; }
+        .obs-content { display: none; padding: 12px 15px; background: white; border: 1px solid #dee2e6; border-top: none; border-radius: 0 0 8px 8px; font-size: 0.95rem; line-height: 1.4; color: #333; }
+        .btn-obs-toggle.active { border-radius: 8px 8px 0 0; background: #e9ecef; }
+        .obs-content h1, .obs-content h2, .obs-content h3 { font-weight: 700; margin-bottom: 8px; color: #212529; }
+        .obs-content h1 { font-size: 1.25rem; }
+        .obs-content h2 { font-size: 1.15rem; }
+        .obs-content h3 { font-size: 1.05rem; }
+        .obs-content ul { padding-left: 20px; margin-bottom: 0; }
+        .obs-content li { margin-bottom: 4px; }
+        .obs-content li:last-child { margin-bottom: 0; }
     </style>
 </head>
 <body>
@@ -150,6 +164,16 @@ try {
             <?php endif; ?>
 
             <div class="card-body">
+                <?php if(!empty($mapa['obs'])): ?>
+                <div class="obs-container mb-3 mt-0" style="border-top: none; padding-top: 0;">
+                    <button type="button" class="btn-obs-toggle" onclick="toggleObs(this)">
+                        <span><i class="fas fa-sticky-note me-2 text-warning"></i> Observações</span>
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="obs-content" data-raw-obs="<?php echo htmlspecialchars($mapa['obs']); ?>"></div>
+                </div>
+                <?php endif; ?>
+
                 <label class="form-label fw-bold">Pessoas Encontradas:</label>
                 <div class="list-group list-group-flush mb-3">
                     <?php foreach ($items as $item): ?>
@@ -195,6 +219,50 @@ try {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Função para parsear a observação
+            window.parseObs = (text) => {
+                let html = text;
+                html = html.replace(/^h1\s+(.*)$/gim, '<h1>$1</h1>');
+                html = html.replace(/^h2\s+(.*)$/gim, '<h2>$1</h2>');
+                html = html.replace(/^h3\s+(.*)$/gim, '<h3>$1</h3>');
+                
+                // Convert <Nome="URL"> to hyperlink
+                html = html.replace(/<([^=]+)="([^"]+)">/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+                
+                let lines = html.split('\n');
+                let inList = false;
+                let finalLines = [];
+                lines.forEach(line => {
+                    let trimmed = line.trim();
+                    if (trimmed.startsWith('-')) {
+                        if (!inList) { finalLines.push('<ul>'); inList = true; }
+                        finalLines.push(`<li>${trimmed.substring(1).trim()}</li>`);
+                    } else {
+                        if (inList) { finalLines.push('</ul>'); inList = false; }
+                        finalLines.push(line);
+                    }
+                });
+                if (inList) finalLines.push('</ul>');
+                return finalLines.join('<br>').replace(/<br><ul>/g, '<ul>').replace(/<\/ul><br>/g, '</ul>');
+            };
+
+            window.toggleObs = (btn) => {
+                const container = btn.closest('.obs-container');
+                const content = container.querySelector('.obs-content');
+                const icon = btn.querySelector('i.fa-plus, i.fa-minus');
+                const isOpening = content.style.display !== 'block';
+                if (isOpening) {
+                    if (!content.dataset.parsed) { content.innerHTML = parseObs(content.dataset.rawObs); content.dataset.parsed = "true"; }
+                    content.style.display = 'block';
+                    btn.classList.add('active');
+                    if(icon) { icon.classList.replace('fa-plus', 'fa-minus'); }
+                } else {
+                    content.style.display = 'none';
+                    btn.classList.remove('active');
+                    if(icon) { icon.classList.replace('fa-minus', 'fa-plus'); }
+                }
+            };
+
             let segundosRestantes = <?php echo $segundos_restantes; ?>;
             const timer = document.getElementById('timer');
             
