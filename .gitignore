@@ -4,4 +4,4 @@ pdfs/
 !*.backend
 site/backend/jw_mapas_estrutura.sql
 *test*
-.agents/rules/antigravity.md
+*.agents/*

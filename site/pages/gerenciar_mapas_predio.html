@@ -198,9 +198,27 @@
                         </div>
                         <div class="mb-3">
                             <label for="mapa_obs" class="form-label">Observações</label>
-                            <textarea class="form-control" id="mapa_obs" maxlength="500" rows="2"
+                            <div class="form-text mb-2 p-2 bg-light border rounded" style="font-size: 0.8rem; line-height: 1.4;">
+                                <strong class="d-block mb-1 text-dark"><i class="fas fa-info-circle me-1 text-primary"></i> Guia de Formatação:</strong>
+                                <div class="row g-2 text-muted">
+                                    <div class="col-12 col-md-4">
+                                        <span class="badge bg-secondary">Títulos</span><br>
+                                        <code>h1 Título Maior</code><br>
+                                        <code>h2 Subtítulo</code>
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <span class="badge bg-secondary">Links</span><br>
+                                        <code>&lt;"Nome"="https://..."&gt;</code>
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <span class="badge bg-secondary">Listas</span><br>
+                                        <code>- Item de lista</code>
+                                    </div>
+                                </div>
+                            </div>
+                            <textarea class="form-control" id="mapa_obs" maxlength="4000" rows="2"
                                 placeholder="Ex: h1 Atenção! - local de caixinha de correio... NÃO USE PARA MARCAÇÕES DE RUAS, NUMEROS OU APARTAMENTOS!"></textarea>
-                            <div class="form-text text-end" id="obs-char-count">0/500</div>
+                            <div class="form-text text-end" id="obs-char-count">0/4000</div>
                         </div>
                     </form>
                 </div>

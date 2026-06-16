@@ -578,6 +578,11 @@ try {
                 html = html.replace(/^h1\s+(.*)$/gim, '<h1>$1</h1>');
                 html = html.replace(/^h2\s+(.*)$/gim, '<h2>$1</h2>');
                 html = html.replace(/^h3\s+(.*)$/gim, '<h3>$1</h3>');
+                
+                // Convert <"Name"="URL"> or <Name="URL"> to hyperlink
+                html = html.replace(/<"([^\"<>]+)"="([^\"<>]+)">/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+                html = html.replace(/<([^=<>\"]+)="([^\"<>]+)">/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+                
                 let lines = html.split('\n');
                 let inList = false;
                 let finalLines = [];
