@@ -2,6 +2,9 @@
 // site/backend/vista_publica.php
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
 require_once 'conexao.php';
 
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
@@ -395,7 +398,7 @@ try {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <base href="<?php echo $baseUrl; ?>site/backend/">
     <title>Mapas de <?php echo htmlspecialchars($user['nome']); ?></title>
     
@@ -418,7 +421,8 @@ try {
         .quadra-item:last-child { border-bottom: none; }
         .no-spinners::-webkit-outer-spin-button, .no-spinners::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .no-spinners { -moz-appearance: textfield; }
-        .quadra-input, .bloco-input { padding: 0; background-color: #fff !important; }
+        .quadra-input, .bloco-input { padding: 0; background-color: #fff !important; font-size: 16px !important; }
+        .btn-increment, .btn-decrement, .btn-increment-bloco, .btn-decrement-bloco { touch-action: manipulation; }
         .card-header-group { background-color: #4190be !important; border-color: #4190be !important; }
         .btn-group-color { background-color: #4190be !important; border-color: #4190be !important; color: white !important; }
         .btn-group-color:hover { background-color: #357a9e !important; border-color: #357a9e !important; }
@@ -568,6 +572,126 @@ try {
     <script src="../script/common.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const pendingDeltas = {};
+            const pendingBlocoDeltas = {};
+            const API_BASE_URL = '.'; 
+            let pollingInterval = null;
+            let currentMapIdsHash = '';
+
+            function getMapIdsHash() {
+                const maps = Array.from(document.querySelectorAll('.quadra-list')).map(l => l.dataset.mapaId).sort();
+                const predios = Array.from(document.querySelectorAll('.bloco-list')).map(l => l.dataset.mapaId).sort();
+                return JSON.stringify({ m: maps, p: predios });
+            }
+
+            function updateObs(list, obsTxt) {
+                const obsContainer = list.closest('.card-body').querySelector('.obs-content');
+                if (obsContainer && obsContainer.dataset.rawObs !== obsTxt) {
+                    obsContainer.dataset.rawObs = obsTxt;
+                    obsContainer.dataset.parsed = "";
+                    if (obsContainer.style.display === 'block') {
+                        obsContainer.innerHTML = window.parseObs(obsTxt);
+                        obsContainer.dataset.parsed = "true";
+                    }
+                }
+            }
+
+            function startPolling() {
+                if (pollingInterval) clearInterval(pollingInterval);
+                currentMapIdsHash = getMapIdsHash();
+                
+                const userToken = <?php echo json_encode($token); ?>;
+                if (!userToken) return;
+
+                pollingInterval = setInterval(async () => {
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/sync_api.php?token=${userToken}`);
+                        const data = await res.json();
+                        if (data.error) return;
+
+                        const serverMapIdsHash = JSON.stringify({
+                            m: (data.mapas || []).map(String).sort(),
+                            p: (data.mapas_predio || []).map(String).sort()
+                        });
+
+                        if (currentMapIdsHash !== serverMapIdsHash) {
+                            const fetchUrl = new URL(location.href);
+                            fetchUrl.searchParams.set('_t', Date.now());
+                            fetch(fetchUrl.toString(), { cache: 'no-store' })
+                                .then(r => r.text())
+                                .then(html => {
+                                    const parser = new DOMParser();
+                                    const doc = parser.parseFromString(html, 'text/html');
+                                    const currentContainer = document.querySelector('.container-fluid');
+                                    const newContainer = doc.querySelector('.container-fluid');
+                                    if (currentContainer && newContainer) {
+                                        currentContainer.innerHTML = newContainer.innerHTML;
+                                        initMapListeners();
+                                        currentMapIdsHash = getMapIdsHash();
+                                    }
+                                });
+                            return; 
+                        }
+
+                        if (data.quadras) {
+                            document.querySelectorAll('.quadra-list').forEach(list => {
+                                const mapId = list.dataset.mapaId;
+                                let total = 0;
+                                list.querySelectorAll('.quadra-input').forEach(input => {
+                                    const qId = input.dataset.quadraId;
+                                    if (data.quadras[qId] !== undefined) {
+                                        if (!pendingDeltas[qId]) {
+                                            input.value = data.quadras[qId];
+                                            input.dataset.previousValue = data.quadras[qId];
+                                        }
+                                        total += parseInt(input.value) || 0;
+                                    }
+                                });
+                                const tSpan = document.getElementById(`total-pessoas-mapa-${mapId}`);
+                                if (tSpan) tSpan.textContent = total;
+                            });
+                        }
+
+                        if (data.blocos) {
+                            document.querySelectorAll('.bloco-list').forEach(list => {
+                                const mapId = list.dataset.mapaId;
+                                let total = 0;
+                                list.querySelectorAll('.bloco-input').forEach(input => {
+                                    const bId = input.dataset.blocoId;
+                                    if (data.blocos[bId] !== undefined) {
+                                        if (!pendingBlocoDeltas[bId]) {
+                                            input.value = data.blocos[bId];
+                                            input.dataset.previousValue = data.blocos[bId];
+                                        }
+                                        total += parseInt(input.value) || 0;
+                                    }
+                                });
+                                const tSpan = document.getElementById(`total-pessoas-predio-${mapId}`);
+                                if (tSpan) tSpan.textContent = total;
+                            });
+                        }
+
+                        if (data.obs) {
+                            document.querySelectorAll('.quadra-list').forEach(list => {
+                                const mapId = list.dataset.mapaId;
+                                if (data.obs[mapId] !== undefined) updateObs(list, data.obs[mapId]);
+                            });
+                            document.querySelectorAll('.bloco-list').forEach(list => {
+                                const mapId = list.dataset.mapaId;
+                                if (data.obs['p' + mapId] !== undefined) updateObs(list, data.obs['p' + mapId]);
+                            });
+                        }
+
+                    } catch (e) {
+                        console.log('Erro no polling sync', e);
+                    }
+                }, 3000);
+            }
+            
+            function initMapListeners() {
+
+
+
             // Função para parsear a observação
             window.parseObs = (text) => {
                 let html = text;
@@ -576,6 +700,10 @@ try {
                 html = html.replace(/^h1\s+(.*)$/gim, '<h1>$1</h1>');
                 html = html.replace(/^h2\s+(.*)$/gim, '<h2>$1</h2>');
                 html = html.replace(/^h3\s+(.*)$/gim, '<h3>$1</h3>');
+                
+                // Convert <"Name"="URL"> or <Name="URL"> to hyperlink
+                html = html.replace(/<"([^\"<>]+)"="([^\"<>]+)">/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+                html = html.replace(/<([^=<>\"]+)="([^\"<>]+)">/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
                 
                 // Bullet points: lines starting with -
                 // First, split by lines or handle with regex
@@ -626,9 +754,7 @@ try {
                 }
             };
 
-            const API_BASE_URL = '.'; 
             const saveTimeouts = {};
-            const pendingDeltas = {};
             const feedbackModal = new bootstrap.Modal(document.getElementById('feedbackModal'));
             const confirmacaoModal = new bootstrap.Modal(document.getElementById('confirmacaoModal'));
             const shareModalObj = new bootstrap.Modal(document.getElementById('shareModal'));
@@ -729,7 +855,7 @@ try {
                 }
                 if (header) { const card = header.closest('.card'); if (card.classList.contains('card-interativo')) card.classList.toggle('collapsed'); }
             });
-            gerenciarColapsoCards();
+            
             const saveQuadra = async (quadraId, statusDiv) => {
                 const delta = pendingDeltas[quadraId];
                 if (!delta) return;
@@ -772,7 +898,6 @@ try {
             document.getElementById('pdfModal').addEventListener('show.bs.modal', (e) => { const btn = e.relatedTarget; document.getElementById('modal-img').src = btn.dataset.imgSrc; document.getElementById('pdfModalTitle').textContent = btn.dataset.pdfTitle || 'Visualizador'; });
 
             // --- LÓGICA DOS BLOCOS (MAPAS DE PRÉDIO) ---
-            const pendingBlocoDeltas = {};
             const saveBloco = async (blocoId, statusDiv) => {
                 const delta = pendingBlocoDeltas[blocoId];
                 if (!delta) return;
@@ -840,7 +965,15 @@ try {
                     });
                 };
             });
+            
+            gerenciarColapsoCards();
+        } // End of initMapListeners
+
+        initMapListeners();
+        startPolling();
+
         });
+
     </script>
 </body>
 </html>
