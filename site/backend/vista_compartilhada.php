@@ -2,6 +2,9 @@
 // site/backend/vista_compartilhada.php
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
 require_once 'conexao.php';
 
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
@@ -106,7 +109,7 @@ try {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <base href="<?php echo $baseUrl; ?>site/backend/">
     <title>Compartilhamento - <?php echo htmlspecialchars($mapa['identificador']); ?></title>
     <link rel="icon" type="image/png" href="../images/map.png">
@@ -119,6 +122,9 @@ try {
         .bg-custom-share { background-color: #FFA000 !important; color: white !important; }
         .text-custom-share { color: #FFA000 !important; }
         .no-spinners::-webkit-outer-spin-button, .no-spinners::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .no-spinners { -moz-appearance: textfield; }
+        .q-input { font-size: 16px !important; }
+        .btn-inc, .btn-dec { touch-action: manipulation; }
         .pdf-preview-container { position: relative; height: 250px; background-color: #eee; display: flex; justify-content: center; align-items: center; overflow: hidden; border-bottom: 1px solid #ddd; }
         .pdf-preview-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
@@ -282,6 +288,60 @@ try {
             }, 1000);
 
             const pending = {};
+
+            // --- Polling Sincronização Tempo Real ---
+            const mapId = <?php echo json_encode($mapa_id); ?>;
+            const isPredio = <?php echo $tipo_compartilhamento === 'predio' ? '1' : '0'; ?>;
+            const shareToken = <?php echo json_encode($share_token); ?>;
+            
+            if (shareToken) {
+                setInterval(async () => {
+                    try {
+                        const res = await fetch(`./sync_api.php?share_token=${shareToken}`);
+                        const data = await res.json();
+                        if (data.error) return;
+
+                        if (data.devolvidos && data.devolvidos.length > 0) {
+                            location.reload();
+                            return;
+                        }
+
+                        const items = isPredio == '1' ? data.blocos : data.quadras;
+                        if (items) {
+                            let total = 0;
+                            Object.keys(items).forEach(id => {
+                                const input = document.querySelector(`.q-input[data-id="${id}"]`);
+                                if (input) {
+                                    if (!pending[id]) {
+                                        input.value = items[id];
+                                        input.dataset.prev = items[id];
+                                    }
+                                    total += parseInt(input.value) || 0;
+                                }
+                            });
+                            const tSpan = document.getElementById('map-total');
+                            if (tSpan) tSpan.textContent = total;
+                        }
+
+                        const obsMapId = isPredio == '1' ? 'p' + mapId : mapId;
+                        if (data.obs && data.obs[obsMapId] !== undefined) {
+                            const obsTxt = data.obs[obsMapId];
+                            const obsContainer = document.querySelector('.obs-content');
+                            if (obsContainer && obsContainer.dataset.rawObs !== obsTxt) {
+                                obsContainer.dataset.rawObs = obsTxt;
+                                obsContainer.dataset.parsed = "";
+                                if (obsContainer.style.display === 'block') {
+                                    obsContainer.innerHTML = window.parseObs ? window.parseObs(obsTxt) : obsTxt;
+                                    obsContainer.dataset.parsed = "true";
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Erro no polling', e);
+                    }
+                }, 3000);
+            }
+
             const save = async (id, stDiv) => {
                 const delta = pending[id]; if (!delta) return; pending[id] = 0;
                 stDiv.innerHTML = '<span class="spinner-border spinner-border-sm text-custom-share"></span>';

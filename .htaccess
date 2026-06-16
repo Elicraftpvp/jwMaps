@@ -2,6 +2,15 @@
 RewriteEngine On
 RewriteBase /
 
+# Regras Anti-Cache para páginas HTML e PHP (Especialmente para iOS)
+<IfModule mod_headers.c>
+    <FilesMatch "\.(html|php)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </FilesMatch>
+</IfModule>
+
 # Regra 1: Link curto para dirigentes (NOVO: amigável)
 RewriteRule ^mapa/([^/]+)/([a-zA-Z0-9]+)$ site/backend/vista_publica.php?slug=$1&token=$2 [L,QSA]
 
