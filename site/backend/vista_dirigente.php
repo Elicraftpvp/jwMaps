@@ -471,8 +471,9 @@ try {
         .obs-content h1 { font-size: 1.25rem; }
         .obs-content h2 { font-size: 1.15rem; }
         .obs-content h3 { font-size: 1.05rem; }
-        .obs-content ul { padding-left: 20px; margin-bottom: 0; }
-        .obs-content li { margin-bottom: 4px; }
+        .obs-content ul { list-style: none; padding-left: 0; margin-bottom: 0; }
+        .obs-content li { position: relative; padding-left: 22px; margin-bottom: 4px; }
+        .obs-content li::before { content: "•"; position: absolute; left: 6px; color: #212529; }
         .obs-content li:last-child { margin-bottom: 0; }
     </style>
 </head>

@@ -473,8 +473,9 @@ try {
         .obs-content h1 { font-size: 1.25rem; }
         .obs-content h2 { font-size: 1.15rem; }
         .obs-content h3 { font-size: 1.05rem; }
-        .obs-content ul { padding-left: 20px; margin-bottom: 0; }
-        .obs-content li { margin-bottom: 4px; }
+        .obs-content ul { list-style: none; padding-left: 0; margin-bottom: 0; }
+        .obs-content li { position: relative; padding-left: 22px; margin-bottom: 4px; }
+        .obs-content li::before { content: "•"; position: absolute; left: 6px; color: #212529; }
         .obs-content li:last-child { margin-bottom: 0; }
     </style>
 </head>
@@ -497,7 +498,7 @@ try {
                 </div>
             <?php endif; ?>
             <?php if (!empty($mapas_grupo)): ?>
-                <div class="section-divider"><i class="fas fa-users me-2"></i> Mapas para Finais de Semana</div>
+                <div class="section-divider"><i class="fas fa-users me-2"></i> Mapas para Saídas de Grupo</div>
                 <div class="masonry-layout" id="container-mapas-grupo">
                     <?php 
                     $total_global = count($mapas) + count($mapas_predio);
