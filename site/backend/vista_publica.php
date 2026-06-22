@@ -123,7 +123,7 @@ function renderizarCard($mapa, $quadras_por_mapa, $total_cards_geral) {
                         <?php if(!empty($mapa['obs'])): ?>
                         <div class="obs-container mb-3 mt-0" style="border-top: none; padding-top: 0;">
                             <button type="button" class="btn-obs-toggle" onclick="toggleObs(this)">
-                                <span><i class="fas fa-sticky-note me-2 text-warning"></i> Observações</span>
+                                <span><i class="fas fa-sticky-note me-2 text-warning"></i> Notas</span>
                                 <i class="fas fa-plus"></i>
                             </button>
                             <div class="obs-content" data-raw-obs="<?php echo htmlspecialchars($mapa['obs']); ?>"></div>
@@ -265,7 +265,7 @@ function renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
                         <?php if(!empty($mapa['obs'])): ?>
                         <div class="obs-container mb-3 mt-0" style="border-top: none; padding-top: 0;">
                             <button type="button" class="btn-obs-toggle" onclick="toggleObs(this)">
-                                <span><i class="fas fa-sticky-note me-2 text-warning"></i> Observações</span>
+                                <span><i class="fas fa-sticky-note me-2 text-warning"></i> Notas</span>
                                 <i class="fas fa-plus"></i>
                             </button>
                             <div class="obs-content" data-raw-obs="<?php echo htmlspecialchars($mapa['obs']); ?>"></div>
@@ -463,7 +463,7 @@ try {
             .card-title i.fa-map-pin, .card-title i.fa-users { font-size: 0.9rem; }
         }
         
-        /* Estilos para o campo de Observações */
+        /* Estilos para o campo de Notas */
         .obs-container { margin-top: 1rem; border-top: 1px solid #dee2e6; padding-top: 0.8rem; }
         .btn-obs-toggle { background: #f8f9fa; border: 1px solid #dee2e6; color: #495057; width: 100%; text-align: left; padding: 10px 15px; border-radius: 8px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
         .btn-obs-toggle:hover { background: #e9ecef; }
