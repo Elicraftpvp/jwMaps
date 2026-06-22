@@ -238,19 +238,38 @@ try {
                 
                 let lines = html.split('\n');
                 let inList = false;
-                let finalLines = [];
+                let out = '';
+                
                 lines.forEach(line => {
                     let trimmed = line.trim();
                     if (trimmed.startsWith('-')) {
-                        if (!inList) { finalLines.push('<ul>'); inList = true; }
-                        finalLines.push(`<li>${trimmed.substring(1).trim()}</li>`);
+                        if (!inList) {
+                            out += '<ul>';
+                            inList = true;
+                        }
+                        out += `<li>${trimmed.substring(1).trim()}</li>`;
                     } else {
-                        if (inList) { finalLines.push('</ul>'); inList = false; }
-                        finalLines.push(line);
+                        if (inList) {
+                            out += '</ul>';
+                            inList = false;
+                        }
+                        
+                        if (trimmed.startsWith('<h1') || trimmed.startsWith('<h2') || trimmed.startsWith('<h3')) {
+                            out += trimmed;
+                        } else if (trimmed === '') {
+                            if (out !== '' && !out.endsWith('>') && !out.endsWith('<br>')) {
+                                out += '<br>';
+                            }
+                        } else {
+                            if (out !== '' && !out.endsWith('>') && !out.endsWith('<br>')) {
+                                out += '<br>';
+                            }
+                            out += line;
+                        }
                     }
                 });
-                if (inList) finalLines.push('</ul>');
-                return finalLines.join('<br>').replace(/<br><ul>/g, '<ul>').replace(/<\/ul><br>/g, '</ul>');
+                if (inList) out += '</ul>';
+                return out;
             };
 
             window.toggleObs = (btn) => {

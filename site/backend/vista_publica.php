@@ -695,8 +695,6 @@ try {
             // Função para parsear a observação
             window.parseObs = (text) => {
                 let html = text;
-                
-                // h1 Text, h2 Text, h3 Text
                 html = html.replace(/^h1\s+(.*)$/gim, '<h1>$1</h1>');
                 html = html.replace(/^h2\s+(.*)$/gim, '<h2>$1</h2>');
                 html = html.replace(/^h3\s+(.*)$/gim, '<h3>$1</h3>');
@@ -705,31 +703,40 @@ try {
                 html = html.replace(/<"([^\"<>]+)"="([^\"<>]+)">/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
                 html = html.replace(/<([^=<>\"]+)="([^\"<>]+)">/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
                 
-                // Bullet points: lines starting with -
-                // First, split by lines or handle with regex
                 let lines = html.split('\n');
                 let inList = false;
-                let finalLines = [];
+                let out = '';
                 
                 lines.forEach(line => {
                     let trimmed = line.trim();
                     if (trimmed.startsWith('-')) {
                         if (!inList) {
-                            finalLines.push('<ul>');
+                            out += '<ul>';
                             inList = true;
                         }
-                        finalLines.push(`<li>${trimmed.substring(1).trim()}</li>`);
+                        out += `<li>${trimmed.substring(1).trim()}</li>`;
                     } else {
                         if (inList) {
-                            finalLines.push('</ul>');
+                            out += '</ul>';
                             inList = false;
                         }
-                        finalLines.push(line);
+                        
+                        if (trimmed.startsWith('<h1') || trimmed.startsWith('<h2') || trimmed.startsWith('<h3')) {
+                            out += trimmed;
+                        } else if (trimmed === '') {
+                            if (out !== '' && !out.endsWith('>') && !out.endsWith('<br>')) {
+                                out += '<br>';
+                            }
+                        } else {
+                            if (out !== '' && !out.endsWith('>') && !out.endsWith('<br>')) {
+                                out += '<br>';
+                            }
+                            out += line;
+                        }
                     }
                 });
-                if (inList) finalLines.push('</ul>');
-                
-                return finalLines.join('<br>').replace(/<br><ul>/g, '<ul>').replace(/<\/ul><br>/g, '</ul>');
+                if (inList) out += '</ul>';
+                return out;
             };
 
             window.toggleObs = (btn) => {
