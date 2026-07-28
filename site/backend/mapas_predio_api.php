@@ -47,6 +47,13 @@ try {
     ]);
 }
 
+// Migração automática de banco de dados para o campo endereco
+try {
+    $pdo->exec("ALTER TABLE mapas_predio ADD COLUMN endereco VARCHAR(255) NULL");
+} catch (Exception $e) {
+    // Coluna já existente
+}
+
 function handle_get($pdo, $id, $recurso) {
     try {
         if ($recurso === 'dirigentes') {
@@ -68,12 +75,12 @@ function handle_get($pdo, $id, $recurso) {
         }
 
         if ($id) {
-            $stmt = $pdo->prepare("SELECT id, identificador, bloco_inicio, bloco_fim, apt_inicio, apt_fim, regiao, tipo, obs, grupo_id FROM mapas_predio WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT id, identificador, bloco_inicio, bloco_fim, apt_inicio, apt_fim, regiao, tipo, obs, endereco, grupo_id FROM mapas_predio WHERE id = ?");
             $stmt->execute([$id]);
             echo json_encode($stmt->fetch(PDO::FETCH_ASSOC));
         } else {
-            // Atualizado para buscar também o nome do grupo
-            $sql = "SELECT m.id, m.identificador, m.bloco_inicio, m.bloco_fim, m.apt_inicio, m.apt_fim, m.regiao, m.tipo, m.obs, 
+            // Atualizado para buscar também o nome do grupo e o endereço
+            $sql = "SELECT m.id, m.identificador, m.bloco_inicio, m.bloco_fim, m.apt_inicio, m.apt_fim, m.regiao, m.tipo, m.obs, m.endereco, 
                     m.dirigente_id, m.grupo_id, m.data_entrega, 
                     u.nome as dirigente_nome, g.nome as grupo_nome,
                     DATEDIFF(CURDATE(), m.data_entrega) as dias_com_dirigente
@@ -131,9 +138,9 @@ function handle_post_unified($pdo) {
             case 'create':
                 if (empty($data['identificador']) || !isset($data['bloco_inicio']) || !isset($data['bloco_fim']) || !isset($data['apt_inicio']) || !isset($data['apt_fim'])) throw new Exception('Identificador, blocos e apts são obrigatórios.', 400);
                 $pdo->beginTransaction();
-                $sql = "INSERT INTO mapas_predio (identificador, bloco_inicio, bloco_fim, apt_inicio, apt_fim, regiao, tipo, obs) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                $sql = "INSERT INTO mapas_predio (identificador, bloco_inicio, bloco_fim, apt_inicio, apt_fim, regiao, tipo, obs, endereco) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $pdo->prepare($sql);
-                $stmt->execute([$data['identificador'], $data['bloco_inicio'], $data['bloco_fim'], $data['apt_inicio'], $data['apt_fim'], $data['regiao'], $data['tipo'], $data['obs'] ?? '']);
+                $stmt->execute([$data['identificador'], $data['bloco_inicio'], $data['bloco_fim'], $data['apt_inicio'], $data['apt_fim'], $data['regiao'], $data['tipo'], $data['obs'] ?? '', $data['endereco'] ?? null]);
                 $mapa_id = $pdo->lastInsertId();
                 $stmt_quadra = $pdo->prepare("INSERT INTO blocos (mapa_id, numero) VALUES (?, ?)");
                 $b_ini = $data['bloco_inicio']; $b_fim = $data['bloco_fim']; if (is_numeric($b_ini) && is_numeric($b_fim)) { for ($i = (int)$b_ini; $i <= (int)$b_fim; $i++) $stmt_quadra->execute([$mapa_id, $i]); } else { for ($i = $b_ini; $i <= $b_fim; $i++) { $stmt_quadra->execute([$mapa_id, $i]); if ($i === $b_fim) break; } }
@@ -159,8 +166,8 @@ function handle_post_unified($pdo) {
                 $old_identificador = $old_mapa ? $old_mapa['identificador'] : null;
 
                 $pdo->beginTransaction();
-                $sql = "UPDATE mapas_predio SET identificador = ?, bloco_inicio = ?, bloco_fim = ?, apt_inicio = ?, apt_fim = ?, regiao = ?, tipo = ?, obs = ? WHERE id = ?";
-                $pdo->prepare($sql)->execute([$data['identificador'], $data['bloco_inicio'], $data['bloco_fim'], $data['apt_inicio'], $data['apt_fim'], $data['regiao'], $data['tipo'], $data['obs'] ?? '', $mapa_id]);
+                $sql = "UPDATE mapas_predio SET identificador = ?, bloco_inicio = ?, bloco_fim = ?, apt_inicio = ?, apt_fim = ?, regiao = ?, tipo = ?, obs = ?, endereco = ? WHERE id = ?";
+                $pdo->prepare($sql)->execute([$data['identificador'], $data['bloco_inicio'], $data['bloco_fim'], $data['apt_inicio'], $data['apt_fim'], $data['regiao'], $data['tipo'], $data['obs'] ?? '', $data['endereco'] ?? null, $mapa_id]);
                 $pdo->prepare("DELETE FROM blocos WHERE mapa_id = ?")->execute([$mapa_id]);
                 $stmt_quadra = $pdo->prepare("INSERT INTO blocos (mapa_id, numero) VALUES (?, ?)");
                 $b_ini = $data['bloco_inicio']; $b_fim = $data['bloco_fim']; if (is_numeric($b_ini) && is_numeric($b_fim)) { for ($i = (int)$b_ini; $i <= (int)$b_fim; $i++) $stmt_quadra->execute([$mapa_id, $i]); } else { for ($i = $b_ini; $i <= $b_fim; $i++) { $stmt_quadra->execute([$mapa_id, $i]); if ($i === $b_fim) break; } }

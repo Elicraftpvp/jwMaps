@@ -199,11 +199,11 @@ function renderizarCard($mapa, $quadras_por_mapa, $total_cards_geral) {
 }
 
 /**
- * Renderiza o card de Mapa de Prédio.
- */
-function renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
+ * Renderiza o card de Mapa de Prédfunction renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
     $isGroup = !empty($mapa['grupo_id']);
     $soma_pessoas = 0;
+    $qtd_blocos = isset($blocos_por_mapa[$mapa['id']]) ? count($blocos_por_mapa[$mapa['id']]) : 0;
+
     if (isset($blocos_por_mapa[$mapa['id']])) {
         foreach ($blocos_por_mapa[$mapa['id']] as $b) $soma_pessoas += (int)$b['pessoas_faladas'];
     }
@@ -211,10 +211,21 @@ function renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
 
     $max_apts = '';
     $label_max = '';
+    $calc_max = 0;
     if (isset($mapa['apt_inicio']) && isset($mapa['apt_fim'])) {
         $calc_max = ((int)$mapa['apt_fim'] - (int)$mapa['apt_inicio']) + 1;
         $max_apts = 'max="' . $calc_max . '" data-max-val="' . $calc_max . '"';
         $label_max = ' (Máx: ' . $calc_max . ')';
+    }
+
+    $total_capacidade_predio = $calc_max * max(1, $qtd_blocos);
+    $porcentagem_cobertura = $total_capacidade_predio > 0 ? min(100, round(($soma_pessoas / $total_capacidade_predio) * 100)) : 0;
+    
+    $cor_barra = 'bg-primary';
+    if ($porcentagem_cobertura >= 100) {
+        $cor_barra = 'bg-success';
+    } else if ($porcentagem_cobertura >= 50) {
+        $cor_barra = 'bg-info';
     }
 
     $nome_identificador = $mapa['identificador'];
@@ -222,6 +233,10 @@ function renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
     $url_pdf = "pdfs/" . rawurlencode($nome_identificador) . ".pdf";
     $caminho_local_jpg = __DIR__ . "/pdfs/" . $nome_identificador . ".jpg";
     $caminho_local_pdf = __DIR__ . "/pdfs/" . $nome_identificador . ".pdf";
+    
+    $has_foto = file_exists($caminho_local_jpg);
+    $has_endereco = !empty($mapa['endereco']);
+    $url_streetview = $has_endereco ? "https://maps.google.com/maps?q=" . urlencode($mapa['endereco']) . "&output=embed" : "";
     ?>
 
     <div class="card-container-wrapper" id="mapa-card-p<?php echo $mapa['id']; ?>">
@@ -249,20 +264,49 @@ function renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
             </div>
 
             <div class="card-collapsible-content">
-                <?php if (file_exists($caminho_local_jpg)): ?>
-                    <div class="pdf-preview-container">
-                        <img src="<?php echo $url_jpg; ?>" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
-                        <button class="btn btn-predio-color btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
-                            <i class="fas fa-expand-alt me-1"></i> Expandir
-                        </button>
+                <?php if ($has_endereco): ?>
+                    <div class="px-3 pt-2 pb-1 bg-light border-bottom d-flex justify-content-between align-items-center">
+                        <small class="text-truncate me-2 fw-semibold text-dark">
+                            <i class="fas fa-map-marker-alt text-danger me-1"></i> <?php echo htmlspecialchars($mapa['endereco']); ?>
+                        </small>
+                        <a href="https://www.google.com/maps/search/?api=1&query=<?php echo urlencode($mapa['endereco']); ?>" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2 flex-shrink-0" style="font-size: 0.75rem;" title="Abrir no Google Maps">
+                            Abrir Maps <i class="fas fa-external-link-alt ms-1"></i>
+                        </a>
                     </div>
-                <?php elseif (!empty($mapa['gdrive_file_id'])): ?>
-                    <?php $pdf_embed_url = "https://drive.google.com/file/d/" . $mapa['gdrive_file_id'] . "/preview"; ?>
-                    <div class="pdf-preview-container">
-                        <iframe src="<?php echo $pdf_embed_url; ?>" style="width:100%;height:100%;border:none;"></iframe>
-                        <button class="btn btn-predio-color btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-src="<?php echo $pdf_embed_url; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
-                            <i class="fas fa-expand-alt me-1"></i> Expandir
-                        </button>
+                <?php endif; ?>
+
+                <?php if ($has_foto || $has_endereco): ?>
+                    <div class="media-tabs-wrapper border-bottom bg-dark">
+                        <div class="d-flex justify-content-center gap-1 p-2 bg-secondary bg-opacity-25">
+                            <?php if ($has_foto): ?>
+                                <button class="btn btn-xs btn-sm <?php echo $has_foto ? 'btn-light active' : 'btn-outline-light'; ?> border-0 fw-semibold btn-media-toggle" onclick="toggleMediaTab(this, 'foto', <?php echo $mapa['id']; ?>)">
+                                    <i class="fas fa-camera me-1 text-primary"></i> Foto da Fachada
+                                </button>
+                            <?php endif; ?>
+                            <?php if ($has_endereco): ?>
+                                <button class="btn btn-xs btn-sm <?php echo !$has_foto ? 'btn-light active' : 'btn-outline-light'; ?> border-0 fw-semibold btn-media-toggle" onclick="toggleMediaTab(this, 'streetview', <?php echo $mapa['id']; ?>)">
+                                    <i class="fas fa-street-view me-1 text-danger"></i> Street View
+                                </button>
+                            <?php endif; ?>
+                        </div>
+
+                        <?php if ($has_foto): ?>
+                            <div class="pdf-preview-container media-tab-content" id="media-tab-foto-<?php echo $mapa['id']; ?>">
+                                <img src="<?php echo $url_jpg; ?>" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                                <button class="btn btn-predio-color btn-sm btn-expand" data-bs-toggle="modal" data-bs-target="#pdfModal" data-img-src="<?php echo $url_jpg; ?>" data-pdf-title="<?php echo htmlspecialchars($mapa['identificador']); ?>">
+                                    <i class="fas fa-expand-alt me-1"></i> Expandir
+                                </button>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if ($has_endereco): ?>
+                            <div class="pdf-preview-container media-tab-content <?php echo $has_foto ? 'd-none' : ''; ?>" id="media-tab-streetview-<?php echo $mapa['id']; ?>">
+                                <iframe src="<?php echo $url_streetview; ?>" style="width:100%;height:100%;border:none;" allowfullscreen loading="lazy"></iframe>
+                                <button class="btn btn-predio-color btn-sm btn-expand" onclick="window.open('https://www.google.com/maps/search/?api=1&query=<?php echo urlencode($mapa['endereco']); ?>', '_blank')">
+                                    <i class="fas fa-expand-alt me-1"></i> Expandir
+                                </button>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
 
@@ -275,6 +319,20 @@ function renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
                 <?php endif; ?>
 
                 <div class="card-body">
+                    <div class="mb-3 p-2 rounded bg-light border">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold small text-dark"><i class="fas fa-chart-line text-primary me-1"></i> Progresso de Cobertura</span>
+                            <span class="badge <?php echo $cor_barra; ?>"><?php echo $porcentagem_cobertura; ?>%</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar <?php echo $cor_barra; ?> progress-bar-striped progress-bar-animated" role="progressbar" style="width: <?php echo $porcentagem_cobertura; ?>%;" aria-valuenow="<?php echo $porcentagem_cobertura; ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <small class="text-muted" style="font-size: 0.75rem;"><?php echo $soma_pessoas; ?> de <?php echo $total_capacidade_predio; ?> aptos contatados</small>
+                            <small class="text-muted" style="font-size: 0.75rem;"><i class="fas fa-shield-alt text-success me-1"></i> LGPD Anônimo</small>
+                        </div>
+                    </div>
+
                     <form class="form-devolver-predio" data-mapa-id="<?php echo $mapa['id']; ?>" data-mapa-nome="<?php echo htmlspecialchars($mapa['identificador']); ?>">
                         <?php if(!empty($mapa['obs'])): ?>
                         <div class="obs-container mb-3 mt-0" style="border-top: none; padding-top: 0;">
@@ -296,21 +354,29 @@ function renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
                         </div>
 
                         <div class="list-group list-group-flush mb-3 bloco-list" data-mapa-id="<?php echo $mapa['id']; ?>">
-                        <?php if (isset($blocos_por_mapa[$mapa['id']])): foreach ($blocos_por_mapa[$mapa['id']] as $bloco): ?>
-                            <div class="list-group-item quadra-item d-flex justify-content-between align-items-center py-3 px-2">
-                                <span class="fs-5">Bloco <strong><?php echo htmlspecialchars($bloco['numero']); ?></strong></span>
-                                <div class="d-flex align-items-center">
-                                    <div class="input-group" style="width: 150px;">
-                                        <button class="btn btn-outline-secondary btn-decrement-bloco px-3 fw-bold" type="button" style="font-size: 1.2rem;">-</button>
-                                        <input type="number" class="form-control text-center bloco-input no-spinners fw-bold"
-                                               style="font-size: 1.1rem;"
-                                               value="<?php echo $bloco['pessoas_faladas']; ?>"
-                                               data-bloco-id="<?php echo $bloco['id']; ?>"
-                                               data-previous-value="<?php echo $bloco['pessoas_faladas']; ?>"
-                                               min="0" <?php echo $max_apts; ?> readonly>
-                                        <button class="btn btn-outline-secondary btn-increment-bloco px-3 fw-bold" type="button" style="font-size: 1.2rem;">+</button>
+                        <?php if (isset($blocos_por_mapa[$mapa['id']])): foreach ($blocos_por_mapa[$mapa['id']] as $bloco): 
+                            $val = (int)$bloco['pessoas_faladas'];
+                            $pct_bloco = $calc_max > 0 ? min(100, round(($val / $calc_max) * 100)) : 0;
+                        ?>
+                            <div class="list-group-item quadra-item py-2 px-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fs-6">Bloco <strong><?php echo htmlspecialchars($bloco['numero']); ?></strong></span>
+                                    <div class="d-flex align-items-center">
+                                        <div class="input-group" style="width: 150px;">
+                                            <button class="btn btn-outline-secondary btn-decrement-bloco px-3 fw-bold" type="button" style="font-size: 1.2rem;">-</button>
+                                            <input type="number" class="form-control text-center bloco-input no-spinners fw-bold"
+                                                   style="font-size: 1.1rem;"
+                                                   value="<?php echo $bloco['pessoas_faladas']; ?>"
+                                                   data-bloco-id="<?php echo $bloco['id']; ?>"
+                                                   data-previous-value="<?php echo $bloco['pessoas_faladas']; ?>"
+                                                   min="0" <?php echo $max_apts; ?> readonly>
+                                            <button class="btn btn-outline-secondary btn-increment-bloco px-3 fw-bold" type="button" style="font-size: 1.2rem;">+</button>
+                                        </div>
+                                        <div class="ms-2 d-flex align-items-center justify-content-center" style="width: 24px;" id="status_save_b<?php echo $bloco['id']; ?>"></div>
                                     </div>
-                                    <div class="ms-2 d-flex align-items-center justify-content-center" style="width: 24px;" id="status_save_b<?php echo $bloco['id']; ?>"></div>
+                                </div>
+                                <div class="progress" style="height: 4px;">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: <?php echo $pct_bloco; ?>%;"></div>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -318,6 +384,18 @@ function renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
                         <div class="list-group-item d-flex justify-content-between align-items-center p-2 border-top fw-bold bg-light">
                             <span class="fs-5">Total</span>
                             <div class="d-flex align-items-center">
+                                <span class="fs-5 text-center fw-bold" style="width: 150px;" id="total-pessoas-predio-<?php echo $mapa['id']; ?>"><?php echo $soma_pessoas; ?></span>
+                                <div style="width: 32px;"></div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        </div>
+                        <hr>
+                        <p class="mb-2"><strong>Recebido em:</strong> <?php echo date('d/m/Y', strtotime($mapa['data_entrega'])); ?></p>
+
+                        <div class="d-grid mt-3">
+                            <button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-2"></i> Finalizar e Devolver</button>
+                        </div>ms-center">
                                 <span class="fs-5 text-center fw-bold" style="width: 150px;" id="total-pessoas-predio-<?php echo $mapa['id']; ?>"><?php echo $soma_pessoas; ?></span>
                                 <div style="width: 32px;"></div>
                             </div>
@@ -573,6 +651,21 @@ try {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../script/common.js"></script>
     <script>
+        function toggleMediaTab(btn, targetTab, mapaId) {
+            const parent = btn.closest('.media-tabs-wrapper');
+            if (!parent) return;
+            parent.querySelectorAll('.btn-media-toggle').forEach(b => {
+                b.classList.remove('btn-light', 'active');
+                b.classList.add('btn-outline-light');
+            });
+            btn.classList.remove('btn-outline-light');
+            btn.classList.add('btn-light', 'active');
+
+            parent.querySelectorAll('.media-tab-content').forEach(c => c.classList.add('d-none'));
+            const targetContent = document.getElementById(`media-tab-${targetTab}-${mapaId}`);
+            if (targetContent) targetContent.classList.remove('d-none');
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             // Função para parsear a observação
             window.parseObs = (text) => {

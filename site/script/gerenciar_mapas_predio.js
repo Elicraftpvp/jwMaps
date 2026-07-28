@@ -375,6 +375,12 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("mapa_apt_fim").value = mapa.apt_fim || "";
             document.getElementById("mapa_regiao").value = mapa.regiao || "";
             document.getElementById("mapa_tipo").value = mapa.tipo || "";
+            if (mapaEnderecoInput) {
+                mapaEnderecoInput.value = mapa.endereco || "";
+                if (mapa.endereco && btnBuscarStreetview) {
+                    btnBuscarStreetview.click();
+                }
+            }
             if (mapaObsInput) {
                 mapaObsInput.value = mapa.obs || "";
                 mapaObsInput.dispatchEvent(new Event('input'));
@@ -445,6 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
             apt_fim: document.getElementById("mapa_apt_fim").value,
             regiao: document.getElementById("mapa_regiao").value,
             tipo: document.getElementById("mapa_tipo").value,
+            endereco: mapaEnderecoInput ? mapaEnderecoInput.value.trim() : "",
             obs: mapaObsInput ? mapaObsInput.value : "",
             imagem: imagemBase64
         };
