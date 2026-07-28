@@ -398,7 +398,7 @@ try {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <base href="<?php echo $baseUrl; ?>site/backend/">
     <title>Mapas de <?php echo htmlspecialchars($user['nome']); ?></title>
     
@@ -416,6 +416,7 @@ try {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../style/css.css">
     <style> 
+        html, body { touch-action: manipulation; }
         body { padding: 15px; background-color: var(--content-bg); } 
         .quadra-item { border-bottom: 1px solid #eee; }
         .quadra-item:last-child { border-bottom: none; }
@@ -455,7 +456,7 @@ try {
         .btn-close-custom { background: none; border: none; color: white; font-size: 1.5rem; opacity: 0.9; transition: transform 0.2s; }
         .btn-close-custom:hover { opacity: 1; transform: scale(1.1); color: #fff; }
         @media (max-width: 480px) {
-            body { padding: 10px; zoom: 1 !important; }
+            body { padding: 10px; }
             .card-title { display: flex; flex-wrap: nowrap; align-items: center; width: 100%; }
             .map-name { font-size: 0.95rem; white-space: normal; line-height: 1.2; margin-right: 5px; }
             .group-tag { font-size: 0.6rem !important; max-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

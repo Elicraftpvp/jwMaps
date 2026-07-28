@@ -137,6 +137,12 @@ function handle_post_unified($pdo) {
                 $mapa_id = $pdo->lastInsertId();
                 $stmt_quadra = $pdo->prepare("INSERT INTO blocos (mapa_id, numero) VALUES (?, ?)");
                 $b_ini = $data['bloco_inicio']; $b_fim = $data['bloco_fim']; if (is_numeric($b_ini) && is_numeric($b_fim)) { for ($i = (int)$b_ini; $i <= (int)$b_fim; $i++) $stmt_quadra->execute([$mapa_id, $i]); } else { for ($i = $b_ini; $i <= $b_fim; $i++) { $stmt_quadra->execute([$mapa_id, $i]); if ($i === $b_fim) break; } }
+                
+                // Salvamento de Imagem Base64 se fornecida
+                if (!empty($data['imagem'])) {
+                    salvarImagemBase64($data['identificador'], $data['imagem']);
+                }
+                
                 $pdo->commit();
                 http_response_code(201);
                 echo json_encode(['message' => 'Mapa e blocos criados com sucesso!']);
@@ -145,12 +151,32 @@ function handle_post_unified($pdo) {
             case 'edit_details':
                 $mapa_id = $data['id'] ?? null;
                 if (!$mapa_id || empty($data['identificador']) || !isset($data['bloco_inicio']) || !isset($data['bloco_fim']) || !isset($data['apt_inicio']) || !isset($data['apt_fim'])) throw new Exception('Dados insuficientes para edição.', 400);
+                
+                // Busca antigo identificador para renomear imagem se mudou
+                $stmt_old = $pdo->prepare("SELECT identificador FROM mapas_predio WHERE id = ?");
+                $stmt_old->execute([$mapa_id]);
+                $old_mapa = $stmt_old->fetch(PDO::FETCH_ASSOC);
+                $old_identificador = $old_mapa ? $old_mapa['identificador'] : null;
+
                 $pdo->beginTransaction();
                 $sql = "UPDATE mapas_predio SET identificador = ?, bloco_inicio = ?, bloco_fim = ?, apt_inicio = ?, apt_fim = ?, regiao = ?, tipo = ?, obs = ? WHERE id = ?";
                 $pdo->prepare($sql)->execute([$data['identificador'], $data['bloco_inicio'], $data['bloco_fim'], $data['apt_inicio'], $data['apt_fim'], $data['regiao'], $data['tipo'], $data['obs'] ?? '', $mapa_id]);
                 $pdo->prepare("DELETE FROM blocos WHERE mapa_id = ?")->execute([$mapa_id]);
                 $stmt_quadra = $pdo->prepare("INSERT INTO blocos (mapa_id, numero) VALUES (?, ?)");
                 $b_ini = $data['bloco_inicio']; $b_fim = $data['bloco_fim']; if (is_numeric($b_ini) && is_numeric($b_fim)) { for ($i = (int)$b_ini; $i <= (int)$b_fim; $i++) $stmt_quadra->execute([$mapa_id, $i]); } else { for ($i = $b_ini; $i <= $b_fim; $i++) { $stmt_quadra->execute([$mapa_id, $i]); if ($i === $b_fim) break; } }
+                
+                // Trata renomeação ou nova imagem
+                if (!empty($data['imagem'])) {
+                    salvarImagemBase64($data['identificador'], $data['imagem']);
+                } else if ($old_identificador && $old_identificador !== $data['identificador']) {
+                    $dir = __DIR__ . '/pdfs';
+                    $old_file = $dir . '/' . $old_identificador . '.jpg';
+                    $new_file = $dir . '/' . $data['identificador'] . '.jpg';
+                    if (file_exists($old_file)) {
+                        rename($old_file, $new_file);
+                    }
+                }
+                
                 $pdo->commit();
                 echo json_encode(['message' => 'Mapa atualizado com sucesso!']);
                 break;
@@ -321,6 +347,22 @@ function handle_delete($pdo, $id) {
     } catch (PDOException $e) {
         $pdo->rollBack();
         throw new Exception('Erro ao deletar: ' . $e->getMessage(), 500);
+    }
+}
+
+function salvarImagemBase64($identificador, $base64String) {
+    if (empty($base64String) || empty($identificador)) return;
+    if (preg_match('/^data:image\/(\w+);base64,/', $base64String)) {
+        $data = substr($base64String, strpos($base64String, ',') + 1);
+        $data = base64_decode($data);
+        if ($data !== false) {
+            $dir = __DIR__ . '/pdfs';
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            $filePath = $dir . '/' . $identificador . '.jpg';
+            file_put_contents($filePath, $data);
+        }
     }
 }
 ?>

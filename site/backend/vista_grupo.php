@@ -86,6 +86,7 @@ try {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../style/css.css">
     <style>
+        html, body { touch-action: manipulation; }
         body { padding: 15px; background-color: #f8f9fa; }
         .masonry-layout { column-count: 1; column-gap: 1.5rem; }
         @media (min-width: 768px) { .masonry-layout { column-count: 2; } }

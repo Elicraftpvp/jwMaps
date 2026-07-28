@@ -109,13 +109,14 @@ try {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <base href="<?php echo $baseUrl; ?>site/backend/">
     <title>Compartilhamento - <?php echo htmlspecialchars($mapa['identificador']); ?></title>
     <link rel="icon" type="image/png" href="../images/map.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
+        html, body { touch-action: manipulation; }
         body { padding: 15px; background-color: #f8f9fa; }
         .share-banner { background: rgba(56, 137, 253, 0.1); color: #FFA000; padding: 12px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(56, 137, 253, 0.3); font-weight: 600; text-align: center; }
         .card-header-group { background-color: #4190be !important; border-color: #4190be !important; }

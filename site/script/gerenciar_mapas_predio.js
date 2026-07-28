@@ -325,6 +325,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- AÇÕES DO CRUD ---
 
+    // Referências DOM adicionais para Street View e Imagem
+    const mapaEnderecoInput = document.getElementById('mapa_endereco');
+    const btnBuscarStreetview = document.getElementById('btn-buscar-streetview');
+    const streetviewContainer = document.getElementById('streetview-container');
+    const streetviewIframe = document.getElementById('streetview-iframe');
+    const mapaImagemInput = document.getElementById('mapa_imagem');
+    const imagemPreviewContainer = document.getElementById('imagem-preview-container');
+    const imagemPreviewImg = document.getElementById('imagem-preview-img');
+    let imagemBase64 = null;
+
+    if (mapaImagemInput) {
+        mapaImagemInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    imagemBase64 = evt.target.result;
+                    imagemPreviewImg.src = imagemBase64;
+                    imagemPreviewContainer.classList.remove('d-none');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    if (btnBuscarStreetview) {
+        btnBuscarStreetview.addEventListener('click', () => {
+            const endereco = mapaEnderecoInput ? mapaEnderecoInput.value.trim() : '';
+            if (!endereco) {
+                mostrarFeedback('Atenção', 'Digite um endereço para buscar no Street View / Mapa.', 'warning');
+                return;
+            }
+            const embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(endereco)}&output=embed`;
+            streetviewIframe.src = embedUrl;
+            streetviewContainer.classList.remove('d-none');
+        });
+    }
+
     const prepararEdicao = async (id) => {
         try {
             const response = await fetch(`${API_BASE_URL}/mapas_predio_api.php?id=${id}`);
@@ -341,6 +379,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 mapaObsInput.value = mapa.obs || "";
                 mapaObsInput.dispatchEvent(new Event('input'));
             }
+            
+            // Carrega preview da imagem existente se houver
+            imagemBase64 = null;
+            if (mapa.identificador && imagemPreviewImg && imagemPreviewContainer) {
+                const imgUrl = `${API_BASE_URL}/pdfs/${encodeURIComponent(mapa.identificador)}.jpg`;
+                imagemPreviewImg.src = imgUrl;
+                imagemPreviewContainer.classList.remove('d-none');
+            }
+
             editMode = true;
             editId = id;
             mapaModalLabel.textContent = 'Editar Mapa';
@@ -352,6 +399,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const resetarModal = () => {
         document.getElementById("form-mapa").reset();
+        imagemBase64 = null;
+        if (mapaImagemInput) mapaImagemInput.value = '';
+        if (imagemPreviewContainer) imagemPreviewContainer.classList.add('d-none');
+        if (streetviewContainer) streetviewContainer.classList.add('d-none');
+        if (streetviewIframe) streetviewIframe.src = '';
+        if (mapaEnderecoInput) mapaEnderecoInput.value = '';
         editMode = false;
         editId = null;
         mapaModalLabel.textContent = "Adicionar Novo Mapa";
@@ -393,6 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
             regiao: document.getElementById("mapa_regiao").value,
             tipo: document.getElementById("mapa_tipo").value,
             obs: mapaObsInput ? mapaObsInput.value : "",
+            imagem: imagemBase64
         };
 
         if (!data.identificador || !data.bloco_inicio || !data.bloco_fim || !data.apt_inicio || !data.apt_fim) {

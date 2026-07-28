@@ -43,7 +43,7 @@
             <div class="card-header card-header-icon">
                 <h4 class="mb-0"><i class="fas fa-building card-title-icon"></i> Mapas de Prédios</h4>
                 <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#mapaModal" disabled>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#mapaModal">
                         <i class="fas fa-plus-circle me-2"></i> Adicionar Mapa
                     </button>
                 </div>
@@ -151,7 +151,7 @@
 
     <!-- Modal Adicionar/Editar Mapa -->
     <div class="modal fade" id="mapaModal" tabindex="-1" aria-labelledby="mapaModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="mapaModalLabel">Adicionar Novo Mapa</h5>
@@ -167,11 +167,11 @@
                         <div class="row">
                             <div class="col-6 mb-3">
                                 <label for="mapa_bloco_inicio" class="form-label">Bloco Inicial</label>
-                                <input type="text" class="form-control" id="mapa_bloco_inicio" required>
+                                <input type="text" class="form-control" id="mapa_bloco_inicio" placeholder="Ex: 1 ou A" required>
                             </div>
                             <div class="col-6 mb-3">
                                 <label for="mapa_bloco_fim" class="form-label">Bloco Final</label>
-                                <input type="text" class="form-control" id="mapa_bloco_fim" required>
+                                <input type="text" class="form-control" id="mapa_bloco_fim" placeholder="Ex: 2 ou B" required>
                             </div>
                         </div>
                         <div class="row">
@@ -186,16 +186,44 @@
                                     required>
                             </div>
                         </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label for="mapa_regiao" class="form-label">Região</label>
+                                <input type="text" class="form-control" id="mapa_regiao"
+                                    placeholder="Ex: Centro, Zona Norte">
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label for="mapa_tipo" class="form-label">Tipo</label>
+                                <input type="text" class="form-control" id="mapa_tipo"
+                                    placeholder="Ex: Comercial, Residencial">
+                            </div>
+                        </div>
+
+                        <!-- Seção Street View & Imagem da Fachada -->
                         <div class="mb-3">
-                            <label for="mapa_regiao" class="form-label">Região</label>
-                            <input type="text" class="form-control" id="mapa_regiao"
-                                placeholder="Ex: Centro, Zona Norte">
+                            <label for="mapa_endereco" class="form-label"><i class="fas fa-map-marker-alt text-danger me-1"></i> Endereço para Street View</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="mapa_endereco" placeholder="Ex: Av. Paulista, 1000, São Paulo">
+                                <button class="btn btn-outline-primary" type="button" id="btn-buscar-streetview">
+                                    <i class="fas fa-street-view me-1"></i> Visualizar no Mapa
+                                </button>
+                            </div>
+                        </div>
+                        <div id="streetview-container" class="mb-3 d-none">
+                            <label class="form-label small text-muted">Pré-visualização do Endereço / Street View</label>
+                            <div class="ratio ratio-16x9 rounded overflow-hidden border">
+                                <iframe id="streetview-iframe" src="" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                            </div>
                         </div>
                         <div class="mb-3">
-                            <label for="mapa_tipo" class="form-label">Tipo</label>
-                            <input type="text" class="form-control" id="mapa_tipo"
-                                placeholder="Ex: Comercial, Residencial">
+                            <label for="mapa_imagem" class="form-label"><i class="fas fa-camera text-primary me-1"></i> Imagem do Prédio (Street View)</label>
+                            <input type="file" class="form-control" id="mapa_imagem" accept="image/*">
+                            <div class="form-text">Faça upload de uma imagem da vista do Street View ou fachada do prédio. Ela será exibida no card do mapa.</div>
+                            <div id="imagem-preview-container" class="mt-2 text-center d-none">
+                                <img id="imagem-preview-img" src="" class="img-fluid rounded border shadow-sm" style="max-height: 200px; object-fit: contain;">
+                            </div>
                         </div>
+
                         <div class="mb-3">
                             <label for="mapa_obs" class="form-label">Observações</label>
                             <div class="form-text mb-2 p-2 bg-light border rounded" style="font-size: 0.8rem; line-height: 1.4;">

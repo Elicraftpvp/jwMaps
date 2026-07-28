@@ -416,6 +416,7 @@ try {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../style/css.css">
     <style> 
+        html, body { touch-action: manipulation; }
         body { padding: 15px; background-color: var(--content-bg); } 
         .quadra-item { border-bottom: 1px solid #eee; }
         .quadra-item:last-child { border-bottom: none; }
