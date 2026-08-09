@@ -134,7 +134,7 @@ function renderizarCard($mapa, $quadras_por_mapa, $total_cards_geral) {
                         <?php if(!empty($mapa['obs'])): ?>
                         <div class="obs-container mb-3 mt-0" style="border-top: none; padding-top: 0;">
                             <button type="button" class="btn-obs-toggle" onclick="toggleObs(this)">
-                                <span><i class="fas fa-sticky-note me-2 text-warning"></i> Observações</span>
+                                <span><i class="fas fa-sticky-note me-2 text-warning"></i> Notas</span>
                                 <i class="fas fa-plus"></i>
                             </button>
                             <div class="obs-content" data-raw-obs="<?php echo htmlspecialchars($mapa['obs']); ?>"></div>
@@ -279,7 +279,7 @@ function renderizarCardPredio($mapa, $blocos_por_mapa, $total_cards_geral) {
                         <?php if(!empty($mapa['obs'])): ?>
                         <div class="obs-container mb-3 mt-0" style="border-top: none; padding-top: 0;">
                             <button type="button" class="btn-obs-toggle" onclick="toggleObs(this)">
-                                <span><i class="fas fa-sticky-note me-2 text-warning"></i> Observações</span>
+                                <span><i class="fas fa-sticky-note me-2 text-warning"></i> Notas</span>
                                 <i class="fas fa-plus"></i>
                             </button>
                             <div class="obs-content" data-raw-obs="<?php echo htmlspecialchars($mapa['obs']); ?>"></div>
@@ -365,9 +365,25 @@ try {
 
     $mapas_individuais = [];
     $mapas_grupo = [];
+    $grupos_mapas = [];
     foreach ($mapas as $m) {
-        if (!empty($m['grupo_id'])) { $mapas_grupo[] = $m; } else { $mapas_individuais[] = $m; }
+        if (!empty($m['grupo_id'])) {
+            $mapas_grupo[] = $m;
+            $gid = $m['grupo_id'];
+            if (!isset($grupos_mapas[$gid])) {
+                $grupos_mapas[$gid] = [
+                    'nome' => !empty($m['nome_grupo']) ? $m['nome_grupo'] : ('Grupo ' . $gid),
+                    'mapas' => []
+                ];
+            }
+            $grupos_mapas[$gid]['mapas'][] = $m;
+        } else {
+            $mapas_individuais[] = $m;
+        }
     }
+    uasort($grupos_mapas, function($a, $b) {
+        return strnatcasecmp($a['nome'], $b['nome']);
+    });
 
     $quadras_por_mapa = [];
     if (!empty($mapas)) {
@@ -447,6 +463,10 @@ try {
         .section-divider:not(:empty)::after { margin-left: .5em; }
         .section-divider-predio { color: #E91E63 !important; }
         .section-divider-predio::before, .section-divider-predio::after { border-bottom: 1px solid #f48fb1 !important; }
+        .group-subdivider { display: flex; align-items: center; text-align: center; color: #357a9e; margin: 1.5rem 0 1rem 0; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; }
+        .group-subdivider::before, .group-subdivider::after { content: ''; flex: 1; border-bottom: 1px dashed #a5d2ed; }
+        .group-subdivider:not(:empty)::before { margin-right: .5em; }
+        .group-subdivider:not(:empty)::after { margin-left: .5em; }
         .modal-fullscreen .modal-content { background-color: black; }
         .modal-fullscreen .modal-header { position: absolute; top: 0; left: 0; width: 100%; background: rgba(0, 0, 0, 0.6); border-bottom: none; z-index: 9999; padding: 15px 20px; }
         .modal-fullscreen .modal-title { color: white; font-size: 1.1rem; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
@@ -461,18 +481,19 @@ try {
             .card-title i.fa-map-pin, .card-title i.fa-users { font-size: 0.9rem; }
         }
         
-        /* Estilos para o campo de Observações */
+        /* Estilos para o campo de Notas */
         .obs-container { margin-top: 1rem; border-top: 1px solid #dee2e6; padding-top: 0.8rem; }
         .btn-obs-toggle { background: #f8f9fa; border: 1px solid #dee2e6; color: #495057; width: 100%; text-align: left; padding: 10px 15px; border-radius: 8px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
         .btn-obs-toggle:hover { background: #e9ecef; }
         .obs-content { display: none; padding: 12px 15px; background: white; border: 1px solid #dee2e6; border-top: none; border-radius: 0 0 8px 8px; font-size: 0.95rem; line-height: 1.4; color: #333; }
         .btn-obs-toggle.active { border-radius: 8px 8px 0 0; background: #e9ecef; }
-        .obs-content h1, .obs-content h2, .obs-content h3 { font-weight: 700; margin-bottom: 8px; color: #212529; }
-        .obs-content h1 { font-size: 1.25rem; }
-        .obs-content h2 { font-size: 1.15rem; }
-        .obs-content h3 { font-size: 1.05rem; }
-        .obs-content ul { padding-left: 20px; margin-bottom: 0; }
-        .obs-content li { margin-bottom: 4px; }
+        .obs-content h1, .obs-content h2, .obs-content h3 { font-weight: 700; margin-top: 10px; margin-bottom: 4px; color: #212529; }
+        .obs-content h1:first-child, .obs-content h2:first-child, .obs-content h3:first-child { margin-top: 0; }
+        .obs-content h1 { font-size: 1.15rem; }
+        .obs-content h2 { font-size: 1.05rem; }
+        .obs-content h3 { font-size: 0.95rem; }
+        .obs-content ul { padding-left: 20px; margin-top: 2px; margin-bottom: 8px; }
+        .obs-content li { margin-bottom: 3px; }
         .obs-content li:last-child { margin-bottom: 0; }
     </style>
 </head>
@@ -495,15 +516,29 @@ try {
                 </div>
             <?php endif; ?>
             <?php if (!empty($mapas_grupo)): ?>
-                <div class="section-divider"><i class="fas fa-users me-2"></i> Mapas para Finais de Semana</div>
-                <div class="masonry-layout" id="container-mapas-grupo">
-                    <?php 
-                    $total_global = count($mapas) + count($mapas_predio);
-                    foreach ($mapas_grupo as $mapa): 
-                        renderizarCard($mapa, $quadras_por_mapa, $total_global);
-                    endforeach; 
-                    ?>
-                </div>
+                <div class="section-divider"><i class="fas fa-users me-2"></i> Mapas para Saídas de Grupo</div>
+                <?php if (count($grupos_mapas) > 1): ?>
+                    <?php foreach ($grupos_mapas as $gid => $grupo_info): ?>
+                        <div class="group-subdivider"><i class="fas fa-layer-group me-2"></i> <?php echo htmlspecialchars($grupo_info['nome']); ?></div>
+                        <div class="masonry-layout">
+                            <?php 
+                            $total_global = count($mapas) + count($mapas_predio);
+                            foreach ($grupo_info['mapas'] as $mapa): 
+                                renderizarCard($mapa, $quadras_por_mapa, $total_global);
+                            endforeach; 
+                            ?>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="masonry-layout" id="container-mapas-grupo">
+                        <?php 
+                        $total_global = count($mapas) + count($mapas_predio);
+                        foreach ($mapas_grupo as $mapa): 
+                            renderizarCard($mapa, $quadras_por_mapa, $total_global);
+                        endforeach; 
+                        ?>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
             <?php if (!empty($mapas_predio)): ?>
                 <div class="section-divider section-divider-predio"><i class="fas fa-building me-2"></i> Mapas de Prédios</div>
@@ -572,32 +607,58 @@ try {
     <script src="../script/common.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Função para parsear a observação
+            // Função para parsear a observação/notas
             window.parseObs = (text) => {
+                if (!text) return '';
                 let html = text;
-                html = html.replace(/^h1\s+(.*)$/gim, '<h1>$1</h1>');
-                html = html.replace(/^h2\s+(.*)$/gim, '<h2>$1</h2>');
-                html = html.replace(/^h3\s+(.*)$/gim, '<h3>$1</h3>');
                 
                 // Convert <"Name"="URL"> or <Name="URL"> to hyperlink
                 html = html.replace(/<"([^\"<>]+)"="([^\"<>]+)">/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
                 html = html.replace(/<([^=<>\"]+)="([^\"<>]+)">/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
                 
-                let lines = html.split('\n');
+                let lines = html.split(/\r?\n/);
                 let inList = false;
-                let finalLines = [];
+                let result = [];
+                
                 lines.forEach(line => {
                     let trimmed = line.trim();
-                    if (trimmed.startsWith('-')) {
-                        if (!inList) { finalLines.push('<ul>'); inList = true; }
-                        finalLines.push(`<li>${trimmed.substring(1).trim()}</li>`);
+                    if (/^h1\s+/i.test(trimmed)) {
+                        if (inList) { result.push('</ul>'); inList = false; }
+                        result.push(`<h1>${trimmed.replace(/^h1\s+/i, '')}</h1>`);
+                    } else if (/^h2\s+/i.test(trimmed)) {
+                        if (inList) { result.push('</ul>'); inList = false; }
+                        result.push(`<h2>${trimmed.replace(/^h2\s+/i, '')}</h2>`);
+                    } else if (/^h3\s+/i.test(trimmed)) {
+                        if (inList) { result.push('</ul>'); inList = false; }
+                        result.push(`<h3>${trimmed.replace(/^h3\s+/i, '')}</h3>`);
+                    } else if (trimmed.startsWith('-')) {
+                        if (!inList) { result.push('<ul>'); inList = true; }
+                        result.push(`<li>${trimmed.substring(1).trim()}</li>`);
                     } else {
-                        if (inList) { finalLines.push('</ul>'); inList = false; }
-                        finalLines.push(line);
+                        if (inList) { result.push('</ul>'); inList = false; }
+                        result.push(trimmed);
                     }
                 });
-                if (inList) finalLines.push('</ul>');
-                return finalLines.join('<br>').replace(/<br><ul>/g, '<ul>').replace(/<\/ul><br>/g, '</ul>');
+                if (inList) { result.push('</ul>'); }
+                
+                let out = '';
+                for (let i = 0; i < result.length; i++) {
+                    let curr = result[i];
+                    if (!curr && curr !== '0') continue;
+                    let isBlock = /^\s*<(h[1-3]|ul|ol|li|\/ul|\/ol|\/li)/i.test(curr);
+                    let prev = i > 0 ? result[i - 1] : null;
+                    let prevIsBlock = prev && /^\s*<(h[1-3]|ul|ol|li|\/ul|\/ol|\/li)/i.test(prev);
+                    
+                    if (i === 0 || !out) {
+                        out += curr;
+                    } else if (isBlock || prevIsBlock) {
+                        out += curr;
+                    } else {
+                        out += '<br>' + curr;
+                    }
+                }
+                
+                return out;
             };
 
             window.toggleObs = (btn) => {
